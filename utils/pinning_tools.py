@@ -317,9 +317,11 @@ def select_pins_components(states_q):
             else: 
                 
                 # find index of highest element of Degree matrix
-                index_i = np.argmax(np.diag(D))
+                #index_i = np.argmax(np.diag(D))
+                index_i = components[i][np.argmax(np.diag(D))]
                 # set as default pin
                 pin_matrix[index_i,index_i]=1
+                
                 
     # Betweenness
     # -----------
