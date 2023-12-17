@@ -23,8 +23,8 @@ from utils import encirclement_tools as encircle_tools
 
 # tunable
 c1_d        = 1             # gain for position (q)
-c2_d        = 1*np.sqrt(2)  # gain for velocity (p)
-lemni_type  = 3
+c2_d        = 2*np.sqrt(1)  # gain for velocity (p)
+lemni_type  = 0
             
     # // Explcit definition of rotation (https://ieeexplore.ieee.org/document/9931405)
     #   0 = lemniscate of Gerono - surveillance (/^\)
@@ -123,7 +123,9 @@ def lemni_target(lemni_all,state,targets,i,t):
     
     # if mobbing, can offset targets up
     #if lemni_type == 2:
-    #    targets[2,:] += r_desired
+    #    targets[2,:] += r_desired/2
+    
+    targets = check_targets(targets)
 
     # UNTWIST -  each agent has to be untwisted into a common plane
     # -------------------------------------------------------------      

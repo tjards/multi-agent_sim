@@ -11,11 +11,8 @@ This program computes some useful swarm metrics
 import numpy as np
 from scipy.spatial.distance import cdist
 
-
-
-#%% Order
-# -------
-
+# order
+# -----
 def order(states_p):
 
     order = 0
@@ -37,7 +34,8 @@ def order(states_p):
             
     return order
 
-
+# separation
+# ----------
 def separation(states_q,target_q,obstacles):
     
     # distance from targets or agents
@@ -63,7 +61,6 @@ def separation(states_q,target_q,obstacles):
     
     return means, varis, means_obs, varis_obs, maxes, mines
     
-    
 def centroid(points):
     length = points.shape[0]
     sum_x = np.sum(points[:, 0])
@@ -72,8 +69,8 @@ def centroid(points):
     centroid = np.array((sum_x/length, sum_y/length, sum_z/length), ndmin = 2)
     return centroid.transpose() 
 
-
-#%% Spacing (between agents)
+# spacing (between agents)
+# -----------------------
 def spacing(states_q):
     
     # visibility radius
@@ -90,11 +87,8 @@ def spacing(states_q):
     
     return vals.mean(), len(vals), vals_t.mean()
     
-
-
-
-#%% Energy
-# --------
+# energy
+# ------
 def energy(cmd):
     
     energy_total = np.sqrt(np.sum(cmd**2))

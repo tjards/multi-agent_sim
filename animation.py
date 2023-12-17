@@ -20,19 +20,33 @@ from matplotlib import animation
 # plotting parameters
 # -------------------
 numFrames           = 20    # frame rate (bigger = slower)
-tail                = 500   # trailing trajectory length 
+tail                = 200   # trailing trajectory length 
 zoom                = 0     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
 pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
-connection          = 0     # show connections?
-connection_thresh   = 5.1   # nominally 5.1. how close do agents need to be in order to connect?
+connection          = 1     # show connections?
+connection_thresh   = 5.2   # nominally 5.1. how close do agents need to be in order to connect?
 head                = 0.2   # size of head pointing forward (shows directionality)
 pins_overide        = 1     # default 0, overides using pin variable for colors
-
+showObs             = 0     # (0 = don't show obstacles, 1 = show obstacles, 2 = show obstacles + floors/walls)
 
 # main animation function
 # -----------------------
-def animateMe(Ts, t_all, states_all, cmds_all, targets_all, obstacles_all, walls_plots, showObs, centroid_all, f, tactic_type, pins_all):
-
+#def animateMe(Ts, t_all, states_all, cmds_all, targets_all, obstacles_all, walls_plots, showObs, centroid_all, f, tactic_type, pins_all):
+def animateMe(Ts, History, Obstacles, tactic_type):
+    
+    # extract
+    # -------
+    t_all           = History.t_all
+    states_all      = History.states_all
+    cmds_all        = History.cmds_all
+    targets_all     = History.targets_all[:,0:3,:]
+    obstacles_all   = History.obstacles_all
+    walls_plots     = Obstacles.walls_plots
+    centroid_all    = History.centroid_all
+    f               = History.f_all
+    pins_all        = History.pins_all
+  
+    
     # pull out key variables
     # ----------------------
     nVeh = states_all.shape[2]
@@ -272,7 +286,9 @@ def animateMe(Ts, t_all, states_all, cmds_all, targets_all, obstacles_all, walls
                         z_lat[2*k_neigh:2*k_neigh+2,j] = pos[2,j]  
                 lattices[j].set_data(x_lat[:,j], y_lat[:,j])
                 lattices[j].set_3d_properties(z_lat[:,j])         
-        
+                
+                if tactic_type == 'shep' and pins_all[i*numFrames,j,j] == 1:
+                    lattices[j].set_color('r')
 
         # centroid
         # --------

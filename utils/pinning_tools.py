@@ -45,26 +45,30 @@ import numpy as np
 import random
 from utils import graph_tools as grph
 
+
+# note: the number of components is not matching the pin_matrix
+
+
 #%% Hyperparameters
 # -----------------
 
 # key ranges 
-d       = 5             # lattice scale (desired distance between agents) 
-r       = 1.2*d         # range at which neighbours can be sensed 
+d       = 4.5             # lattice scale (desired distance between agents) 
+r       = 2*d         # range at which neighbours can be sensed 
 d_prime = 0.6*d         # desired separation 
 r_prime = 1.2*d_prime   # range at which obstacles can be sensed
-rg = d + 0.5                 # range for graph analysis (nominally, d + small number)
+rg = d + 0.5               # range for graph analysis (nominally, d + small number)
 
 # gains
-c1_a = 1                # cohesion
-c2_a = 2*np.sqrt(1)
-c1_b = 3                # obstacles 
-c2_b = 2*np.sqrt(3)
-c1_g = 2                # tracking (for the pins)
-c2_g = 2*np.sqrt(2)
+c1_a = 0.3                # cohesion
+c2_a = 2*np.sqrt(0.5)
+c1_b = 0*1                # obstacles 
+c2_b = 0*2*np.sqrt(1)
+c1_g = 5               # tracking (for the pins)
+c2_g = 2*np.sqrt(5)
 
 # pinning method
-method = 'gramian'
+method = 'degree'
 
     # gramian   = based on controllability gramian
     # degree    = based on degree centrality 
@@ -255,6 +259,8 @@ def select_pins_components(states_q):
     # find the components of the graph
     components = grph.find_connected_components_A(A)
     
+    # indicator (used at real-time to detect changes)
+    
     # Gramian method
     # --------------
     if method == 'gramian':
@@ -317,10 +323,10 @@ def select_pins_components(states_q):
             else: 
                 
                 # find index of highest element of Degree matrix
-                #index_i = np.argmax(np.diag(D))
                 index_i = components[i][np.argmax(np.diag(D))]
                 # set as default pin
                 pin_matrix[index_i,index_i]=1
+                
                 
                 
     # Betweenness
@@ -364,7 +370,7 @@ def select_pins_components(states_q):
             # note: later, optimize this selection (i.e. instead of [0], use Grammian)
             pin_matrix[index,index]=1
 
-    return pin_matrix
+    return pin_matrix, components
     
 
  
