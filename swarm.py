@@ -103,6 +103,8 @@ class Agents:
         maxes = np.max(vals)
         mines = np.min(vals)
         
+        #print(mines)
+        
         # distance from obstacles
         # -----------------------
         if obstacles.shape[1] != 0:

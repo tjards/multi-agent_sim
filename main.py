@@ -53,12 +53,14 @@ with open(file_path, 'w') as file:
 
 #%% Setup Simulation
 # ------------------
-#np.random.seed(0)
+np.random.seed(0)
 Ti = 0       # initial time
 Tf = 30      # final time (later, add a condition to break out when desirable conditions are met)
 Ts = 0.02    # sample time
 f  = 0       # parameter for future use
 #exclusion = []     # [LEGACY] initialization of what agents to exclude, default empty
+
+
 
 #%% Instantiate the relevants objects
 # ------------------------------------
@@ -104,9 +106,7 @@ while round(t,3) < Tf:
     #%% Compute the commads (next step)
     # --------------------------------  
     Controller.commands(Agents, Obstacles, Targets, Trajectory, History) 
-    
-    
-    
+      
 #%% Produce animation of simulation
 # ---------------------------------       
 ani = animation.animateMe(Ts, History, Obstacles, Agents.tactic_type)
@@ -144,6 +144,7 @@ plt.show()
 
 #%% Save data
 # -----------
+
 data['Ti ']         = Ti      
 data['Tf']          = Tf     
 data['Ts']          = Ts     

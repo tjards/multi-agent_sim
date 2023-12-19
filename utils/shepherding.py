@@ -31,27 +31,27 @@ import copy
 nShepherds = 5  # number of shepherds (just herding = 0)
 
 # for herding
-r_R = 2         # repulsion radius
-r_O = 3         # orientation radius
-r_A = 4         # attraction radius (r_R < r_O < r_A)
-r_I = 5.5       # agent interaction radius (nominally, slighly < r_A)
+r_R = 3         # repulsion radius
+r_O = 5         # orientation radius
+r_A = 7         # attraction radius (r_R < r_O < r_A)
+r_I = 6.5       # agent interaction radius (nominally, slighly < r_A)
 
 a_R = 2         # gain,repulsion 
-a_O = 1         # gain orientation 
-a_A = 1         # gain, attraction 
+a_O = 2         # gain orientation 
+a_A = 2         # gain, attraction 
 a_I = 4         # gain, agent interaction 
-a_V = 5         # gain, laziness (desire to stop)
+a_V = 2         # gain, laziness (desire to stop)
 
 # for shepherding 
 r_S     = r_I - 1           # desired radius from herd
-r_Oi    = 3                 # range to view obstacles (here, nearest shepherd)
-r_Od    = 1                 # desired distance from obtacles 
-r_Or    = 0.5               # radius of shepherd (uniform for all agents, for now)
+r_Oi    = 3                 # range to view obstacles (here, nearest shepherd or shared point)
+r_Od    = 2                 # desired distance from obtacles 
+r_Or    = 1               # radius of shepherd (uniform for all agents, for now)
 
 a_N     = 5                 # gain, navigation
 a_R_s   = 1                 # gain, shepards repel eachother
-a_R_s_v = 1*np.sqrt(a_R_s)  # gain, shepherds repel eachther (velo component)
-a_V_s   = 1*np.sqrt(a_N)    # gain, laziness (desire to stop)
+a_R_s_v = 2*np.sqrt(a_R_s)  # gain, shepherds repel eachther (velo component)
+a_V_s   = 1 #np.sqrt(a_N)    # gain, laziness (desire to stop)
 
 # type of shepherding 
 type_shepherd = 'haver'
@@ -63,9 +63,9 @@ type_avoid = 'ref_point'
     #   'ref_point'    = (prefered) maintains rO_d from desired location between herd and inv-target 
 
 # use heterogeneous strategies for capturing?
-capture     = 1         # 0 = no, 1 = yes
-r_c         = r_Oi      # range at which to consider breaking from neighbours
-nNeighbours = 2         # criteria to break out (n number nearby)
+#capture     = 1         # 0 = no, 1 = yes
+#r_c         = r_Oi      # range at which to consider breaking from neighbours
+#nNeighbours = 2         # criteria to break out (n number nearby)
 
 # bias unique to each
 #k_noise = 0.1

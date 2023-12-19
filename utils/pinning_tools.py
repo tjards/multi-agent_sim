@@ -53,15 +53,15 @@ from utils import graph_tools as grph
 # -----------------
 
 # key ranges 
-d       = 4.5             # lattice scale (desired distance between agents) 
-r       = 2*d         # range at which neighbours can be sensed 
+d       = 5             # lattice scale (desired distance between agents) 
+r       = 1.3*d         # range at which neighbours can be sensed 
 d_prime = 0.6*d         # desired separation 
-r_prime = 1.2*d_prime   # range at which obstacles can be sensed
+r_prime = 1.3*d_prime   # range at which obstacles can be sensed
 rg = d + 0.5               # range for graph analysis (nominally, d + small number)
 
 # gains
-c1_a = 0.3                # cohesion
-c2_a = 2*np.sqrt(0.5)
+c1_a = 1                # cohesion
+c2_a = 2*np.sqrt(1)
 c1_b = 0*1                # obstacles 
 c2_b = 0*2*np.sqrt(1)
 c1_g = 5               # tracking (for the pins)
@@ -79,7 +79,7 @@ a   = 5
 b   = 5
 c   = np.divide(np.abs(a-b),np.sqrt(4*a*b)) 
 eps = 0.1
-h   = 0.2
+h   = 0.2 # 0.2 for lattice, for obs this should be 0.9
 pi  = 3.141592653589793
 
 #%% Useful functions
