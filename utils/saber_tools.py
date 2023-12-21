@@ -18,12 +18,12 @@ import numpy as np
 # -----------------
 
 # parameters for later functions
-a   = 0.5
-b   = 0.5
+a   = 5
+b   = 5
 c   = np.divide(np.abs(a-b),np.sqrt(4*a*b)) 
 eps = 0.1
 #eps = 0.5
-h   = 0.9
+h   = 0.2 # 0.9 for obs
 pi  = 3.141592653589793
 
 # gains

@@ -34,7 +34,7 @@ class Agents:
                         
         # Vehicles states
         # ---------------
-        iSpread =   20      # initial spread of vehicles
+        iSpread =   30      # initial spread of vehicles
         self.state = np.zeros((6,self.nVeh))
         self.state[0,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (y)

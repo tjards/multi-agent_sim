@@ -25,7 +25,6 @@ Some related work:
 
 @author: tjards
 
-
 Dev notes:
     
     01 Apr 2023 - build up cap/exp to compare ctrb grammian vs degree vs betweeness driver node
@@ -36,6 +35,11 @@ Dev notes:
     03 Apr 2023 - focus on low degree centrality nodes as drivers? low betweenness? hmm... invert typical logic
     08 Apr 2023 - there is a lot of inefficiency in below, move the A,D,G calcs outside the loops
     10 Apr 2023 - RL to select lattice size that maximizes connection, Reward = nConnections/(1-pins)^2(size)^2. With obs around target. 
+    20 Dec 2023 - I am addressing the heterogeneous lattice size problem, using an I-controller
+    20 Dec 2023 - above didn't work. instead, used a consensus-based approach. I want to adjust tgis 
+            to have different distances for each agent
+    21 Dec 2023 - hetero worx, cleaning up
+    
     
 """
 
@@ -44,25 +48,29 @@ Dev notes:
 import numpy as np
 import random
 from utils import graph_tools as grph
+#import copy
+#import sys
 
-
-# note: the number of components is not matching the pin_matrix
-
+# note: verify number of components is not matching the pin_matrix
 
 #%% Hyperparameters
 # -----------------
 
 # key ranges 
-d       = 5             # lattice scale (desired distance between agents) 
+d       = 7            # lattice scale (desired distance between agents) 
 r       = 1.3*d         # range at which neighbours can be sensed 
 d_prime = 0.6*d         # desired separation 
 r_prime = 1.3*d_prime   # range at which obstacles can be sensed
-rg = d + 0.5               # range for graph analysis (nominally, d + small number)
+rg      = d + 0.5       # range for graph analysis (nominally, d + small number)
+
+# options
+hetero_lattice = 0      # support heterogeneous lattice size? 0 = no, 1 = yes
+params_n       = 10     # this must match the number of agents (pull automatically later)
 
 # gains
-c1_a = 1                # cohesion
+c1_a = 1               # cohesion
 c2_a = 2*np.sqrt(1)
-c1_b = 0*1                # obstacles 
+c1_b = 0*1             # obstacles 
 c2_b = 0*2*np.sqrt(1)
 c1_g = 5               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
@@ -81,6 +89,40 @@ c   = np.divide(np.abs(a-b),np.sqrt(4*a*b))
 eps = 0.1
 h   = 0.2 # 0.2 for lattice, for obs this should be 0.9
 pi  = 3.141592653589793
+
+# convenient place to store parameters
+class parameterizer:
+    
+    def __init__(self, params_n, hetero_lattice):
+        
+        # select parameter ranges
+        if hetero_lattice == 1:
+            self.params_range = [1,d]
+        else:
+            self.params_range = [d,d]
+        
+        # parameters
+        self.params_n   = params_n  # number of parameters
+        self.params     = [random.uniform(self.params_range[0], self.params_range[1]) for _ in range(self.params_n)]
+        self.alpha      = 0.2                 # (0,1)
+        self.beta       = 1-self.alpha        # (0,1) # assume all equal now, but this can vary per agent (maybe, just touching)
+        
+        # store the parameters
+        self.d_weighted  = np.zeros((len(self.params),len(self.params)))   
+        i = 0
+        while (i < len(self.params)):
+            self.d_weighted[i,:] = self.params[i]
+            i+=1
+        
+    def update(self, k_node, k_neigh):
+        
+        #print('agent ', k_node,' d from agent ', k_neigh, ': ', d )
+        self.d_weighted[k_node, k_neigh] = self.alpha * self.d_weighted[k_node, k_neigh]
+        self.d_weighted[k_node, k_neigh] += (self.beta * self.d_weighted[k_neigh, k_node])
+
+    
+# instatiate class for parameters
+paramClass = parameterizer(params_n, hetero_lattice)
 
 #%% Useful functions
 # ----------------
@@ -134,22 +176,42 @@ def phi_b(q_i, q_ik, d_b):
 # form the lattice
 def compute_cmd_a(states_q, states_p, targets, targets_v, k_node):
     
+    # ensure the parameters match the agents
+    if paramClass.d_weighted.shape[1] != states_q.shape[1]:
+        raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', paramClass.d_weighted.shape[1], 'lattice parameters')
+        
     # initialize 
+    d = paramClass.d_weighted[k_node, k_node]
+    d_a = sigma_norm(d)                         # lattice separation (goal)  
     r_a = sigma_norm(r)                         # lattice separation (sensor range)
-    d_a = sigma_norm(d)                         # lattice separation (goal)   
     u_int = np.zeros((3,states_q.shape[1]))     # interactions
-         
+
     # search through each neighbour
     for k_neigh in range(states_q.shape[1]):
+        
         # except for itself (duh):
         if k_node != k_neigh:
+            
             # compute the euc distance between them
             dist = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
-            # if it is within the interaction range
+            
+            # pull the lattice parameters
+            if hetero_lattice == 1:
+                d = paramClass.d_weighted[k_node, k_neigh]
+                d_a = sigma_norm(d)                        
+            
+            # if within sensor range
             if dist < r:
+                
                 # compute the interaction command
                 u_int[:,k_node] += c1_a*phi_a(states_q[:,k_node],states_q[:,k_neigh],r_a, d_a)*n_ij(states_q[:,k_node],states_q[:,k_neigh]) + c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node]) 
+            
+                # adjust the parameters
+                if dist < d + 0.5 and hetero_lattice == 1:
+                
+                    paramClass.update(k_node, k_neigh)
 
+    # return the command
     return u_int[:,k_node] 
 
 # avoid obstacles
@@ -230,7 +292,6 @@ def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets
     cmd_i[:,k_node] = u_int + u_obs + u_nav
     
     return cmd_i[:,k_node]
-
 
 #%% Select pins for each component 
 # --------------------------------
@@ -326,9 +387,7 @@ def select_pins_components(states_q):
                 index_i = components[i][np.argmax(np.diag(D))]
                 # set as default pin
                 pin_matrix[index_i,index_i]=1
-                
-                
-                
+                       
     # Betweenness
     # -----------
     
@@ -360,7 +419,6 @@ def select_pins_components(states_q):
                 index_i = components[i][index_ii]
                 # pin the max influencers
                 pin_matrix[index_i,index_i] = 1
-    
 
     else:
         
