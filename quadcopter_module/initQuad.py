@@ -9,7 +9,9 @@ Please feel free to use and modify this, but keep the above information. Thanks!
 import numpy as np
 from numpy import pi
 from numpy.linalg import inv
-import utils
+from numpy import sin, cos
+from numpy.linalg import norm
+#import utils
 #import config
 import random 
 
@@ -104,6 +106,36 @@ def init_cmd(params):
     cmd_hover = (w_hover-c0)/c1
     return [cmd_hover, w_hover, thr_hover, tor_hover]
 
+
+def YPRToQuat(r1, r2, r3):
+    # For ZYX, Yaw-Pitch-Roll
+    # psi   = RPY[0] = r1
+    # theta = RPY[1] = r2
+    # phi   = RPY[2] = r3
+    
+    cr1 = cos(0.5*r1)
+    cr2 = cos(0.5*r2)
+    cr3 = cos(0.5*r3)
+    sr1 = sin(0.5*r1)
+    sr2 = sin(0.5*r2)
+    sr3 = sin(0.5*r3)
+
+    q0 = cr1*cr2*cr3 + sr1*sr2*sr3
+    q1 = cr1*cr2*sr3 - sr1*sr2*cr3
+    q2 = cr1*sr2*cr3 + sr1*cr2*sr3
+    q3 = sr1*cr2*cr3 - cr1*sr2*sr3
+
+    # e0,e1,e2,e3 = qw,qx,qy,qz
+    q = np.array([q0,q1,q2,q3])
+    # q = q*np.sign(e0)
+    
+    q = q/norm(q)
+    
+    return q
+
+
+
+
 def init_state(params,config):
     
     x0     = 0.  # m
@@ -119,7 +151,8 @@ def init_state(params,config):
     
     
 
-    quat = utils.YPRToQuat(psi0, theta0, phi0)
+    #quat = utils.YPRToQuat(psi0, theta0, phi0)
+    quat = YPRToQuat(psi0, theta0, phi0)
     
     if (config.orient == "ENU"):
         z0 = -z0

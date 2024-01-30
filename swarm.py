@@ -17,7 +17,7 @@ from utils import lemni_tools
 
 # agent dynamics
 # --------------
-dynamics = 'double integrator'
+dynamics = 'quadcopter'
     # 'double integrator' 
     # 'quadcopter'
     
@@ -68,11 +68,29 @@ class Agents:
         # agent dynamics
         # --------------
         if dynamics == 'quadcopter':
-            quadList = []
+            
+            from quadcopter_module import config as quadcopter_config_file 
+            from quadcopter_module.quad import Quadcopter
+            from quadcopter_module.ctrl import Control as Quadcopter_Control
+            
+            quadcopter_config = quadcopter_config_file.config()
+            
+            # quadcopter objects
+            # ------------------
+            quadList    = []
+            llctrlList  = []
+            sDesList    = []
+            
             for quad_i in range(0,self.nVeh):
-                print('make quadcopters')
-                #quadList.append(Quadcopter(config))
+                quadList.append(Quadcopter(quadcopter_config))
+                #print('make quadcopters')
         
+                # low-level controllers
+                # ---------------------
+                sDesList.append(np.zeros(21))
+                llctrlList.append(Quadcopter_Control(quadList[quad_i], "zero"))
+                llctrlList[quad_i].controller(quadList[quad_i], sDesList[quad_i], quadcopter_config.Ts)
+                #print('make low-level controllers')
         
     
     def compute_centroid(self, points):

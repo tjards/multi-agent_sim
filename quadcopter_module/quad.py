@@ -10,11 +10,55 @@ import numpy as np
 from numpy import sin, cos, tan, pi, sign
 from scipy.integrate import ode
 
-from quadFiles.initQuad import sys_params, init_cmd, init_state
-import utils
+from quadcopter_module.initQuad import sys_params, init_cmd, init_state
+#import utils
 #import config
 
 deg2rad = pi/180.0
+
+
+# helpers
+# ------
+def quatToYPR_ZYX(q):
+    # [q0 q1 q2 q3] = [w x y z]
+    q0 = q[0]
+    q1 = q[1]
+    q2 = q[2]
+    q3 = q[3]
+    
+    YPR = threeaxisrot( 2.0*(q1*q2 + q0*q3), \
+                        q0**2 + q1**2 - q2**2 - q3**2, \
+                        -2.0*(q1*q3 - q0*q2), \
+                        2.0*(q2*q3 + q0*q1), \
+                        q0**2 - q1**2 - q2**2 + q3**2)
+
+    # YPR = [Yaw, pitch, roll] = [psi, theta, phi]
+    return YPR
+
+def threeaxisrot(r11, r12, r21, r31, r32):
+    r1 = np.arctan2(r11, r12)
+    r2 = np.arcsin(r21)
+    r3 = np.arctan2(r31, r32)
+
+    return np.array([r1, r2, r3])
+
+def quat2Dcm(q):
+    dcm = np.zeros([3,3])
+
+    dcm[0,0] = q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2
+    dcm[0,1] = 2.0*(q[1]*q[2] - q[0]*q[3])
+    dcm[0,2] = 2.0*(q[1]*q[3] + q[0]*q[2])
+    dcm[1,0] = 2.0*(q[1]*q[2] + q[0]*q[3])
+    dcm[1,1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
+    dcm[1,2] = 2.0*(q[2]*q[3] - q[0]*q[1])
+    dcm[2,0] = 2.0*(q[1]*q[3] - q[0]*q[2])
+    dcm[2,1] = 2.0*(q[2]*q[3] + q[0]*q[1])
+    dcm[2,2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
+
+    return dcm
+
+# class for quadcopter
+# --------------------
 
 class Quadcopter:
 
@@ -56,14 +100,15 @@ class Quadcopter:
         self.integrator = ode(self.state_dot).set_integrator('dopri5', first_step='0.00005', atol='10e-6', rtol='10e-6')
         self.integrator.set_initial_value(self.state, Ti)
 
-
     def extended_state(self):
 
         # Rotation Matrix of current state (Direct Cosine Matrix)
-        self.dcm = utils.quat2Dcm(self.quat)
+        #self.dcm = utils.quat2Dcm(self.quat)
+        self.dcm = quat2Dcm(self.quat)
 
         # Euler angles of current state
-        YPR = utils.quatToYPR_ZYX(self.quat)
+        #YPR = utils.quatToYPR_ZYX(self.quat)
+        YPR = quatToYPR_ZYX(self.quat)
         self.euler = YPR[::-1] # flip YPR so that euler state = phi, theta, psi
         self.psi   = YPR[0]
         self.theta = YPR[1]
