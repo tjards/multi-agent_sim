@@ -20,9 +20,17 @@ from utils import lemni_tools
 dynamics = 'quadcopter'
     # 'double integrator' 
     # 'quadcopter'
-    
-    
 
+# some dependencies for quadcopter
+if dynamics == 'quadcopter':
+    
+    from quadcopter_module import config as quadcopter_config_file 
+    from quadcopter_module.quad import Quadcopter
+    from quadcopter_module.ctrl import Control as Quadcopter_Control
+    quadcopter_config = quadcopter_config_file.config()
+
+# agent class
+# -----------
 class Agents:
     
     def __init__(self,tactic_type,nVeh):
@@ -42,7 +50,7 @@ class Agents:
                         
         # Vehicles states
         # ---------------
-        iSpread =   30      # initial spread of vehicles
+        iSpread =  8      # initial spread of vehicles
         self.state = np.zeros((6,self.nVeh))
         self.state[0,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (y)
@@ -69,30 +77,29 @@ class Agents:
         # --------------
         if dynamics == 'quadcopter':
             
-            from quadcopter_module import config as quadcopter_config_file 
-            from quadcopter_module.quad import Quadcopter
-            from quadcopter_module.ctrl import Control as Quadcopter_Control
-            
-            quadcopter_config = quadcopter_config_file.config()
-            
             # quadcopter objects
             # ------------------
-            quadList    = []
-            llctrlList  = []
-            sDesList    = []
+            self.quadList    = []
+            self.llctrlList  = []
+            self.sDesList    = []
             
+            # for each quadcopter
             for quad_i in range(0,self.nVeh):
-                quadList.append(Quadcopter(quadcopter_config))
-                #print('make quadcopters')
+                
+                # instantiate a new quadcopter
+                self.quadList.append(Quadcopter(quadcopter_config))
+                
+                # align states with corresponding agent
+                self.quadList[quad_i].state[0:3]    = self.state[0:3,quad_i]
+                self.quadList[quad_i].state[7:10]   = self.state[3:6,quad_i]
+                #self.quadList[quad_i].state[9]      = -self.state[5,quad_i]
         
                 # low-level controllers
                 # ---------------------
-                sDesList.append(np.zeros(21))
-                llctrlList.append(Quadcopter_Control(quadList[quad_i], "zero"))
-                llctrlList[quad_i].controller(quadList[quad_i], sDesList[quad_i], quadcopter_config.Ts)
-                #print('make low-level controllers')
+                self.sDesList.append(np.zeros(21))
+                self.llctrlList.append(Quadcopter_Control(self.quadList[quad_i], "zero"))
+                self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
         
-    
     def compute_centroid(self, points):
         length = points.shape[0]
         sum_x = np.sum(points[:, 0])
@@ -182,22 +189,68 @@ class Agents:
 
     # evolve through agent dynamics
     # -----------------------------    
-    def evolve(self, Controller, Ts):
+    def evolve(self, Controller, t, Ts):
         
         # constraints
         #vmax = 1000
         #vmin = -1000
 
-        #discretized double integrator 
-        self.state[0:3,:] = self.state[0:3,:] + self.state[3:6,:]*Ts
-        self.state[3:6,:] = self.state[3:6,:] + Controller.cmd[:,:]*Ts
+        if dynamics == 'quadcopter':
+            
+            # for each quadcopter
+            for quad_i in range(0,self.nVeh):
+                
+                Ts_lapse = 0
+                
+                # define the velocity setpoint (based on higher-level control inputs)
+                self.sDesList[quad_i][3:6] =  Controller.cmd[0:3,quad_i]*Ts
+                self.sDesList[quad_i][5]   =  Controller.cmd[2,quad_i]*Ts
+                
+                # low-level controller runs at different (faster) frequency than outer
+                while Ts_lapse < Ts:
+                
+                    # update the state
+                    self.quadList[quad_i].update(t+Ts_lapse, quadcopter_config.Ts, self.llctrlList[quad_i].w_cmd)
+                
+                    # update the desired state (based on higher-level control inputs)
+                    #self.sDesList[quad_i][3:6] =  Controller.cmd[0:3,quad_i]*Ts
+                    #self.sDesList[quad_i][5]   =  Controller.cmd[2,quad_i]*Ts
+                
+                    # update the low-level control signal
+                    self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
+                
+                    # align states with corresponding agent
+                    #self.state[0:3,quad_i] = self.quadList[quad_i].state[0:3]
+                    #self.state[3:6,quad_i] = self.quadList[quad_i].state[7:10]
+                    
+                    Ts_lapse += quadcopter_config.Ts
+                    
+                # align states with corresponding agent
+                self.state[0:3,quad_i] = self.quadList[quad_i].state[0:3]
+                self.state[3:6,quad_i] = self.quadList[quad_i].state[7:10]
+
+        else:
+
+
+            #discretized double integrator 
+            self.state[0:3,:] = self.state[0:3,:] + self.state[3:6,:]*Ts
+            self.state[3:6,:] = self.state[3:6,:] + Controller.cmd[:,:]*Ts
+        
+        
+        
+        
         self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
         self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         
-        #state[3:6,:] = np.minimum(np.maximum(state[3:6,:] + cmd[:,:]*Ts, -vmax), vmax)
-        #state[3:6,:] = np.minimum(np.maximum(state[3:6,:] + cmd[:,:]*Ts, vmin), vmax)
-        #state[3:6,:] = clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax)
-        #state[3:6,:] = clamp_norm_min(clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax),vmin)
+            #state[3:6,:] = np.minimum(np.maximum(state[3:6,:] + cmd[:,:]*Ts, -vmax), vmax)
+            #state[3:6,:] = np.minimum(np.maximum(state[3:6,:] + cmd[:,:]*Ts, vmin), vmax)
+            #state[3:6,:] = clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax)
+            #state[3:6,:] = clamp_norm_min(clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax),vmin)
+        
+        
+        
+        
+        
         
 class Targets:
 

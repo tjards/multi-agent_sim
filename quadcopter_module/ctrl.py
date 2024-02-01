@@ -31,7 +31,7 @@ deg2rad = pi/180.0
 # hyperparameters
 # ---------------
 ctrlOptions = ["xyz_pos", "xy_vel_z_pos", "xyz_vel"]
-ctrlType = ctrlOptions[0] 
+ctrlType = ctrlOptions[2] 
 
 # Set PID Gains and Max Values
 # ---------------------------

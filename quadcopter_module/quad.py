@@ -16,6 +16,8 @@ from quadcopter_module.initQuad import sys_params, init_cmd, init_state
 
 deg2rad = pi/180.0
 
+#from quadcopter_module.windModel import Wind
+#wind = Wind('None', 2.0, 90, -15)
 
 # helpers
 # ------
@@ -64,11 +66,12 @@ class Quadcopter:
 
     def __init__(self, config):
         
-        Ti = config.Ti
+        Ti = 0
         
         # Quad Params
         # ---------------------------
         self.params = sys_params(config)
+        self.configs = config
         
         # Command for initial stable hover
         # ---------------------------
@@ -121,8 +124,9 @@ class Quadcopter:
         self.thr = self.params["kTh"]*self.wMotor*self.wMotor
         self.tor = self.params["kTo"]*self.wMotor*self.wMotor
 
-    def state_dot(self, t, state, cmd, wind, config):
+    def state_dot(self, t, state, cmd):
 
+        
         # Import Params
         # ---------------------------    
         mB   = self.params["mB"]
@@ -144,7 +148,7 @@ class Quadcopter:
         maxWmotor = self.params["maxWmotor"]
 
         IRzz = self.params["IRzz"]
-        if (config.usePrecession):
+        if (self.configs.usePrecession):
             uP = 1
         else:
             uP = 0
@@ -198,7 +202,7 @@ class Quadcopter:
 
         # Wind Model
         # ---------------------------
-        [velW, qW1, qW2] = wind.randomWind(t)
+        [velW, qW1, qW2] = [0,0,0] #wind.randomWind(t)
         # velW = 0
 
         # velW = 5          # m/s
@@ -207,7 +211,7 @@ class Quadcopter:
     
         # State Derivatives (from PyDy) This is already the analytically solved vector of MM*x = RHS
         # ---------------------------
-        if (config.orient == "NED"):
+        if (self.configs.orient == "NED"):
             DynamicsDot = np.array([
                 [                                                                                                                                   xdot],
                 [                                                                                                                                   ydot],
@@ -222,7 +226,7 @@ class Quadcopter:
                 [                                    ((IByy - IBzz)*q*r - uP*IRzz*(wM1 - wM2 + wM3 - wM4)*q + ( ThrM1 - ThrM2 - ThrM3 + ThrM4)*dym)/IBxx], # uP activates or deactivates the use of gyroscopic precession.
                 [                                    ((IBzz - IBxx)*p*r + uP*IRzz*(wM1 - wM2 + wM3 - wM4)*p + ( ThrM1 + ThrM2 - ThrM3 - ThrM4)*dxm)/IByy], # Set uP to False if rotor inertia is not known (gyro precession has negigeable effect on drone dynamics)
                 [                                                                               ((IBxx - IByy)*p*q - TorM1 + TorM2 - TorM3 + TorM4)/IBzz]])
-        elif (config.orient == "ENU"):
+        elif (self.configs.orient == "ENU"):
             DynamicsDot = np.array([
                 [                                                                                                                                   xdot],
                 [                                                                                                                                   ydot],
@@ -268,12 +272,13 @@ class Quadcopter:
 
         return sdot
 
-    def update(self, t, Ts, cmd, wind, config):
+    def update(self, t, Ts, cmd):
 
         prev_vel   = self.vel
         prev_omega = self.omega
 
-        self.integrator.set_f_params(cmd, wind, config)
+        #self.integrator.set_f_params(cmd, wind)
+        self.integrator.set_f_params(cmd)
         self.state = self.integrator.integrate(t, t+Ts)
 
         self.pos   = self.state[0:3]

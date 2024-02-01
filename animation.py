@@ -19,12 +19,12 @@ from matplotlib import animation
 
 # plotting parameters
 # -------------------
-numFrames           = 20    # frame rate (bigger = slower)
-tail                = 200   # trailing trajectory length 
+numFrames           = 100    # frame rate (bigger = slower)
+tail                = 900   # trailing trajectory length 
 zoom                = 0     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
 pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
 connection          = 1     # show connections?
-connection_thresh   = 7.5   # nominally 5.1. how close do agents need to be in order to connect?
+connection_thresh   = 5.5   # nominally 5.1. how close do agents need to be in order to connect?
 head                = 0.2   # size of head pointing forward (shows directionality)
 pins_overide        = 1     # default 0, overides using pin variable for colors
 showObs             = 0     # (0 = don't show obstacles, 1 = show obstacles, 2 = show obstacles + floors/walls)

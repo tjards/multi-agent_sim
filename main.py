@@ -56,7 +56,7 @@ with open(file_path, 'w') as file:
 # ------------------
 #np.random.seed(0)
 Ti = 0       # initial time
-Tf = 30      # final time (later, add a condition to break out when desirable conditions are met)
+Tf = 60      # final time (later, add a condition to break out when desirable conditions are met)
 Ts = 0.02    # sample time
 f  = 0       # parameter for future use
 #exclusion = []     # [LEGACY] initialization of what agents to exclude, default empty
@@ -87,7 +87,7 @@ while round(t,3) < Tf:
 
     # Evolve the states
     # -----------------
-    Agents.evolve(Controller,Ts)
+    Agents.evolve(Controller,t,Ts)
      
     # Store results 
     # -------------
@@ -144,14 +144,6 @@ plt.show()
 #%% Save data
 # -----------
 
-data['Ti ']         = Ti      
-data['Tf']          = Tf     
-data['Ts']          = Ts     
-data['Agents']      = Agents.__dict__
-data['Targets']     = Targets.__dict__
-data['Obstacles']   = Obstacles.__dict__
-data['History']     = History.__dict__
-
 def convert_to_json_serializable(obj):
     if isinstance(obj, np.ndarray):
         return obj.tolist()
@@ -161,6 +153,18 @@ def convert_to_json_serializable(obj):
         return [convert_to_json_serializable(item) for item in obj]
     else:
         return obj
+
+data['Ti ']         = Ti      
+data['Tf']          = Tf     
+data['Ts']          = Ts           
+data['Agents']      = Agents.__dict__
+del data['Agents']['quadList']
+del data['Agents']['llctrlList']
+del data['Agents']['sDesList']
+data['Targets']     = Targets.__dict__
+data['Obstacles']   = Obstacles.__dict__
+data['History']     = History.__dict__
+
 
 data = convert_to_json_serializable(data)
 

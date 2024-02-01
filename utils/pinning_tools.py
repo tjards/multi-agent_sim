@@ -57,7 +57,7 @@ from utils import graph_tools as grph
 # -----------------
 
 # key ranges 
-d       = 7            # lattice scale (desired distance between agents) 
+d       = 5            # lattice scale (desired distance between agents) 
 r       = 1.3*d         # range at which neighbours can be sensed 
 d_prime = 0.6*d         # desired separation 
 r_prime = 1.3*d_prime   # range at which obstacles can be sensed

@@ -23,6 +23,7 @@ class config():
         # "NED" for front-right-down (frd) and North-East-Down
         # "ENU" for front-left-up (flu) and East-North-Up
         self.orient = "NED"
+        #self.orient = "ENU"
         
         # Select whether to use gyroscopic precession of the rotors in the quadcopter dynamics
         # ---------------------------
@@ -31,8 +32,8 @@ class config():
         
         # Simulation Setup
         # --------------------------- 
-        self.Ti         =   0
-        self.Ts         =   0.005 #default 0.005 (larger numbers could result in instability)
+        #self.Ti         =   0
+        self.Ts         =   0.005 # make sure matched main sim #default 0.005 (larger numbers could result in instability)
         # self.Tf         =   10 #1500 # 26
         # self.ifsave     =   1
         # self.ifsavedata =   0     # subset of ifsave
