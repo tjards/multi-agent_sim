@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-author: John Bass
+original author: John Bass
 email: john.bobzwik@gmail.com
 license: MIT
 Please feel free to use and modify this, but keep the above information. Thanks!
 
-# note: yaw needs to be sorted out still :/
+updated for application in this larger project by by P. Travis Jardine
 
 
 """
@@ -23,7 +23,6 @@ from numpy.linalg import norm
 #import utils
 from quadcopter_module import config as quadcopter_config_file
 config = quadcopter_config_file.config()
-
 
 rad2deg = 180.0/pi
 deg2rad = pi/180.0
@@ -97,7 +96,8 @@ tiltMax = 50.0*deg2rad
 # Max Rate
 pMax = 200.0*deg2rad
 qMax = 200.0*deg2rad
-rMax = 150.0*deg2rad
+#rMax = 150.0*deg2rad
+rMax = 50.0*deg2rad
 
 rateMax = np.array([pMax, qMax, rMax])
 
@@ -208,7 +208,6 @@ class Control:
         self.pqr_sp    = np.zeros(3)
         self.yawFF     = np.zeros(3)
 
-    
     #def controller(self, traj, quad, sDes, Ts):
     def controller(self, quad, sDes, Ts):
 
@@ -264,8 +263,7 @@ class Control:
         # --------------------------- 
         #self.w_cmd = utils.mixerFM(quad, norm(self.thrust_sp), self.rateCtrl)
         self.w_cmd = mixerFM(quad, norm(self.thrust_sp), self.rateCtrl)
-        
-        
+            
         # Add calculated Desired States
         # ---------------------------         
         #self.sDesCalc[0:3] = self.pos_sp
@@ -273,7 +271,6 @@ class Control:
         #self.sDesCalc[6:9] = self.thrust_sp
         #self.sDesCalc[9:13] = self.qd
         #self.sDesCalc[13:16] = self.rate_sp
-
 
     def z_pos_control(self, quad, Ts):
        
@@ -290,7 +287,6 @@ class Control:
         pos_xy_error = (self.pos_sp[0:2] - quad.pos[0:2])
         self.vel_sp[0:2] += pos_P_gain[0:2]*pos_xy_error
         
-        
     def saturateVel(self):
 
         # Saturate Velocity Setpoint
@@ -302,7 +298,6 @@ class Control:
             totalVel_sp = norm(self.vel_sp)
             if (totalVel_sp > velMaxAll):
                 self.vel_sp = self.vel_sp/totalVel_sp*velMaxAll
-
 
     def z_vel_control(self, quad, Ts):
         
@@ -336,7 +331,6 @@ class Control:
 
         # Saturate thrust setpoint in D-direction
         self.thrust_sp[2] = np.clip(thrust_z_sp, uMin, uMax)
-
     
     def xy_vel_control(self, quad, Ts):
         

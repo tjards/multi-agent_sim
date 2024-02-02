@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-author: John Bass
+original author: John Bass
 email: john.bobzwik@gmail.com
 license: MIT
 Please feel free to use and modify this, but keep the above information. Thanks!
+
+updated for application in this larger project by by P. Travis Jardine
+
 """
 
 import numpy as np
@@ -15,9 +18,6 @@ from quadcopter_module.initQuad import sys_params, init_cmd, init_state
 #import config
 
 deg2rad = pi/180.0
-
-#from quadcopter_module.windModel import Wind
-#wind = Wind('None', 2.0, 90, -15)
 
 # helpers
 # ------
@@ -126,7 +126,6 @@ class Quadcopter:
 
     def state_dot(self, t, state, cmd):
 
-        
         # Import Params
         # ---------------------------    
         mB   = self.params["mB"]

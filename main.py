@@ -7,14 +7,21 @@ This project implements an autonomous, decentralized swarming strategies includi
     - Olfati-Saber flocking
     - Starling flocking
     - Dynamic Encirclement 
-    - Pinning Control
+    - Heterogeneous Lattice formation using Pinning Control 
     - Autonomous Assembly of Closed Curves
     - Shepherding
 
 The strategies requires no human invervention once the target is selected and all agents rely on local knowledge only. 
 Each vehicle makes its own decisions about where to go based on its relative position to other vehicles.
 
+The following agent dynamics are available:
+    
+    1. double integrator 
+    2. quadrotor helicopter (quadcopter)
+
 Created on Tue Dec 22 11:48:18 2020
+
+Lasted updated on Fri Feb 02 16:23 2024
 
 @author: tjards
 
@@ -55,15 +62,17 @@ with open(file_path, 'w') as file:
 #%% Setup Simulation
 # ------------------
 #np.random.seed(0)
-Ti = 0       # initial time
-Tf = 60      # final time (later, add a condition to break out when desirable conditions are met)
-Ts = 0.02    # sample time
-f  = 0       # parameter for future use
-#exclusion = []     # [LEGACY] initialization of what agents to exclude, default empty
+nAgents = 20
+Ti      = 0       # initial time
+Tf      = 60      # final time (later, add a condition to break out when desirable conditions are met)
+Ts      = 0.02    # sample time
+f       = 0       # parameter for future use
+verbose = 0       # 1 = print progress reports, 0 = silent
+#exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
 #%% Instantiate the relevants objects
 # ------------------------------------
-Agents = swarm.Agents('pinning', 5)
+Agents = swarm.Agents('pinning', nAgents)
 Controller = tactic.Controller(Agents)
 Targets = swarm.Targets(0, Agents.nVeh)
 Trajectory = swarm.Trajectory(Targets)
@@ -74,6 +83,9 @@ History = swarm.History(Agents, Targets, Obstacles, Controller, Ts, Tf, Ti, f)
 # ----------------------
 t = Ti
 i = 1
+
+if verbose == 1:
+    print('starting simulation with ',nAgents,' agents.')
 
 while round(t,3) < Tf:
     
@@ -98,6 +110,10 @@ while round(t,3) < Tf:
     t += Ts
     i += 1
     
+    # print progress
+    if verbose == 1 and (round(t,2)).is_integer():
+        print(round(t,1),' of ',Tf,' sec completed.')
+    
     #%% Compute Trajectory
     # --------------------
     Trajectory.update(Agents, Targets, History, t, i)
@@ -107,11 +123,21 @@ while round(t,3) < Tf:
     Controller.commands(Agents, Obstacles, Targets, Trajectory, History) 
       
 #%% Produce animation of simulation
-# ---------------------------------       
-ani = animation.animateMe(Ts, History, Obstacles, Agents.tactic_type)
+# --------------------------------- 
+if verbose == 1:
+    print('building animation.')
 
+if Agents.dynamics_type == 'quadcopter':  
+    import quadcopter_module.animation_quad as animation_quad
+    ani = animation_quad.animateMe(Ts, History, Obstacles, Agents.tactic_type)
+else:
+    ani = animation.animateMe(Ts, History, Obstacles, Agents.tactic_type)
+    
 #%% Produce plots
 # --------------
+
+if verbose == 1:
+    print('building plots.')
 
 # separtion 
 fig, ax = plt.subplots()
@@ -144,6 +170,9 @@ plt.show()
 #%% Save data
 # -----------
 
+if verbose == 1:
+    print('saving data.')
+
 def convert_to_json_serializable(obj):
     if isinstance(obj, np.ndarray):
         return obj.tolist()
@@ -158,13 +187,13 @@ data['Ti ']         = Ti
 data['Tf']          = Tf     
 data['Ts']          = Ts           
 data['Agents']      = Agents.__dict__
-del data['Agents']['quadList']
-del data['Agents']['llctrlList']
-del data['Agents']['sDesList']
+if Agents.dynamics_type == 'quadcopter':
+    del data['Agents']['quadList']
+    del data['Agents']['llctrlList']
+    del data['Agents']['sDesList']
 data['Targets']     = Targets.__dict__
 data['Obstacles']   = Obstacles.__dict__
 data['History']     = History.__dict__
-
 
 data = convert_to_json_serializable(data)
 
@@ -174,6 +203,8 @@ with open(file_path, 'w') as file:
 with open(file_path, 'r') as file:
     data_json = json.load(file)
 
+if verbose == 1:
+    print('done.')
 
 #%% LEGACY code (keep for reference)
 

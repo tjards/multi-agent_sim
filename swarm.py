@@ -29,8 +29,6 @@ if dynamics == 'quadcopter':
     from quadcopter_module.ctrl import Control as Quadcopter_Control
     quadcopter_config = quadcopter_config_file.config()
 
-# agent class
-# -----------
 class Agents:
     
     def __init__(self,tactic_type,nVeh):
@@ -47,10 +45,11 @@ class Agents:
                         # lemni     = dynamic lemniscates and other closed curves
                         # pinning   = pinning control
                         # shep      = shepherding
+        self.dynamics_type = dynamics
                         
         # Vehicles states
         # ---------------
-        iSpread =  8      # initial spread of vehicles
+        iSpread =  40      # initial spread of vehicles
         self.state = np.zeros((6,self.nVeh))
         self.state[0,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (y)
@@ -82,6 +81,7 @@ class Agents:
             self.quadList    = []
             self.llctrlList  = []
             self.sDesList    = []
+            #self.quad_w_cmd  = np.zeros((4,self.nVeh))
             
             # for each quadcopter
             for quad_i in range(0,self.nVeh):
@@ -97,7 +97,7 @@ class Agents:
                 # low-level controllers
                 # ---------------------
                 self.sDesList.append(np.zeros(21))
-                self.llctrlList.append(Quadcopter_Control(self.quadList[quad_i], "zero"))
+                self.llctrlList.append(Quadcopter_Control(self.quadList[quad_i], "yaw")) # nominally, "yaw" at end
                 self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
         
     def compute_centroid(self, points):
@@ -203,8 +203,20 @@ class Agents:
                 Ts_lapse = 0
                 
                 # define the velocity setpoint (based on higher-level control inputs)
-                self.sDesList[quad_i][3:6] =  Controller.cmd[0:3,quad_i]*Ts
-                self.sDesList[quad_i][5]   =  Controller.cmd[2,quad_i]*Ts
+                self.sDesList[quad_i][3:6] =  10*Controller.cmd[0:3,quad_i]*Ts
+                #self.sDesList[quad_i][5]   =  10*Controller.cmd[2,quad_i]*Ts
+                
+                # try yaw
+                # define unit vector ahead
+                normv = np.maximum(np.sqrt(self.quadList[quad_i].state[7]**2 + self.quadList[quad_i].state[8]**2 + self.quadList[quad_i].state[9]**2),0.0001)
+                tarv = 1*np.divide(self.quadList[quad_i].state[7:10],normv)
+                # compute corresponding heading
+                heading = np.arctan2(tarv[1],tarv[0])
+                # load as setpoint (if we're moving fast enough)
+                if normv > 5:
+                    self.sDesList[quad_i][14] = heading
+                else:
+                    self.sDesList[quad_i][14] = 0
                 
                 # low-level controller runs at different (faster) frequency than outer
                 while Ts_lapse < Ts:
@@ -212,16 +224,10 @@ class Agents:
                     # update the state
                     self.quadList[quad_i].update(t+Ts_lapse, quadcopter_config.Ts, self.llctrlList[quad_i].w_cmd)
                 
-                    # update the desired state (based on higher-level control inputs)
-                    #self.sDesList[quad_i][3:6] =  Controller.cmd[0:3,quad_i]*Ts
-                    #self.sDesList[quad_i][5]   =  Controller.cmd[2,quad_i]*Ts
-                
                     # update the low-level control signal
                     self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
-                
-                    # align states with corresponding agent
-                    #self.state[0:3,quad_i] = self.quadList[quad_i].state[0:3]
-                    #self.state[3:6,quad_i] = self.quadList[quad_i].state[7:10]
+                    #self.quad_w_cmd  = self.llctrlList[quad_i].w_cmd
+                    
                     
                     Ts_lapse += quadcopter_config.Ts
                     
@@ -231,14 +237,11 @@ class Agents:
 
         else:
 
-
             #discretized double integrator 
             self.state[0:3,:] = self.state[0:3,:] + self.state[3:6,:]*Ts
             self.state[3:6,:] = self.state[3:6,:] + Controller.cmd[:,:]*Ts
         
-        
-        
-        
+ 
         self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
         self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         
@@ -246,11 +249,6 @@ class Agents:
             #state[3:6,:] = np.minimum(np.maximum(state[3:6,:] + cmd[:,:]*Ts, vmin), vmax)
             #state[3:6,:] = clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax)
             #state[3:6,:] = clamp_norm_min(clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax),vmin)
-        
-        
-        
-        
-        
         
 class Targets:
 
@@ -336,8 +334,7 @@ class Obstacles:
         
         #self.obstacles_plus = self.obstacles.copy()
         self.obstacles_plus = copy.deepcopy(self.obstacles)
-              
-    
+                
     def buildWall(self, wType, pos): 
         
         if wType == 'horizontal':
@@ -518,6 +515,13 @@ class History:
         # also used in lemni to denote membership in swarm as 0
         
         self.swarm_prox = 0
+        
+        # if there are quadcopters
+        if dynamics == 'quadcopter':
+            # initialize a state to store all the quadcopter states 
+            self.quads_states_all   = np.zeros([nSteps, 21, Agents.nVeh])
+            self.quad_w_cmd_all     = np.zeros([nSteps,4, Agents.nVeh])
+            self.quads_sDes_all     = np.zeros([nSteps, 21, Agents.nVeh])
 
         # store the initial conditions
         self.t_all[0]                = Ti
@@ -560,6 +564,15 @@ class History:
         self.swarm_prox              = self.sigma_norm(Agents.centroid.ravel()-Targets.targets[0:3,0])
         
         
+        # if there are quadcopters
+        if dynamics == 'quadcopter': 
+            # cycle through the quadcopters
+            for q in range(0,Agents.nVeh):
+                # and store them
+                self.quads_states_all[i,:,q] = Agents.quadList[q].state 
+                self.quad_w_cmd_all[i,:,q]   = Agents.llctrlList[q].w_cmd
+                self.quads_sDes_all[i,:,q]   = Agents.sDesList[q]
+   
 class Trajectory:
     
     def __init__(self, Targets):

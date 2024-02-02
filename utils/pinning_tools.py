@@ -23,23 +23,7 @@ Some related work:
     https://ieeexplore-ieee-org.proxy.queensu.ca/stamp/stamp.jsp?tp=&arnumber=6762966
     https://ieeexplore-ieee-org.proxy.queensu.ca/document/9275901
 
-@author: tjards
-
-Dev notes:
-    
-    01 Apr 2023 - build up cap/exp to compare ctrb grammian vs degree vs betweeness driver node
-        in the context of autonmous assembly of the swarm (i.e. components)
-    01 Apr 2023 - should components be drawn to eachother or target?
-     - maybe a component is a pin as well? yes! The pins are drawn to meta-pins.
-    03 Apr 2023 - add heuristic to the betweenness Djikstra for moving towards other components during merge?
-    03 Apr 2023 - focus on low degree centrality nodes as drivers? low betweenness? hmm... invert typical logic
-    08 Apr 2023 - there is a lot of inefficiency in below, move the A,D,G calcs outside the loops
-    10 Apr 2023 - RL to select lattice size that maximizes connection, Reward = nConnections/(1-pins)^2(size)^2. With obs around target. 
-    20 Dec 2023 - I am addressing the heterogeneous lattice size problem, using an I-controller
-    20 Dec 2023 - above didn't work. instead, used a consensus-based approach. I want to adjust tgis 
-            to have different distances for each agent
-    21 Dec 2023 - hetero worx, cleaning up
-    
+@author: tjards    
     
 """
 
@@ -57,15 +41,16 @@ from utils import graph_tools as grph
 # -----------------
 
 # key ranges 
-d       = 5            # lattice scale (desired distance between agents) 
-r       = 1.3*d         # range at which neighbours can be sensed 
-d_prime = 0.6*d         # desired separation 
-r_prime = 1.3*d_prime   # range at which obstacles can be sensed
-rg      = d + 0.5       # range for graph analysis (nominally, d + small number)
+d           = 5             # lattice scale (desired distance between agents) 
+r           = 1.3*d         # range at which neighbours can be sensed 
+d_prime     = 0.6*d         # desired separation 
+r_prime     = 1.3*d_prime   # range at which obstacles can be sensed
+rg          = d + 0.5       # range for graph analysis (nominally, d + small number)
+d_stored    = d             # stores originally programmed d
 
 # options
 hetero_lattice = 0      # support heterogeneous lattice size? 0 = no, 1 = yes
-params_n       = 5     # this must match the number of agents (pull automatically later)
+params_n       = 20     # this must match the number of agents if hetero-lattice == 1
 
 # gains
 c1_a = 1               # cohesion
@@ -113,16 +98,16 @@ class parameterizer:
         while (i < len(self.params)):
             self.d_weighted[i,:] = self.params[i]
             i+=1
-        
+
     def update(self, k_node, k_neigh):
         
         #print('agent ', k_node,' d from agent ', k_neigh, ': ', d )
         self.d_weighted[k_node, k_neigh] = self.alpha * self.d_weighted[k_node, k_neigh]
         self.d_weighted[k_node, k_neigh] += (self.beta * self.d_weighted[k_neigh, k_node])
 
-    
 # instatiate class for parameters
-paramClass = parameterizer(params_n, hetero_lattice)
+if hetero_lattice == 1:
+    paramClass = parameterizer(params_n, hetero_lattice)
 
 #%% Useful functions
 # ----------------
@@ -177,11 +162,16 @@ def phi_b(q_i, q_ik, d_b):
 def compute_cmd_a(states_q, states_p, targets, targets_v, k_node):
     
     # ensure the parameters match the agents
-    if paramClass.d_weighted.shape[1] != states_q.shape[1]:
-        raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', paramClass.d_weighted.shape[1], 'lattice parameters')
-        
-    # initialize 
-    d = paramClass.d_weighted[k_node, k_node]
+    if hetero_lattice == 1:
+        if paramClass.d_weighted.shape[1] != states_q.shape[1]:
+            raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', paramClass.d_weighted.shape[1], 'lattice parameters')
+              
+    # initialize
+    if hetero_lattice == 1:
+        d = paramClass.d_weighted[k_node, k_node]
+    else:
+        d = d_stored
+    
     d_a = sigma_norm(d)                         # lattice separation (goal)  
     r_a = sigma_norm(r)                         # lattice separation (sensor range)
     u_int = np.zeros((3,states_q.shape[1]))     # interactions

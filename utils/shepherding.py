@@ -28,7 +28,7 @@ import copy
 
 #%% hyperparameters
 # -----------------
-nShepherds = 5  # number of shepherds (just herding = 0)
+nShepherds = 2  # number of shepherds (just herding = 0)
 
 # for herding
 r_R = 3         # repulsion radius
@@ -37,7 +37,7 @@ r_A = 7         # attraction radius (r_R < r_O < r_A)
 r_I = 6.5       # agent interaction radius (nominally, slighly < r_A)
 
 a_R = 2         # gain,repulsion 
-a_O = 2         # gain orientation 
+a_O = 2        # gain orientation 
 a_A = 2         # gain, attraction 
 a_I = 4         # gain, agent interaction 
 a_V = 2         # gain, laziness (desire to stop)
