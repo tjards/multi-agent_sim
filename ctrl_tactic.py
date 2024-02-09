@@ -15,10 +15,17 @@ Created on Mon Jan  4 12:45:55 2021
 #%% Import stuff
 # --------------
 import numpy as np
-from utils import pinning_tools, reynolds_tools, saber_tools, lemni_tools, starling_tools  
+from utils import reynolds_tools, saber_tools, lemni_tools, starling_tools
 from utils import encirclement_tools as encircle_tools
 from utils import shepherding as shep
 import copy
+
+learn = 1
+if learn == 1:
+    from utils import pinning_RL_tools as pinning_tools
+else:
+    from utils import pinning_tools 
+
 
 #%% Tactic Command Equations 
 # --------------------------
@@ -38,6 +45,9 @@ class Controller:
         # ----------------
         self.counter = 0 
         self.params = np.zeros((4,Agents.nVeh))  # store dynamic parameters
+        
+        self.lattice = np.zeros((Agents.nVeh,Agents.nVeh)) # stores lattice parameters
+
         
         # select a pin (for pinning control)
         self.pin_matrix = np.zeros((Agents.nVeh,Agents.nVeh))
@@ -149,6 +159,8 @@ class Controller:
             if Agents.tactic_type == 'pinning':
                 
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, self.pin_matrix)
+                
+                self.lattice = pinning_tools.get_lattices()
                 
             # Shepherding
             # ------------

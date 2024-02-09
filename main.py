@@ -62,12 +62,13 @@ with open(file_path, 'w') as file:
 #%% Setup Simulation
 # ------------------
 #np.random.seed(0)
-nAgents = 20
+nAgents = 4
 Ti      = 0       # initial time
-Tf      = 60      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 300      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
-verbose = 0       # 1 = print progress reports, 0 = silent
+verbose = 1       # 1 = print progress reports, 0 = silent
+nObs    = 3
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
 #%% Instantiate the relevants objects
@@ -76,7 +77,7 @@ Agents = swarm.Agents('pinning', nAgents)
 Controller = tactic.Controller(Agents)
 Targets = swarm.Targets(0, Agents.nVeh)
 Trajectory = swarm.Trajectory(Targets)
-Obstacles = swarm.Obstacles(Agents.tactic_type, 0, Targets.targets)
+Obstacles = swarm.Obstacles(Agents.tactic_type, nObs, Targets.targets)
 History = swarm.History(Agents, Targets, Obstacles, Controller, Ts, Tf, Ti, f)
 
 #%% Run Simulation
@@ -166,6 +167,32 @@ ax.set(xlabel='Time [s]', ylabel='Distance from Target for Each Agent [m]',
         title='Distance from Target')
 #plt.axhline(y = 5, color = 'k', linestyle = '--')
 plt.show()
+
+#%% radii from obstacles
+radii_o = np.zeros([History.states_all.shape[2],History.states_all.shape[0],History.obstacles_all.shape[2]])
+radii_o_means = np.zeros([History.states_all.shape[2],History.states_all.shape[0]])
+radii_o_means2 =  np.zeros([History.states_all.shape[0]])
+
+for i in range(0,History.states_all.shape[0]):              # the time samples
+    for j in range(0,History.states_all.shape[2]):          # the agents
+        for k in range(0,History.obstacles_all.shape[2]):   # the obstacles
+            radii_o[j,i,k] = np.linalg.norm(History.states_all[i,0:3,j] - History.obstacles_all[i,0:3,k])
+
+        radii_o_means[j,i] = np.mean(radii_o[j,i,:])
+    radii_o_means2[i] = np.mean(radii_o_means[:,i])
+
+        
+fig, ax = plt.subplots()
+start = int(0/0.02)
+
+for j in range(0,History.states_all.shape[2]):
+    ax.plot(History.t_all[start::],radii_o_means2[start::].ravel(),'-g')
+ax.set(xlabel='Time [s]', ylabel='Mean Distance from Landmarks [m]',
+        title='Learning Progress')
+#plt.axhline(y = 5, color = 'k', linestyle = '--')
+
+plt.show()
+
 
 #%% Save data
 # -----------

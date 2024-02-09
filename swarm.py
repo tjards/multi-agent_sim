@@ -29,6 +29,14 @@ if dynamics == 'quadcopter':
     from quadcopter_module.ctrl import Control as Quadcopter_Control
     quadcopter_config = quadcopter_config_file.config()
 
+
+# hyper parameters
+# ---------------
+
+# note: move quadcopter low-level controller to quad files 
+v_heading_adjust = 0.4 # min speed at which quadcopter adjust heading
+
+
 class Agents:
     
     def __init__(self,tactic_type,nVeh):
@@ -49,11 +57,11 @@ class Agents:
                         
         # Vehicles states
         # ---------------
-        iSpread =  40      # initial spread of vehicles
+        iSpread =  20      # initial spread of vehicles
         self.state = np.zeros((6,self.nVeh))
         self.state[0,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (y)
-        self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nVeh)-0.5),2)+15  # position (z)
+        self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nVeh)-0.5),2)+8  # position (z)
         self.state[3,:] = 0*np.random.rand(1,self.nVeh)                                                       # velocity (vx)
         self.state[4,:] = 0*np.random.rand(1,self.nVeh)                                                       # velocity (vy)
         self.state[5,:] = 0*np.random.rand(1,self.nVeh)                                                      # velocity (vz)
@@ -203,7 +211,7 @@ class Agents:
                 Ts_lapse = 0
                 
                 # define the velocity setpoint (based on higher-level control inputs)
-                self.sDesList[quad_i][3:6] =  10*Controller.cmd[0:3,quad_i]*Ts
+                self.sDesList[quad_i][3:6] =  Controller.cmd[0:3,quad_i]*Ts
                 #self.sDesList[quad_i][5]   =  10*Controller.cmd[2,quad_i]*Ts
                 
                 # try yaw
@@ -213,10 +221,11 @@ class Agents:
                 # compute corresponding heading
                 heading = np.arctan2(tarv[1],tarv[0])
                 # load as setpoint (if we're moving fast enough)
-                if normv > 5:
+                
+                if normv > v_heading_adjust:
                     self.sDesList[quad_i][14] = heading
                 else:
-                    self.sDesList[quad_i][14] = 0
+                    self.sDesList[quad_i][14] = self.sDesList[quad_i][14]
                 
                 # low-level controller runs at different (faster) frequency than outer
                 while Ts_lapse < Ts:
@@ -534,7 +543,11 @@ class History:
         self.metrics_order_all[0,:]  = self.metrics_order
         #self.lemni                   = np.zeros([1, Agents.nVeh])
         self.lemni_all[0,:]          = Agents.lemni
-        self.pins_all[0,:,:]         = Controller.pin_matrix     
+        self.pins_all[0,:,:]         = Controller.pin_matrix  
+        
+        # stores the desired lattice sizes 
+        self.lattices            = np.zeros((nSteps,Agents.nVeh,Agents.nVeh))
+        
         
     def sigma_norm(self, z): 
         
@@ -563,6 +576,7 @@ class History:
         self.metrics_order_all[i,:]  = self.metrics_order
         self.swarm_prox              = self.sigma_norm(Agents.centroid.ravel()-Targets.targets[0:3,0])
         
+        self.lattices[i,:,:]         = Controller.lattice
         
         # if there are quadcopters
         if dynamics == 'quadcopter': 

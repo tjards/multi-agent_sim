@@ -31,15 +31,16 @@ if plot_quadcopter == 1:
 
 # plotting parameters
 # -------------------
-numFrames           = 25    # frame rate (bigger = slower)
+numFrames           = 40    # frame rate (bigger = slower)
 tail                = 200   # trailing trajectory length 
 zoom                = 1     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
-pan                 = 1     # camera pan? 0 = no, 1 = yes (memory-heavy)
+pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
 connection          = 1     # show connections?
 connection_thresh   = 5.5   # nominally 5.1. how close do agents need to be in order to connect?
+updated_connections = 1     # are these connections being updated? nominally, 0; some special cases use 1(RL)
 head                = 0.2   # size of head pointing forward (shows directionality)
 pins_overide        = 1     # default 0, overides using pin variable for colors
-showObs             = 0     # (0 = don't show obstacles, 1 = show obstacles, 2 = show obstacles + floors/walls)
+showObs             = 1     # (0 = don't show obstacles, 1 = show obstacles, 2 = show obstacles + floors/walls)
 
 # helper function
 def quat2Dcm(q):
@@ -351,6 +352,11 @@ def animateMe(Ts, History, Obstacles, tactic_type):
                         # compute the euc distance between them
                         dist = np.linalg.norm(pos[:,j]-pos[:,k_neigh])
                         # if it is within the interaction range
+                        
+                        # update the connection threshold
+                        if updated_connections == 1:
+                            connection_thresh = History.lattices[i*numFrames,j,k_neigh] + 0.5
+                        
                         if dist <= connection_thresh: 
                             # first, itself
                             x_lat[2*k_neigh,j] = pos[0,j]
