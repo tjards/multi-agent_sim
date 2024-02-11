@@ -49,7 +49,7 @@ rg          = d + 0.5       # range for graph analysis (nominally, d + small num
 d_stored    = d             # stores originally programmed d
 
 # options
-hetero_lattice = 1      # support heterogeneous lattice size? 0 = no, 1 = yes
+hetero_lattice = 0      # support heterogeneous lattice size? 0 = no, 1 = yes
 params_n       = 5     # this must match the number of agents if hetero-lattice == 1
 
 # gains

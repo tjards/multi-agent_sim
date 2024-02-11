@@ -17,7 +17,7 @@ from utils import lemni_tools
 
 # agent dynamics
 # --------------
-dynamics = 'quadcopter'
+dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
@@ -29,13 +29,11 @@ if dynamics == 'quadcopter':
     from quadcopter_module.ctrl import Control as Quadcopter_Control
     quadcopter_config = quadcopter_config_file.config()
 
-
 # hyper parameters
 # ---------------
 
 # note: move quadcopter low-level controller to quad files 
-v_heading_adjust = 0.4 # min speed at which quadcopter adjust heading
-
+v_heading_adjust = 2 # min speed at which quadcopter adjust heading
 
 class Agents:
     
@@ -211,7 +209,7 @@ class Agents:
                 Ts_lapse = 0
                 
                 # define the velocity setpoint (based on higher-level control inputs)
-                self.sDesList[quad_i][3:6] =  Controller.cmd[0:3,quad_i]*Ts
+                self.sDesList[quad_i][3:6] =  10*Controller.cmd[0:3,quad_i]*Ts
                 #self.sDesList[quad_i][5]   =  10*Controller.cmd[2,quad_i]*Ts
                 
                 # try yaw

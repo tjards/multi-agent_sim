@@ -160,7 +160,9 @@ class Controller:
                 
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, self.pin_matrix)
                 
-                self.lattice = pinning_tools.get_lattices()
+                if learn == 1:
+                    
+                    self.lattice = pinning_tools.get_lattices()
                 
             # Shepherding
             # ------------

@@ -41,6 +41,7 @@ Dev notes:
     21 Dec 2023 - hetero worx, cleaning up
     27 Dec 2023 - integrated Q-learning for landmark coverage 
     27 Dec 2023 - betweenness is finickly with small component sizes... don't use for now
+    11 Feb 2024 - got RL working for quadcopter. now add sensor bearing constraint
       
 """
 
@@ -51,10 +52,10 @@ import random
 from utils import graph_tools as grph
 
 
-#%% leaarning stuff (optional)
+#%% learning stuff (optional)
 # ----------------------------
 
-learning = 1                # learning? 1 = yes, 0 = no
+learning = 0                # learning? 1 = yes, 0 = no
 #learning_decentralized = 1  # local Q-table updates (1 = yes, 0 = global updates?
 
 if learning == 1:
@@ -66,14 +67,14 @@ if learning == 1:
 # -----------------
 
 # key ranges 
-d       = 10             # lattice scale (desired distance between agents) note: gets overridden by RL.
+d       = 5             # lattice scale (desired distance between agents) note: gets overridden by RL.
 r       = 1.3*d         # range at which neighbours can be sensed 
 d_prime = 0.6*d         # desired separation 
 r_prime = 1.3*d_prime   # range at which obstacles can be sensed
 rg      = d + 0.5       # range for graph analysis (nominally, d + small number)
 
 # options
-hetero_lattice = 1      # support heterogeneous lattice size? 0 = no, 1 = yes
+hetero_lattice = 0      # support heterogeneous lattice size? 0 = no, 1 = yes
 params_n       = 4     # this must match the number of agents (pull automatically later)
 
 # gains
