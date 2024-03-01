@@ -20,11 +20,16 @@ from utils import encirclement_tools as encircle_tools
 from utils import shepherding as shep
 import copy
 
-learn = 1
-if learn == 1:
-    from utils import pinning_RL_tools as pinning_tools
-else:
-    from utils import pinning_tools 
+
+hetero_lattice = 1  # different lattice sizes?
+#learn = 1           # learning lattice sizes? # keep this as 1
+
+#if learn == 1:
+#if hetero_lattice == 1:
+    #hetero_lattice = 1  # lattices must differ for learning
+from utils import pinning_RL_tools as pinning_tools
+#else:
+#    from utils import pinning_tools 
 
 
 #%% Tactic Command Equations 
@@ -57,8 +62,10 @@ class Controller:
             self.shepherdClass = shep.Shepherding(Agents.state)
         
         if Agents.tactic_type == 'pinning':
-            from utils import pinning_tools
-            self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:])
+            #from utils import pinning_tools
+            #self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:])
+            self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:],Agents.state[3:6,:])
+            Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
    
     # define commands
     # ---------------
@@ -84,15 +91,19 @@ class Controller:
             
             self.counter += 1
             
-            # only update the pins at Ts/10
-            if self.counter == 10:
+            # only update the pins at Ts/100
+            if self.counter == 100:
                 self.counter = 0
-                self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:])
+                #self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:])
+                self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:],Agents.state[3:6,:])
                 #print(components)
                 #if components != self.components:
                     #self.components = copy.deepcopy(components)
                     #self.pin_matrix = copy.deepcopy(pin_matrix)
                     #print('change')
+                    
+                # pass pin_matrix up to agent as well
+                Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
     
         # for each vehicle/node in the network
         for k_node in range(Agents.state[0:3,:].shape[1]): 
@@ -158,9 +169,22 @@ class Controller:
             # --------
             if Agents.tactic_type == 'pinning':
                 
-                cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, self.pin_matrix)
+                # note: pass in heading here, for quadcopter (*args)
                 
-                if learn == 1:
+                #cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, self.pin_matrix)
+                
+                my_kwargs = {}
+                my_kwargs['pin_matrix'] = self.pin_matrix
+                
+                
+                
+                if Agents.dynamics_type == 'quadcopter':
+                
+                    my_kwargs['headings'] = Agents.quads_headings
+                
+                cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, **my_kwargs)
+                
+                if hetero_lattice == 1:
                     
                     self.lattice = pinning_tools.get_lattices()
                 

@@ -150,6 +150,7 @@ def adj_matrix(data,r):
     return A
 
 
+
 #%% Compute the Degree Matrix
 # ------------------------------
 # D = diag{d1,d2,...dN}

@@ -42,7 +42,14 @@ Dev notes:
     27 Dec 2023 - integrated Q-learning for landmark coverage 
     27 Dec 2023 - betweenness is finickly with small component sizes... don't use for now
     11 Feb 2024 - got RL working for quadcopter. now add sensor bearing constraint
-      
+    11 Feb 2024 - orientation of quadcopter needs to be imported for range test 
+    (do only for quadcopter dynamics). Also, graph is no longer uniform, 
+    because some may not see due to aperature
+    15 Feb 2024 - FOS to statistically select dominant neighbours?
+    16 Feb 2024 - bearing messes up the whole graph thing... need to revisit. Maybe, just over-ride it as a pin if it has noting in view.  
+    22 Feb 2024 - pinning_RL_tools is replacing pinning_tools . I need to get the bearing info better. Pass in quadcopter actual, not just v. v is too choppy.
+    27 Feb 2024 - need to pass in actual heading to pinning_tools (problematic, as is a level above quadcopter/vehicle type and assume double integrator)
+    
 """
 
 #%% Import stuff
@@ -50,6 +57,7 @@ Dev notes:
 import numpy as np
 import random
 from utils import graph_tools as grph
+from utils import conic_tools as sensor
 
 
 #%% learning stuff (optional)
@@ -60,6 +68,10 @@ learning = 0                # learning? 1 = yes, 0 = no
 
 if learning == 1:
     from utils import RL_tools as RL
+    
+directional = 1  # do I care about direction for sensor range?
+if directional == 1:
+    from utils import graph_tools_directional as grph_dir
 
 # note: verify number of components is not matching the pin_matrix
 
@@ -72,16 +84,18 @@ r       = 1.3*d         # range at which neighbours can be sensed
 d_prime = 0.6*d         # desired separation 
 r_prime = 1.3*d_prime   # range at which obstacles can be sensed
 rg      = d + 0.5       # range for graph analysis (nominally, d + small number)
+sensor_aperature = 90   # used if directional == 1
+
 
 # options
-hetero_lattice = 0      # support heterogeneous lattice size? 0 = no, 1 = yes
-params_n       = 4     # this must match the number of agents (pull automatically later)
+hetero_lattice = 0     # support heterogeneous lattice size? 0 = no, 1 = yes
+params_n       = 5     # this must match the number of agents (pull automatically later)
 
 # gains
 c1_a = 1               # cohesion
 c2_a = 2*np.sqrt(1)
-c1_b = 0*1             # obstacles 
-c2_b = 0*2*np.sqrt(1)
+c1_b = 1             # obstacles 
+c2_b = 2*np.sqrt(1)
 c1_g = 5               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
 
@@ -208,7 +222,10 @@ def get_lattices():
 
 
 # form the lattice
-def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks):
+#def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks):
+def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **kwargs):
+    
+    headings   = kwargs.get('headings')
     
     # ensure the parameters match the agents
     if paramClass.d_weighted.shape[1] != states_q.shape[1]:
@@ -262,7 +279,22 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks):
                 d_a = sigma_norm(d)                        
             
             # if within sensor range
-            if dist < r:
+            
+            # === TEST ===
+            #v_a         = states_p[:,k_node] # this is just for testing, needs to be actual orientation
+            v_a         = np.array((np.cos(headings[0,k_node]), np.sin(headings[0,k_node]), 0 ))
+            
+            
+            if directional == 1:
+                aperature   = sensor_aperature # degrees
+            else:
+                aperature = 360 # cheat now, clean this up later
+            
+            if sensor.is_point_in_sensor_range(states_q[:,k_node], states_q[:,k_neigh], v_a, aperature, r):
+                #print(k_node, ' in range of ', k_neigh)
+            # === TEST ===
+            
+            #if dist < r:
                 
                 # compute the interaction command
                 u_int[:,k_node] += c1_a*phi_a(states_q[:,k_node],states_q[:,k_neigh],r_a, d_a)*n_ij(states_q[:,k_node],states_q[:,k_neigh]) + c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node]) 
@@ -279,7 +311,6 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks):
                 paramClass.prox_i[k_node, k_neigh] = 0
                 
                 
-
     # return the command
     return u_int[:,k_node] 
 
@@ -349,15 +380,22 @@ def compute_cmd_g(states_q, states_p, targets, targets_v, k_node, pin_matrix):
     return u_nav[:,k_node]
 
 # consolidate control signals
-def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, pin_matrix):
+#def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, pin_matrix):
+def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
+    
+    #pin_matrix = kwargs.get('pin_matrix')
+    #headings   = kwargs.get('headings')
+    
+    my_kwargs = dict(kwargs)
     
     # initialize 
     cmd_i = np.zeros((3,states_q.shape[1]))
     
     #u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node)
-    u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles)
+    #u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles)
+    u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles, **my_kwargs)
     u_obs = compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
-    u_nav = compute_cmd_g(states_q, states_p, targets, targets_v, k_node, pin_matrix)
+    u_nav = compute_cmd_g(states_q, states_p, targets, targets_v, k_node, kwargs.get('pin_matrix'))
        
     cmd_i[:,k_node] = u_int + u_obs + u_nav
     
@@ -379,16 +417,23 @@ def select_pins_random(states_q):
     return pin_matrix
 
 # select by components
-def select_pins_components(states_q):
+#def select_pins_components(states_q):
+def select_pins_components(states_q, states_p):
     
     # initialize the pins
     pin_matrix = np.zeros((states_q.shape[1],states_q.shape[1]))
     
     # compute adjacency matrix
-    A = grph.adj_matrix(states_q, rg)
+    if directional != 1:
+        A = grph.adj_matrix(states_q, rg)
+        components = grph.find_connected_components_A(A)
+    else:
+        A = grph_dir.adj_matrix_bearing(states_q,states_p,r, sensor_aperature)
+        components = grph_dir.find_one_way_connected_components(A)
+        
     
     # find the components of the graph
-    components = grph.find_connected_components_A(A)
+    #components = grph.find_connected_components_A(A)
     
     # indicator (used at real-time to detect changes)
     

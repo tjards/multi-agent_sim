@@ -14,10 +14,12 @@ import copy
 from scipy.spatial.distance import cdist
 from utils import encirclement_tools as encircle_tools
 from utils import lemni_tools
+import random 
 
 # agent dynamics
 # --------------
-dynamics = 'double integrator'
+dynamics = 'quadcopter'
+#dynamics = 'double integrator' 
     # 'double integrator' 
     # 'quadcopter'
 
@@ -33,7 +35,8 @@ if dynamics == 'quadcopter':
 # ---------------
 
 # note: move quadcopter low-level controller to quad files 
-v_heading_adjust = 2 # min speed at which quadcopter adjust heading
+heading_type        = 1 #  0 = point in the direction of v, 1 = Reynolds alignment
+v_heading_adjust    = 1 # min speed at which quadcopter adjust heading
 
 class Agents:
     
@@ -52,6 +55,7 @@ class Agents:
                         # pinning   = pinning control
                         # shep      = shepherding
         self.dynamics_type = dynamics
+        self.random_seeds = [random.uniform(0, 2*np.pi) for _ in range(self.nVeh)] # random seeds for each agent
                         
         # Vehicles states
         # ---------------
@@ -87,6 +91,8 @@ class Agents:
             self.quadList    = []
             self.llctrlList  = []
             self.sDesList    = []
+            self.quads_headings = np.zeros((1,self.nVeh))
+            
             #self.quad_w_cmd  = np.zeros((4,self.nVeh))
             
             # for each quadcopter
@@ -99,6 +105,9 @@ class Agents:
                 self.quadList[quad_i].state[0:3]    = self.state[0:3,quad_i]
                 self.quadList[quad_i].state[7:10]   = self.state[3:6,quad_i]
                 #self.quadList[quad_i].state[9]      = -self.state[5,quad_i]
+        
+                # save the headings
+                self.quads_headings[0,quad_i] = self.quadList[quad_i].phi
         
                 # low-level controllers
                 # ---------------------
@@ -201,29 +210,61 @@ class Agents:
         #vmax = 1000
         #vmin = -1000
 
+
         if dynamics == 'quadcopter':
+            
+            # note: eventually we will move this into the quadcopter module
             
             # for each quadcopter
             for quad_i in range(0,self.nVeh):
                 
                 Ts_lapse = 0
                 
-                # define the velocity setpoint (based on higher-level control inputs)
+                # define velocity setpoint (based on higher-level control inputs)
+                # ------------------------
                 self.sDesList[quad_i][3:6] =  10*Controller.cmd[0:3,quad_i]*Ts
                 #self.sDesList[quad_i][5]   =  10*Controller.cmd[2,quad_i]*Ts
                 
-                # try yaw
-                # define unit vector ahead
-                normv = np.maximum(np.sqrt(self.quadList[quad_i].state[7]**2 + self.quadList[quad_i].state[8]**2 + self.quadList[quad_i].state[9]**2),0.0001)
-                tarv = 1*np.divide(self.quadList[quad_i].state[7:10],normv)
-                # compute corresponding heading
-                heading = np.arctan2(tarv[1],tarv[0])
-                # load as setpoint (if we're moving fast enough)
+                # define yaw  
+                # ----------
                 
-                if normv > v_heading_adjust:
-                    self.sDesList[quad_i][14] = heading
+                # save the headings
+                self.quads_headings[0,quad_i] = self.quadList[quad_i].phi
+                
+                # if pointing in direction of movement 
+                if heading_type == 0:
+                    
+                    # define unit vector ahead
+                    normv = np.maximum(np.sqrt(self.quadList[quad_i].state[7]**2 + self.quadList[quad_i].state[8]**2 + self.quadList[quad_i].state[9]**2),0.0001)
+                    tarv = 1*np.divide(self.quadList[quad_i].state[7:10],normv)
+                    # compute corresponding heading
+                    heading = np.arctan2(tarv[1],tarv[0])
+                    # load as setpoint (if we're moving fast enough)
+                
+                    if normv > v_heading_adjust:
+                        self.sDesList[quad_i][14] = heading
+                    else:
+                        self.sDesList[quad_i][14] = self.sDesList[quad_i][14]
+                
+                # if using random number
+                elif heading_type == 1:
+                    
+                    # set to the random seed
+                    self.sDesList[quad_i][14] = self.random_seeds[quad_i]
+                    
+                    # if it is a pin, but not the only pin 
+                    if self.pin_matrix[quad_i, quad_i] == 1 and np.sum(self.pin_matrix) > 1:
+                        
+                        # increment the random seed slowly
+                        self.random_seeds[quad_i] += 0.01*Ts
+                    
+                
+                # all else, set to zero
                 else:
-                    self.sDesList[quad_i][14] = self.sDesList[quad_i][14]
+                    self.sDesList[quad_i][14] = 0
+                    
+                # send to low-level controller
+                # ----------------------------
                 
                 # low-level controller runs at different (faster) frequency than outer
                 while Ts_lapse < Ts:
@@ -234,7 +275,6 @@ class Agents:
                     # update the low-level control signal
                     self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
                     #self.quad_w_cmd  = self.llctrlList[quad_i].w_cmd
-                    
                     
                     Ts_lapse += quadcopter_config.Ts
                     
