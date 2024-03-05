@@ -84,21 +84,21 @@ if directional == 1:
 
 # key ranges 
 
-d       = 5             # lattice scale > 5 (desired distance between agents) note: gets overridden by RL.
+d       = 25             # lattice scale > 5 (desired distance between agents) note: gets overridden by RL.
 r       = 1.3*d         # range at which neighbours can be sensed 
 
 d_prime = 2 # this is really just for emergency collision avoidance
 #d_prime = 0.6*d         # desired separation 
 #r_prime = 1.3*d_prime   # range at which obstacles can be sensed
-r_prime = 1.2*d_prime
+r_prime = 1.3*d_prime
 
-rg                  = d + 0.5       # range for graph analysis (nominally, d + small number) # this should vary too
+rg                  = d + 0.5       # range for graph analysis (nominally, d + small number) # this will auto adjust later
 sensor_aperature    = 120   # used if directional == 1, wide angle = 100
-d_min               = 15             # always 5
+d_min               = 5             # always 5
 
 # options
-hetero_lattice = 0     # support heterogeneous lattice size? 0 = no, 1 = yes
-params_n       = 4     # this must match the number of agents (pull automatically later)
+hetero_lattice = 1     # support heterogeneous lattice size? 0 = no, 1 = yes
+params_n       = 15     # this must match the number of agents (pull automatically later)
 
 # gains
 c1_a = 1               # cohesion

@@ -104,6 +104,9 @@ class Controller:
                     
                 # pass pin_matrix up to agent as well
                 Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
+                
+                #print(self.components)
+                #print(self.pin_matrix)
     
         # for each vehicle/node in the network
         for k_node in range(Agents.state[0:3,:].shape[1]): 
