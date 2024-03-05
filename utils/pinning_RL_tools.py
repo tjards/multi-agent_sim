@@ -49,6 +49,10 @@ Dev notes:
     16 Feb 2024 - bearing messes up the whole graph thing... need to revisit. Maybe, just over-ride it as a pin if it has noting in view.  
     22 Feb 2024 - pinning_RL_tools is replacing pinning_tools . I need to get the bearing info better. Pass in quadcopter actual, not just v. v is too choppy.
     27 Feb 2024 - need to pass in actual heading to pinning_tools (problematic, as is a level above quadcopter/vehicle type and assume double integrator)
+    28 Feb 2024 - lattice working with aperatures, but now there are collisions *face palm*
+    28 Feb 2024 - I made all agents also obstacles and that seeme dto fix it (anaologous to a collision avoidance system)
+                - rg needs to vary as well 
+    04 Mar 2024 - rg now updating in graph_tools_direction. Consider renaming '_variable'.
     
 """
 
@@ -79,24 +83,29 @@ if directional == 1:
 # -----------------
 
 # key ranges 
-d       = 5             # lattice scale (desired distance between agents) note: gets overridden by RL.
-r       = 1.3*d         # range at which neighbours can be sensed 
-d_prime = 0.6*d         # desired separation 
-r_prime = 1.3*d_prime   # range at which obstacles can be sensed
-rg      = d + 0.5       # range for graph analysis (nominally, d + small number)
-sensor_aperature = 90   # used if directional == 1
 
+d       = 5             # lattice scale > 5 (desired distance between agents) note: gets overridden by RL.
+r       = 1.3*d         # range at which neighbours can be sensed 
+
+d_prime = 2 # this is really just for emergency collision avoidance
+#d_prime = 0.6*d         # desired separation 
+#r_prime = 1.3*d_prime   # range at which obstacles can be sensed
+r_prime = 1.2*d_prime
+
+rg                  = d + 0.5       # range for graph analysis (nominally, d + small number) # this should vary too
+sensor_aperature    = 120   # used if directional == 1, wide angle = 100
+d_min               = 15             # always 5
 
 # options
 hetero_lattice = 0     # support heterogeneous lattice size? 0 = no, 1 = yes
-params_n       = 5     # this must match the number of agents (pull automatically later)
+params_n       = 4     # this must match the number of agents (pull automatically later)
 
 # gains
 c1_a = 1               # cohesion
 c2_a = 2*np.sqrt(1)
-c1_b = 1             # obstacles 
-c2_b = 2*np.sqrt(1)
-c1_g = 5               # tracking (for the pins)
+c1_b = 1.5             # obstacles 
+c2_b = 1.5*np.sqrt(1)
+c1_g = 2               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
 
 # pinning method
@@ -121,7 +130,7 @@ class parameterizer:
         
         # select parameter ranges
         if hetero_lattice == 1:
-            self.params_range = [5,d]
+            self.params_range = [d_min,d]
         else:
             self.params_range = [d,d]
         
@@ -227,6 +236,9 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
     
     headings   = kwargs.get('headings')
     
+    if directional and headings is None:
+        print('Warning: no heading information available in directional pinnning mode.')
+    
     # ensure the parameters match the agents
     if paramClass.d_weighted.shape[1] != states_q.shape[1]:
         raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', paramClass.d_weighted.shape[1], 'lattice parameters')
@@ -278,22 +290,33 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
                 d = paramClass.d_weighted[k_node, k_neigh]
                 d_a = sigma_norm(d)                        
             
-            # if within sensor range
+            # check if the neighbour is in range
+            # ---------------------------------
+            in_range = False
             
-            # === TEST ===
-            #v_a         = states_p[:,k_node] # this is just for testing, needs to be actual orientation
-            v_a         = np.array((np.cos(headings[0,k_node]), np.sin(headings[0,k_node]), 0 ))
-            
-            
-            if directional == 1:
+            # if using directioal mode and heading available
+            if directional == 1 and headings is not None:
+                
+                # get vector for heading
+                v_a         = np.array((np.cos(headings[0,k_node]), np.sin(headings[0,k_node]), 0 ))
                 aperature   = sensor_aperature # degrees
+
+                # check sensor range 
+                if sensor.is_point_in_sensor_range(states_q[:,k_node], states_q[:,k_neigh], v_a, aperature, r):
+                    
+                    in_range = True
+            
+            # or,
             else:
-                aperature = 360 # cheat now, clean this up later
-            
-            if sensor.is_point_in_sensor_range(states_q[:,k_node], states_q[:,k_neigh], v_a, aperature, r):
-                #print(k_node, ' in range of ', k_neigh)
-            # === TEST ===
-            
+                
+                # just rely on distance 
+                if dist < r:
+                    
+                    in_range = True 
+                
+            # if within range
+            # ---------------
+            if in_range:
             #if dist < r:
                 
                 # compute the interaction command
@@ -309,7 +332,6 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
             else:
                 
                 paramClass.prox_i[k_node, k_neigh] = 0
-                
                 
     # return the command
     return u_int[:,k_node] 
@@ -428,7 +450,9 @@ def select_pins_components(states_q, states_p):
         A = grph.adj_matrix(states_q, rg)
         components = grph.find_connected_components_A(A)
     else:
-        A = grph_dir.adj_matrix_bearing(states_q,states_p,r, sensor_aperature)
+        #A = grph_dir.adj_matrix_bearing(states_q,states_p,rg, sensor_aperature)
+        A = grph_dir.adj_matrix_bearing(states_q,states_p,paramClass.d_weighted, sensor_aperature)
+        #print(paramClass.d_weighted)
         components = grph_dir.find_one_way_connected_components(A)
         
     

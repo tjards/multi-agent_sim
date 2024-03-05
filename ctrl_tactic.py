@@ -176,11 +176,10 @@ class Controller:
                 my_kwargs = {}
                 my_kwargs['pin_matrix'] = self.pin_matrix
                 
-                
-                
                 if Agents.dynamics_type == 'quadcopter':
                 
-                    my_kwargs['headings'] = Agents.quads_headings
+                    my_kwargs['headings'] = Agents.quads_headings                    
+                    
                 
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, **my_kwargs)
                 

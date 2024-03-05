@@ -12,7 +12,8 @@ from utils import conic_tools as sensor
 
 
 #%% new ability
-def adj_matrix_bearing(states_q,states_p,r, aperature):
+#def adj_matrix_bearing(states_q,states_p,r, aperature):
+def adj_matrix_bearing(states_q,states_p,r_matrix, aperature):
     # initialize
     nNodes  = states_q.shape[1]             # number of agents (nodes)
     A       = np.zeros((nNodes,nNodes)) # initialize adjacency matrix as zeros
@@ -22,6 +23,7 @@ def adj_matrix_bearing(states_q,states_p,r, aperature):
         for j in range(0,nNodes):
             # skip self
             if i != j:
+                r = r_matrix[i,j] + 0.5 # updates the radius based on lattice size
                 # compute distance
                 #dist = np.linalg.norm(states_q[0:3,j]-states_q[0:3,i])
                 # if close enough

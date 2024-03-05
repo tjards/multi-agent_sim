@@ -62,7 +62,7 @@ with open(file_path, 'w') as file:
 #%% Setup Simulation
 # ------------------
 #np.random.seed(0)
-nAgents = 5
+nAgents = 15
 Ti      = 0       # initial time
 Tf      = 60      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time

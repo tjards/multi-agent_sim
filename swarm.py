@@ -59,7 +59,7 @@ class Agents:
                         
         # Vehicles states
         # ---------------
-        iSpread =  20      # initial spread of vehicles
+        iSpread =  10      # initial spread of vehicles
         self.state = np.zeros((6,self.nVeh))
         self.state[0,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (y)
@@ -256,7 +256,7 @@ class Agents:
                     if self.pin_matrix[quad_i, quad_i] == 1 and np.sum(self.pin_matrix) > 1:
                         
                         # increment the random seed slowly
-                        self.random_seeds[quad_i] += 0.01*Ts
+                        self.random_seeds[quad_i] += 0*Ts
                     
                 
                 # all else, set to zero
@@ -329,7 +329,7 @@ class Obstacles:
         # initiate attributes
         # -------------------
         self.nObs    = nObs     # number of obstacles 
-        self.vehObs  = 0     # include other vehicles as obstacles [0 = no, 1 = yes] 
+        self.vehObs  = 1     # include other vehicles as obstacles [0 = no, 1 = yes] 
 
         # if using reynolds, need make target an obstacle 
         if tactic_type == 'reynolds':
