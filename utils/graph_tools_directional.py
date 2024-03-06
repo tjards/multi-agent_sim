@@ -3,6 +3,8 @@
 """
 Created on Fri Feb 16 19:13:33 2024
 
+This is a module that supplements graph_tools to support direction graphs
+
 @author: tjards
 """
 # import stuff
@@ -10,36 +12,34 @@ Created on Fri Feb 16 19:13:33 2024
 import numpy as np
 from utils import conic_tools as sensor
 
-
-#%% new ability
-#def adj_matrix_bearing(states_q,states_p,r, aperature):
-def adj_matrix_bearing(states_q,states_p,r_matrix, aperature):
+#%% compute the adjacency matrix (directional)
+def adj_matrix_bearing(states_q,states_p,r_matrix,aperature, headings):
+    
     # initialize
     nNodes  = states_q.shape[1]             # number of agents (nodes)
-    A       = np.zeros((nNodes,nNodes)) # initialize adjacency matrix as zeros
+    A       = np.zeros((nNodes,nNodes))     # initialize adjacency matrix as zeros
     # for each node
     for i in range(0,nNodes):  
         # search through neighbours
         for j in range(0,nNodes):
             # skip self
             if i != j:
-                r = r_matrix[i,j] + 0.5 # updates the radius based on lattice size
-                # compute distance
-                #dist = np.linalg.norm(states_q[0:3,j]-states_q[0:3,i])
-                # if close enough
-                #if dist < r:
-                # get the bearing 
-                v_a         = states_p[0:3,i] # this is just for testing, needs to be actual orientation
+                # grab the radius for this nodal relationship (stored in lattice size)
+                r    = r_matrix[i,j] + 0.5 
+                # compute the heading vector
+                v_a   = np.array((np.cos(headings[0,i]), np.sin(headings[0,i]), 0 ))
+                # if in sensor range
                 if sensor.is_point_in_sensor_range(states_q[0:3,i], states_q[0:3,j], v_a, aperature, r):
                     # mark as neighbour
                     A[i,j] = 1
+    
     # ensure A = A^T
     #assert (A == A.transpose()).all()
     # return the matrix
 
     return A
 
-
+# find one way connected components 
 def find_one_way_connected_components(matrix):
     def dfs(node, component):
         visited.add(node)
@@ -66,7 +66,13 @@ def out_degree_centrality(matrix, component):
         centrality[node] = out_degree
     return centrality
 
-# # Example usage with a directed adjacency matrix
+def deg_matrix(centrality):
+    
+    
+    
+    
+
+#%% Example usage with a directed adjacency matrix
 # adjacency_matrix = [[0, 1, 1, 0],
 #                     [0, 0, 0, 1],
 #                     [0, 0, 0, 0],

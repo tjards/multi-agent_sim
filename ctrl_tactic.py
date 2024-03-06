@@ -18,19 +18,11 @@ import numpy as np
 from utils import reynolds_tools, saber_tools, lemni_tools, starling_tools
 from utils import encirclement_tools as encircle_tools
 from utils import shepherding as shep
+from utils import pinning_RL_tools as pinning_tools
 import copy
 
-
-hetero_lattice = 1  # different lattice sizes?
-#learn = 1           # learning lattice sizes? # keep this as 1
-
-#if learn == 1:
-#if hetero_lattice == 1:
-    #hetero_lattice = 1  # lattices must differ for learning
-from utils import pinning_RL_tools as pinning_tools
-#else:
-#    from utils import pinning_tools 
-
+# do we want to update the lattice parameters at this level?
+hetero_lattice = 1  # nominally, keep at 1 for now 
 
 #%% Tactic Command Equations 
 # --------------------------
@@ -48,13 +40,11 @@ class Controller:
 
         # other Parameters
         # ----------------
-        self.counter = 0 
-        self.params = np.zeros((4,Agents.nVeh))  # store dynamic parameters
-        
-        self.lattice = np.zeros((Agents.nVeh,Agents.nVeh)) # stores lattice parameters
+        self.counter = 0                                        # controller counter (signals when to select pins)
+        self.params = np.zeros((4,Agents.nVeh))                 # store dynamic parameters
+        self.lattice = np.zeros((Agents.nVeh,Agents.nVeh))      # stores lattice parameters
 
-        
-        # select a pin (for pinning control)
+        # initialize pin and components
         self.pin_matrix = np.zeros((Agents.nVeh,Agents.nVeh))
         self.components = []
         
@@ -62,8 +52,7 @@ class Controller:
             self.shepherdClass = shep.Shepherding(Agents.state)
         
         if Agents.tactic_type == 'pinning':
-            #from utils import pinning_tools
-            #self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:])
+    
             self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:],Agents.state[3:6,:])
             Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
    
@@ -83,30 +72,19 @@ class Controller:
         if Agents.tactic_type == 'reynolds':
             distances = reynolds_tools.order(Agents.state[0:3,:])
             
-        # if doing pinning control, select pins
+        # if doing pinning control, select pins (when it's time)
         if Agents.tactic_type == 'pinning':
             
-            #pin_matrix = pinning_tools.select_pins(states_q) 
-            #pin_matrix = pinning_tools.select_pins_components(states_q, 'gramian') 
-            
+            # increment the counter 
             self.counter += 1
             
-            # only update the pins at Ts/100
+            # only update the pins at Ts/100 (tunable)
             if self.counter == 100:
                 self.counter = 0
-                #self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:])
                 self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:],Agents.state[3:6,:])
-                #print(components)
-                #if components != self.components:
-                    #self.components = copy.deepcopy(components)
-                    #self.pin_matrix = copy.deepcopy(pin_matrix)
-                    #print('change')
                     
                 # pass pin_matrix up to agent as well
                 Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
-                
-                #print(self.components)
-                #print(self.pin_matrix)
     
         # for each vehicle/node in the network
         for k_node in range(Agents.state[0:3,:].shape[1]): 
@@ -172,22 +150,17 @@ class Controller:
             # --------
             if Agents.tactic_type == 'pinning':
                 
-                # note: pass in heading here, for quadcopter (*args)
-                
-                #cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, self.pin_matrix)
-                
+                # update some arguments 
                 my_kwargs = {}
                 my_kwargs['pin_matrix'] = self.pin_matrix
-                
                 if Agents.dynamics_type == 'quadcopter':
-                
                     my_kwargs['headings'] = Agents.quads_headings                    
                     
-                
+                # compute command
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, **my_kwargs)
                 
+                # update the lattice parameters (needed for plots)
                 if hetero_lattice == 1:
-                    
                     self.lattice = pinning_tools.get_lattices()
                 
             # Shepherding
@@ -195,10 +168,8 @@ class Controller:
             if Agents.tactic_type == 'shep':
                 
                 # compute command, pin_matrix records shepherds = 1, herd = 0
-                # ------------------------------------------------
+                # ----------------------------------------------------------
 
-                #cmd_i[:,k_node], self.pin_matrix[k_node, k_node] = shep.compute_cmd( Targets.targets[0:3,:], Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], k_node)
-   
                 # compute the commands
                 self.shepherdClass.compute_cmd(Targets, k_node)
         

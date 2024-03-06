@@ -70,13 +70,6 @@ class Agents:
         self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
         self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         
-        # # select a pin (for pinning control)
-        # self.pin_matrix = np.zeros((self.nVeh,self.nVeh))
-        
-        # if self.tactic_type == 'pinning':
-        #     from utils import pinning_tools
-        #     self.pin_matrix = pinning_tools.select_pins_components(self.state[0:3,:])
-
         # Other Parameters
         # ----------------
         #self.params = np.zeros((4,self.nVeh))  # store dynamic parameters
@@ -92,8 +85,6 @@ class Agents:
             self.llctrlList  = []
             self.sDesList    = []
             self.quads_headings = np.zeros((1,self.nVeh))
-            
-            #self.quad_w_cmd  = np.zeros((4,self.nVeh))
             
             # for each quadcopter
             for quad_i in range(0,self.nVeh):
@@ -210,7 +201,6 @@ class Agents:
         #vmax = 1000
         #vmin = -1000
 
-
         if dynamics == 'quadcopter':
             
             # note: eventually we will move this into the quadcopter module
@@ -227,7 +217,6 @@ class Agents:
                 
                 # define yaw  
                 # ----------
-                
                 # save the headings
                 self.quads_headings[0,quad_i] = self.quadList[quad_i].phi
                 

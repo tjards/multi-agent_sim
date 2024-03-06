@@ -64,11 +64,11 @@ with open(file_path, 'w') as file:
 #np.random.seed(0)
 nAgents = 5
 Ti      = 0       # initial time
-Tf      = 300      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 30      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
-nObs    = 3
+nObs    = 0
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
 #%% Instantiate the relevants objects

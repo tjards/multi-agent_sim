@@ -65,39 +65,32 @@ import random
 from utils import graph_tools as grph
 from utils import conic_tools as sensor
 
-#%% learning stuff (optional)
-# ----------------------------
+#%% simulation setup
+# ------------------
 
-learning = 1                # learning? 1 = yes, 0 = no
-#learning_decentralized = 1  # local Q-table updates (1 = yes, 0 = global updates?
-
+# do we want to learn lattice size?
+learning = 0        # 1 = yes, 0 = no
 if learning == 1:
     from utils import RL_tools as RL
     
-directional = 1  # do I care about direction for sensor range?
+# do I care about direction for sensor range? 
+directional = 1     # 1 = yes, 0 = no
 if directional == 1:
     from utils import graph_tools_directional as grph_dir
-
-# note: verify number of components is not matching the pin_matrix
 
 #%% Hyperparameters
 # -----------------
 
 # key ranges 
+d                   = 15            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
+r                   = 1.3*d         # range at which neighbours can be sensed 
+d_prime             = 2             # desired separation from obstacles  
+r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
+d_min               = 5             # floor on lattice scale (always 5)
+rg                  = d + 0.5       # range for graph analysis (nominally, d + small number), this will auto adjust later
+sensor_aperature    = 120           # used if directional == 1, wide angle = 100
 
-d       = 15             # lattice scale > 5 (desired distance between agents) note: gets overridden by RL.
-r       = 1.3*d         # range at which neighbours can be sensed 
-
-d_prime = 2 # this is really just for emergency collision avoidance
-#d_prime = 0.6*d         # desired separation 
-#r_prime = 1.3*d_prime   # range at which obstacles can be sensed
-r_prime = 1.3*d_prime
-
-rg                  = d + 0.5       # range for graph analysis (nominally, d + small number) # this will auto adjust later
-sensor_aperature    = 120   # used if directional == 1, wide angle = 100
-d_min               = 5             # always 5
-
-# options
+# other options
 hetero_lattice = 1     # support heterogeneous lattice size? 0 = no, 1 = yes
 params_n       = 5     # this must match the number of agents (pull automatically later)
 
@@ -151,6 +144,11 @@ class parameterizer:
         
         # store whether agents are in proximity to eachother (1 =  yes, 0 = no)
         self.prox_i = np.zeros((len(self.params),len(self.params)))
+        
+        if directional:
+            self.headings = np.zeros((1,self.params_n))
+    
+    
     
     def update(self, k_node, k_neigh):
         
@@ -230,15 +228,16 @@ def get_lattices():
         
     return paramClass.d_weighted
 
-
 # form the lattice
-#def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks):
 def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **kwargs):
     
-    headings   = kwargs.get('headings')
+    headings            = kwargs.get('headings')
     
     if directional and headings is None:
         print('Warning: no heading information available in directional pinnning mode.')
+        
+    if directional:
+        paramClass.headings = headings
     
     # ensure the parameters match the agents
     if paramClass.d_weighted.shape[1] != states_q.shape[1]:
@@ -322,9 +321,6 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
                 
                 # compute the interaction command
                 u_int[:,k_node] += c1_a*phi_a(states_q[:,k_node],states_q[:,k_neigh],r_a, d_a)*n_ij(states_q[:,k_node],states_q[:,k_neigh]) + c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node]) 
-            
-                # adjust the parameters
-                #if dist < d + 0.5 and hetero_lattice == 1:
                 
                 # seek consensus 
                 paramClass.update(k_node, k_neigh)
@@ -403,19 +399,13 @@ def compute_cmd_g(states_q, states_p, targets, targets_v, k_node, pin_matrix):
     return u_nav[:,k_node]
 
 # consolidate control signals
-#def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, pin_matrix):
 def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
-    
-    #pin_matrix = kwargs.get('pin_matrix')
-    #headings   = kwargs.get('headings')
-    
+        
     my_kwargs = dict(kwargs)
     
     # initialize 
     cmd_i = np.zeros((3,states_q.shape[1]))
     
-    #u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node)
-    #u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles)
     u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles, **my_kwargs)
     u_obs = compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
     u_nav = compute_cmd_g(states_q, states_p, targets, targets_v, k_node, kwargs.get('pin_matrix'))
@@ -440,9 +430,8 @@ def select_pins_random(states_q):
     return pin_matrix
 
 # select by components
-#def select_pins_components(states_q):
 def select_pins_components(states_q, states_p):
-    
+        
     # initialize the pins
     pin_matrix = np.zeros((states_q.shape[1],states_q.shape[1]))
     
@@ -451,16 +440,8 @@ def select_pins_components(states_q, states_p):
         A = grph.adj_matrix(states_q, rg)
         components = grph.find_connected_components_A(A)
     else:
-        #A = grph_dir.adj_matrix_bearing(states_q,states_p,rg, sensor_aperature)
-        A = grph_dir.adj_matrix_bearing(states_q,states_p,paramClass.d_weighted, sensor_aperature)
-        #print(paramClass.d_weighted)
+        A = grph_dir.adj_matrix_bearing(states_q,states_p,paramClass.d_weighted, sensor_aperature, paramClass.headings)
         components = grph_dir.find_one_way_connected_components(A)
-        
-    
-    # find the components of the graph
-    #components = grph.find_connected_components_A(A)
-    
-    # indicator (used at real-time to detect changes)
     
     # Gramian method
     # --------------
@@ -507,13 +488,30 @@ def select_pins_components(states_q, states_p):
     # -------------
     elif method == 'degree':
         
+        # if using direcational mode
+        if directional:
+            centralities = {}
+            # find the degree centrality within each component 
+            for i, component in enumerate(components):
+                # store the degree centralities 
+                centrality      = grph_dir.out_degree_centrality(A.tolist(), component)
+                #centrality[i]   = centrality 
+                centralities[i]   = np.diag(list(centrality.values()))
+
         # for each component
         for i in range(0,len(components)):
             
             # find the adjacency and degree matrix of this component 
             states_i = states_q[:,components[i]]
-            D = grph.deg_matrix(states_i, rg)
-            
+
+            if directional:
+                
+                D = centralities[i]
+
+            else:
+                
+                D = grph.deg_matrix(states_i, rg)
+                 
             index_i = components[i][0]
             
             # if this is a lone agent

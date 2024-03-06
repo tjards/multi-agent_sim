@@ -92,7 +92,6 @@ class q_learning_agent:
             self.state_next = np.zeros((3,nAgents))
             self.state_next[0:3, :] = state_init.reshape(3, 1)
             
-
         # initialize action
         self.action         = {}
         for i in range(self.nAgents):
@@ -103,7 +102,6 @@ class q_learning_agent:
                 if i != j:
                     # select an action (randomly)
                     self.action["Agent " + str(i)]["Neighbour Action " + str(j)] = self.action_options[i][np.random.choice(self.nOptions)]
-    
         
         self.action_next    = {}
         self.nState         = self.nAgents
@@ -186,7 +184,6 @@ class q_learning_agent:
     #                 self.action_next["Agent " + str(i)]["Neighbour Action " + str(j)] = float(temp.replace("Option ",""))
 
     
-    
     def select_action_i(self, i):
         
         if random.uniform(0, 1) < self.explore_rate[i]:
@@ -245,8 +242,6 @@ class q_learning_agent:
         
         # compute reward signal
         self.reward = states_q.shape[1]/np.divide(summerizer,normalizer) 
-        
-       # print("Reward signal: ", self.reward)
  
     #%% link to parameters used by controller
     # ---------------------------------------
@@ -272,8 +267,7 @@ class q_learning_agent:
         
         for j in range(self.nAgents):
             
-            #if i != j:
-            # if not itself and also, if neighbour is in range (use paramClass.prox_i)
+            # if not itself 
             if i != j: 
             
                 # update the q table with selected action
@@ -282,7 +276,6 @@ class q_learning_agent:
                 # we will use this same action for the discounted future rewards, but from the neighbour's perspective
                 future_option = self.action["Agent " + str(i)]["Neighbour Action " + str(j)] 
                    
-                
                 #self.state = ["Agent " + str(i), "Neighbour " + str(j)]
                 #self.action = ["Option " + str(selected_option)]
                 
@@ -311,7 +304,6 @@ class q_learning_agent:
                             self.Q["Agent " + str(i)]["Neighbour " + str(j)][tuple(self.state)]["Option " + str(self.action_options[i][k])] = 0
  
                         # since we have a new state, let's explore more
-                        #print("Agent ",i," new state discovered")
                         self.explore_rate[i]   = min(1, self.explore_rate[i] + 0.2)                    
  
                     # Q(s,a)
@@ -324,7 +316,6 @@ class q_learning_agent:
                         #print('next state found')
                         Q_future = self.Q["Agent " + str(j)]["Neighbour " + str(i)][tuple(self.state_next[:,j])]["Option " + str(future_option)] # this needs to flip i/j eventually 
 
-                        
                     else:
                         
                         Q_future = 0
@@ -332,14 +323,12 @@ class q_learning_agent:
                 
                     self.Q["Agent " + str(i)]["Neighbour " + str(j)][tuple(self.state)]["Option " + str(selected_option)] = (1 - self.learn_rate)*Q_current + self.learn_rate*(self.reward + self.discount*Q_future)
                                                    
-        #print('Reward at ',  self.time_count, ' : ', self.reward)
         self.Q_update_count += 1
-        #print("Q-table Updates: ", self.Q_update_count)
         
-        #self.data[self.Q_update_count] = copy.deepcopy(self.Q)
         self.data[0] = copy.deepcopy(self.Q)
         
         if self.Q_update_count > 10*self.nAgents:
+            
             #self.Q_update_count = 0
             
             data = convert_to_json_serializable(self.data)
