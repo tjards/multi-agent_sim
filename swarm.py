@@ -342,7 +342,7 @@ class Obstacles:
             self.nObs = 1
 
         self.obstacles = np.zeros((4,self.nObs))
-        oSpread = 10
+        oSpread = 20
 
         # manual (comment out if random)
         # obstacles[0,:] = 0    # position (x)

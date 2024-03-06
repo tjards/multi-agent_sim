@@ -62,13 +62,13 @@ with open(file_path, 'w') as file:
 #%% Setup Simulation
 # ------------------
 #np.random.seed(0)
-nAgents = 15
+nAgents = 5
 Ti      = 0       # initial time
-Tf      = 90      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 300      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
-nObs    = 0
+nObs    = 3
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
 #%% Instantiate the relevants objects

@@ -53,6 +53,8 @@ Dev notes:
     28 Feb 2024 - I made all agents also obstacles and that seeme dto fix it (anaologous to a collision avoidance system)
                 - rg needs to vary as well 
     04 Mar 2024 - rg now updating in graph_tools_direction. Consider renaming '_variable'.
+                - need to assess how the Qlearning is affected by the bearing-based RL. consider using paramClass.prox_i[i,j] in update_Q_table * this was already done
+    05 Mar 2024 - ok, I think this works with RL. produced some initial results.  
     
 """
 
@@ -63,11 +65,10 @@ import random
 from utils import graph_tools as grph
 from utils import conic_tools as sensor
 
-
 #%% learning stuff (optional)
 # ----------------------------
 
-learning = 0                # learning? 1 = yes, 0 = no
+learning = 1                # learning? 1 = yes, 0 = no
 #learning_decentralized = 1  # local Q-table updates (1 = yes, 0 = global updates?
 
 if learning == 1:
@@ -84,7 +85,7 @@ if directional == 1:
 
 # key ranges 
 
-d       = 25             # lattice scale > 5 (desired distance between agents) note: gets overridden by RL.
+d       = 15             # lattice scale > 5 (desired distance between agents) note: gets overridden by RL.
 r       = 1.3*d         # range at which neighbours can be sensed 
 
 d_prime = 2 # this is really just for emergency collision avoidance
@@ -98,7 +99,7 @@ d_min               = 5             # always 5
 
 # options
 hetero_lattice = 1     # support heterogeneous lattice size? 0 = no, 1 = yes
-params_n       = 15     # this must match the number of agents (pull automatically later)
+params_n       = 5     # this must match the number of agents (pull automatically later)
 
 # gains
 c1_a = 1               # cohesion

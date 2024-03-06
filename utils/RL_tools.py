@@ -30,9 +30,9 @@ from scipy.spatial import distance
 
 #%% hyper parameters
 # ----------------
-options_range   = [4, 10]    # range of action options [min, max]
+options_range   = [4, 15]    # range of action options [min, max]
 nOptions        = 2         # number of action options (evenly spaced between [min, max])
-time_horizon    = 100       # how long to apply action and await reward (eg., 1 sec/0.02 sample per sec = 50)
+time_horizon    = 120       # how long to apply action and await reward (eg., 1 sec/0.02 sample per sec = 50)
 time_horizon_v  = 0.2       # optional, max speed constraint to permit new action (higher makes more stable)
 states_grid     = 1         # represent states in Q-table as a grid? 1 = yes, 0 = no
 
@@ -70,7 +70,7 @@ class q_learning_agent:
         self.discount       = 0.2 #0.8   # balance immediate/future rewards, (gamma): 0.8 to 0.99
         self.time_horizon   = time_horizon
         self.time_horizon_v = time_horizon_v
-        self.explore_exp_decay = 0.04 # [0.01 (slower decay), 0.1 (faster decay)]: a, where et = e0 * e^{-at}
+        self.explore_exp_decay = 0.03 # [0.01 (slower decay), 0.1 (faster decay)]: a, where et = e0 * e^{-at}
         
         # initialize timers (global)
         self.time_count     = 0     # initialize 
@@ -273,7 +273,7 @@ class q_learning_agent:
         for j in range(self.nAgents):
             
             #if i != j:
-            # if not itself and also, if neighbour is in range
+            # if not itself and also, if neighbour is in range (use paramClass.prox_i)
             if i != j: 
             
                 # update the q table with selected action
@@ -288,12 +288,11 @@ class q_learning_agent:
                 
                 if states_grid != 1:
                     
-                
                     # Q(s,a)
                     Q_current = self.Q["Agent " + str(i)]["Neighbour " + str(j)]["Option " + str(selected_option)] 
                 
                     # Q(s+,a)
-                    Q_future = self.Q["Agent " + str(j)]["Neighbour " + str(i)]["Option " + str(future_option)] # this needs to flip i/j eventually 
+                    Q_future = self.Q["Agent " + str(j)]["Neighbour " + str(i)]["Option " + str(future_option)] 
                 
                     #self.Q["Agent " + str(i)]["Neighbour " + str(j)]["Option " + str(selected_option)] += np.multiply(self.learn_rate, self.reward + self.discount*Q_future - Q_current)
                     self.Q["Agent " + str(i)]["Neighbour " + str(j)]["Option " + str(selected_option)] = (1 - self.learn_rate)*Q_current + self.learn_rate*(self.reward + self.discount*Q_future)
