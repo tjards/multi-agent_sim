@@ -34,7 +34,7 @@ if plot_quadcopter == 1:
 numFrames           = 10    # frame rate (bigger = slower)
 tail                = 200   # trailing trajectory length 
 zoom                = 1     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
-pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
+pan                 = 1     # camera pan? 0 = no, 1 = yes (memory-heavy)
 connection          = 1     # show connections?
 connection_thresh   = 5.1   # nominally 5.1. how close do agents need to be in order to connect?
 updated_connections = 1     # are these connections being updated? nominally, 0; some special cases use 1(RL)

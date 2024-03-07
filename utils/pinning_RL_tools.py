@@ -82,7 +82,7 @@ if directional == 1:
 # -----------------
 
 # key ranges 
-d                   = 15            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
+d                   = 11            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
 r                   = 1.3*d         # range at which neighbours can be sensed 
 d_prime             = 1             # desired separation from obstacles  
 r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
