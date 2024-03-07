@@ -84,21 +84,21 @@ if directional == 1:
 # key ranges 
 d                   = 15            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
 r                   = 1.3*d         # range at which neighbours can be sensed 
-d_prime             = 2             # desired separation from obstacles  
+d_prime             = 1             # desired separation from obstacles  
 r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
 d_min               = 5             # floor on lattice scale (always 5)
 rg                  = d + 0.5       # range for graph analysis (nominally, d + small number), this will auto adjust later
-sensor_aperature    = 120           # used if directional == 1, wide angle = 100
+sensor_aperature    = 180           # used if directional == 1, wide angle = 100
 
 # other options
 hetero_lattice = 1     # support heterogeneous lattice size? 0 = no, 1 = yes
-params_n       = 5     # this must match the number of agents (pull automatically later)
+params_n       = 10     # this must match the number of agents (pull automatically later)
 
 # gains
 c1_a = 1               # cohesion
 c2_a = 2*np.sqrt(1)
-c1_b = 1.5             # obstacles 
-c2_b = 1.5*np.sqrt(1)
+c1_b = 1             # obstacles 
+c2_b = 2*np.sqrt(1)
 c1_g = 2               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
 
@@ -441,7 +441,7 @@ def select_pins_components(states_q, states_p):
         components = grph.find_connected_components_A(A)
     else:
         A = grph_dir.adj_matrix_bearing(states_q,states_p,paramClass.d_weighted, sensor_aperature, paramClass.headings)
-        components = grph_dir.find_one_way_connected_components(A)
+        components = grph_dir.find_one_way_connected_components_deg(A)
     
     # Gramian method
     # --------------

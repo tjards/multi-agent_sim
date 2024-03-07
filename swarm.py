@@ -35,8 +35,9 @@ if dynamics == 'quadcopter':
 # ---------------
 
 # note: move quadcopter low-level controller to quad files 
-heading_type        = 1 #  0 = point in the direction of v, 1 = Reynolds alignment
-v_heading_adjust    = 1 # min speed at which quadcopter adjust heading
+heading_type        = 0 #  0 = point in the direction of v, 1 = random 
+v_heading_adjust    = 0.35 # min speed at which quadcopter adjust heading
+v_heading_saturate  = 0.50 # max speed at which quadcopter adjust heading
 
 class Agents:
     
@@ -59,7 +60,7 @@ class Agents:
                         
         # Vehicles states
         # ---------------
-        iSpread =  10      # initial spread of vehicles
+        iSpread =  30      # initial spread of vehicles
         self.state = np.zeros((6,self.nVeh))
         self.state[0,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nVeh)-0.5)                   # position (y)
@@ -224,13 +225,15 @@ class Agents:
                 if heading_type == 0:
                     
                     # define unit vector ahead
-                    normv = np.maximum(np.sqrt(self.quadList[quad_i].state[7]**2 + self.quadList[quad_i].state[8]**2 + self.quadList[quad_i].state[9]**2),0.0001)
+                    normv = np.maximum(np.sqrt(self.quadList[quad_i].state[7]**2 + self.quadList[quad_i].state[8]**2 + self.quadList[quad_i].state[9]**2),0.00001)
                     tarv = 1*np.divide(self.quadList[quad_i].state[7:10],normv)
+                    
+                    #print(normv)
+
                     # compute corresponding heading
                     heading = np.arctan2(tarv[1],tarv[0])
                     # load as setpoint (if we're moving fast enough)
-                
-                    if normv > v_heading_adjust:
+                    if normv > v_heading_adjust and normv < v_heading_saturate:
                         self.sDesList[quad_i][14] = heading
                     else:
                         self.sDesList[quad_i][14] = self.sDesList[quad_i][14]

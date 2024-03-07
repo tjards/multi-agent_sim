@@ -62,7 +62,7 @@ vel_I_gain = np.array([Ixdot, Iydot, Izdot])
 # Attitude P gains
 Pphi = 8.0
 Ptheta = Pphi
-Ppsi = 1.5
+Ppsi = 1.5 #1.5
 PpsiStrong = 8
 
 att_P_gain = np.array([Pphi, Ptheta, Ppsi])
@@ -97,7 +97,9 @@ tiltMax = 50.0*deg2rad
 pMax = 200.0*deg2rad
 qMax = 200.0*deg2rad
 #rMax = 150.0*deg2rad
-rMax = 50.0*deg2rad
+#rMax = 50.0*deg2rad
+rMax = 25.0*deg2rad
+
 
 rateMax = np.array([pMax, qMax, rMax])
 
