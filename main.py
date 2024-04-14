@@ -50,6 +50,7 @@ plt.style.use('default')
 #plt.style.available
 #plt.style.use('Solarize_Light2')
 import json
+import h5py
 #from datetime import datetime
 import os
 
@@ -62,8 +63,8 @@ import orchestrator
 from data import data_manager
 
 #%% initialize data
-data = {}
-data_manager.initialize_data(data)
+#data = {}
+#data_manager.initialize_data_JSON(data)
 
 #%% Setup Simulation
 # ------------------
@@ -75,7 +76,7 @@ Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 
-strategy = 'shep'
+strategy = 'pinning'
 # reynolds  = Reynolds flocking + Olfati-Saber obstacle
 # saber     = Olfati-Saber flocking
 # starling  = swarm like starlings 
@@ -179,18 +180,20 @@ while round(t,3) < Tf:
     # --------------------------------  
     Controller.commands(Agents, Obstacles, Targets, Trajectory, History) 
       
-
-
 #%% Save data
 # -----------
 
 if verbose == 1:
     print('saving data.')
 
-data_manager.save_data(data, Agents, Targets, Obstacles, History)
+#data_manager.save_data_JSON(data, Agents, Targets, Obstacles, History)
+data_manager.save_data_HDF5(History)
 
 if verbose == 1:
     print('done.')
+
+# test
+key, values = data_manager.load_data_HDF5('History', 't_all')
 
 
 #%% Produce animation of simulation

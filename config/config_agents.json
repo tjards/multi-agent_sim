@@ -1,1 +1,1 @@
-{"nAgents": 5, "rAgents": 0.5, "initial_spread": 10, "dynamics": "double_integrator", "tactic_type": "shep"}
+{"nAgents": 5, "rAgents": 0.5, "initial_spread": 10, "dynamics": "double_integrator", "tactic_type": "pinning"}
