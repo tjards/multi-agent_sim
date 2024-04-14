@@ -74,7 +74,7 @@ if learning == 1:
     from utils import RL_tools as RL
     
 # do I care about direction for sensor range? 
-directional = 1     # 1 = yes, 0 = no
+directional = 0     # 1 = yes, 0 = no
 if directional == 1:
     from utils import graph_tools_directional as grph_dir
 
@@ -92,7 +92,7 @@ sensor_aperature    = 180           # used if directional == 1, wide angle = 100
 
 # other options
 hetero_lattice = 1     # support heterogeneous lattice size? 0 = no, 1 = yes
-params_n       = 10     # this must match the number of agents (pull automatically later)
+params_n       = 5     # this must match the number of agents (pull automatically later)
 
 # gains
 c1_a = 1               # cohesion

@@ -40,41 +40,44 @@ plt.style.use('default')
 #plt.style.available
 #plt.style.use('Solarize_Light2')
 import json
-from datetime import datetime
+#from datetime import datetime
 import os
 
 # from root folder
 #import animation 
 import swarm
-import animation
-import ctrl_tactic as tactic 
+#import animation
+import orchestrator  
+
+from Data import data_manager
 
 #%% initialize data
 data = {}
-current_datetime = datetime.now()
-formatted_date = current_datetime.strftime("%Y%m%d_%H%M%S")
-data_directory = 'Data'
-#file_path = os.path.join(data_directory, f"data_{formatted_date}.json")
-file_path = os.path.join(data_directory, "data.json")
-with open(file_path, 'w') as file:
-    json.dump(data, file)
+data_manager.initialize_data(data)
 
 #%% Setup Simulation
 # ------------------
 #np.random.seed(0)
-nAgents = 10
+nAgents = 5
 Ti      = 0       # initial time
-Tf      = 90      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 10      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 nObs    = 0
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
-#%% Instantiate the relevants objects
+# save to config file
+config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1, 'nObs': nObs, 'nAgents': nAgents}
+config_path = os.path.join("config", "config_sim.json")
+with open(config_path, 'w') as configs_sim:
+    json.dump(config_sim, configs_sim)
+
+
+#%% Instantiate the relevants objects (and save configs)
 # ------------------------------------
 Agents = swarm.Agents('pinning', nAgents)
-Controller = tactic.Controller(Agents)
+Controller = orchestrator.Controller(Agents)
 Targets = swarm.Targets(0, Agents.nVeh)
 Trajectory = swarm.Trajectory(Targets)
 Obstacles = swarm.Obstacles(Agents.tactic_type, nObs, Targets.targets)
@@ -123,16 +126,34 @@ while round(t,3) < Tf:
     # --------------------------------  
     Controller.commands(Agents, Obstacles, Targets, Trajectory, History) 
       
+
+
+#%% Save data
+# -----------
+
+if verbose == 1:
+    print('saving data.')
+
+data_manager.save_data(data, Agents, Targets, Obstacles, History)
+
+if verbose == 1:
+    print('done.')
+
+
 #%% Produce animation of simulation
 # --------------------------------- 
 if verbose == 1:
     print('building animation.')
 
-if Agents.dynamics_type == 'quadcopter':  
-    import quadcopter_module.animation_quad as animation_quad
-    ani = animation_quad.animateMe(Ts, History, Obstacles, Agents.tactic_type)
-else:
-    ani = animation.animateMe(Ts, History, Obstacles, Agents.tactic_type)
+import visualization.animation_sim as animation_sim
+ani = animation_sim.animateMe(Ts, History, Agents.tactic_type)
+
+
+# if Agents.dynamics_type == 'quadcopter':  
+#     import quadcopter_module.animation_quad as animation_quad
+#     ani = animation_quad.animateMe(Ts, History, Obstacles, Agents.tactic_type)
+# else:
+#     ani = animation.animateMe(Ts, History, Obstacles, Agents.tactic_type)
     
 #%% Produce plots
 # --------------
@@ -195,97 +216,3 @@ if nObs >  0:
     
     plt.show()
 
-
-#%% Save data
-# -----------
-
-if verbose == 1:
-    print('saving data.')
-
-def convert_to_json_serializable(obj):
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, dict):
-        return {key: convert_to_json_serializable(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_to_json_serializable(item) for item in obj]
-    else:
-        return obj
-
-data['Ti ']         = Ti      
-data['Tf']          = Tf     
-data['Ts']          = Ts           
-data['Agents']      = Agents.__dict__
-if Agents.dynamics_type == 'quadcopter':
-    del data['Agents']['quadList']
-    del data['Agents']['llctrlList']
-    del data['Agents']['sDesList']
-data['Targets']     = Targets.__dict__
-data['Obstacles']   = Obstacles.__dict__
-data['History']     = History.__dict__
-
-data = convert_to_json_serializable(data)
-
-with open(file_path, 'w') as file:
-    json.dump(data, file)
-
-with open(file_path, 'r') as file:
-    data_json = json.load(file)
-
-if verbose == 1:
-    print('done.')
-
-#%% LEGACY code (keep for reference)
-
-    # EXPIRMENT # 1 - exclude random agents from the swarm every 10 seconds
-    # select which agents to exclude (manually)
-    # every 10 seconds
-    #if t%10 < Ts:
-        # randomly exclude
-        #exclusion = [random.randint(0, nVeh-1)]
-        #print(exclusion)
-        
-    # # EXPIRMENT # 2 - manually exclude agents from the swarm
-    # # for simulation
-    # if t < 20:
-    #     exclusion = [2]
-    # if t > 20 and t <= 45:
-    #     exclusion = [2,7]
-    # if t > 45 and t <= 65:
-    #     exclusion = [1]
-    # if t > 45 and t <= 75:
-    #     exclusion = [1,6]
-    # if t > 75 and t <= 90:
-    #     exclusion = [3]
-    # if t > 75 and t <= 100:
-    #     exclusion = [3,7]
-    # if t > 100 and t <= 115:
-    #     exclusion = [9]
-    # if t > 115 and t <= 120:
-    #     exclusion = [5]
-    # if t > 120 and t <= 150:
-    #     exclusion = [4]
-    # if t > 150 and t <= 185:
-    #     exclusion = [4,8]
-    # if t > 185 and t <= 200:
-    #     exclusion = [6]
-        
-    # # Experiment #3 - remove 2 then remove 2
-    # if t < 20:
-    #     exclusion = []
-    # if t > 20 and t <= 50:
-    #     exclusion = [1]
-    # if t > 50 and t <= 80:
-    #     exclusion = [1,2]
-    # if t > 80 and t <= 110:
-    #     exclusion = [2]
-    # if t > 110 and t <= 140:
-    #     exclusion = []
-    
-# show_B_max  = 1 # highlight the max influencer? (0 = np, 1 = yes)
-# if tactic_type == 'pinning' and show_B_max == 1:
-#     # find the max influencer in the graph
-#     G = graph_tools.build_graph(states_q, 5.1)
-#     B = graph_tools.betweenness(G)
-#     B_max = max(B, key=B.get)
-#     pins_all[:,B_max,B_max] = 2
