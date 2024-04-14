@@ -18,10 +18,18 @@ import random
 
 # agent dynamics
 # --------------
-dynamics = 'double_integrator'
+dynamics = 'double integrator'
 #dynamics = 'double integrator' 
     # 'double integrator' 
     # 'quadcopter'
+
+nAgents = 5    # number of agents
+rAgents = 0.5   # physics radius of agents 
+iSpread = 35    # initial spread of agents
+
+# store the config
+config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
+
 
 # some dependencies for quadcopter
 if dynamics == 'quadcopter':
@@ -41,11 +49,11 @@ v_heading_saturate  = 0.50 # max speed at which quadcopter adjust heading
 
 class Agents:
     
-    def __init__(self,tactic_type,nVeh):
+    def __init__(self,tactic_type):
         
         # initite attributes 
         # ------------------
-        self.nVeh    =   nVeh      # number of vehicles
+        self.nVeh    =   nAgents      # number of vehicles
         self.rVeh    =   0.5     # physical radius of vehicle
         self.tactic_type = tactic_type    
                         # reynolds  = Reynolds flocking + Olfati-Saber obstacle
@@ -57,7 +65,8 @@ class Agents:
                         # shep      = shepherding
         self.dynamics_type = dynamics
         self.random_seeds = [random.uniform(0, 2*np.pi) for _ in range(self.nVeh)] # random seeds for each agent
-                        
+        self.config_agents = config_agents             
+           
         # Vehicles states
         # ---------------
         iSpread =  5      # initial spread of vehicles

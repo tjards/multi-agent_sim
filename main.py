@@ -25,6 +25,16 @@ Lasted updated on Fri Feb 02 16:23 2024
 
 @author: tjards
 
+
+dev notes:
+ steps for modulization:
+     1. create config files
+     2. create a data file
+     3. plot off data file
+     4. move learner outside
+     5. add a sensors module
+
+
 """
 
 #%% Import stuff
@@ -45,11 +55,11 @@ import os
 
 # from root folder
 #import animation 
-import swarm
+#import swarm
 #import animation
 import orchestrator  
 
-from Data import data_manager
+from data import data_manager
 
 #%% initialize data
 data = {}
@@ -58,30 +68,65 @@ data_manager.initialize_data(data)
 #%% Setup Simulation
 # ------------------
 #np.random.seed(0)
-nAgents = 5
+#nAgents = 5
 Ti      = 0       # initial time
-Tf      = 10      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 20      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
-nObs    = 0
+
+strategy = 'shep'
+# reynolds  = Reynolds flocking + Olfati-Saber obstacle
+# saber     = Olfati-Saber flocking
+# starling  = swarm like starlings 
+# circle    = encirclement
+# lemni     = dynamic lemniscates and other closed curves
+# pinning   = pinning control
+# shep      = shepherding
+
+#nObs    = 0
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
 # save to config file
-config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1, 'nObs': nObs, 'nAgents': nAgents}
+config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1}
 config_path = os.path.join("config", "config_sim.json")
 with open(config_path, 'w') as configs_sim:
     json.dump(config_sim, configs_sim)
 
+#%% instantiate the agents
+# ------------------------
+import agents.agents as agents
+Agents = agents.Agents(strategy)
+with open(os.path.join("config", "config_agents.json"), 'w') as configs_agents:
+    json.dump(Agents.config_agents, configs_agents)
 
-#%% Instantiate the relevants objects (and save configs)
-# ------------------------------------
-Agents = swarm.Agents('pinning', nAgents)
-Controller = orchestrator.Controller(Agents)
-Targets = swarm.Targets(0, Agents.nVeh)
-Trajectory = swarm.Trajectory(Targets)
-Obstacles = swarm.Obstacles(Agents.tactic_type, nObs, Targets.targets)
-History = swarm.History(Agents, Targets, Obstacles, Controller, Ts, Tf, Ti, f)
+# instantiate the orchestrator
+# ----------------------------
+Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
+
+# instantiate the targets
+# -----------------------
+import targets.targets as targets
+Targets = targets.Targets(Agents.nAgents)
+with open(os.path.join("config", "config_targets.json"), 'w') as configs_targets:
+    json.dump(Targets.config_targets, configs_targets)
+
+# instantiate the planner
+# -----------------------
+import planner.trajectory as trajectory
+Trajectory = trajectory.Trajectory(Targets.targets)
+
+# instantiate the obstacles 
+# -------------------------
+import obstacles.obstacles as obstacles
+Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets)
+with open(os.path.join("config", "config_obstacles.json"), 'w') as configs_obstacles:
+    json.dump(Obstacles.config_obstacles, configs_obstacles)
+
+# new: move the learning agent out here
+#import learner.RL_tools as RL
+
+History = data_manager.History(Agents, Targets, Obstacles, Controller, Ts, Tf, Ti, f)
 
 #%% Run Simulation
 # ----------------------
@@ -89,7 +134,7 @@ t = Ti
 i = 1
 
 if verbose == 1:
-    print('starting simulation with ',nAgents,' agents.')
+    print('starting simulation with ',Agents.nAgents,' agents.')
 
 while round(t,3) < Tf:
     
@@ -103,8 +148,9 @@ while round(t,3) < Tf:
 
     # Evolve the states
     # -----------------
-    Agents.evolve(Controller,t,Ts)
-     
+    #Agents.evolve(Controller,t,Ts)
+    Agents.evolve(Controller.cmd, Controller.pin_matrix,t,Ts)
+    
     # Store results 
     # -------------
     History.update(Agents, Targets, Obstacles, Controller, t, f, i)
@@ -120,7 +166,14 @@ while round(t,3) < Tf:
     
     #%% Compute Trajectory
     # --------------------
-    Trajectory.update(Agents, Targets, History, t, i)
+    #Trajectory.update(Agents, Targets, History, t, i)
+    
+    my_kwargs = {}
+    if Agents.tactic_type == 'lemni':
+        my_kwargs['lemni_all'] = History.lemni_all
+        my_kwargs['lemni'] = Agents
+    
+    Trajectory.update(Agents.tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)
                         
     #%% Compute the commads (next step)
     # --------------------------------  
@@ -190,7 +243,7 @@ ax.set(xlabel='Time [s]', ylabel='Distance from Target for Each Agent [m]',
 plt.show()
 
 #%% radii from obstacles
-if nObs >  0:
+if Obstacles.nObs >  0:
 
     radii_o = np.zeros([History.states_all.shape[2],History.states_all.shape[0],History.obstacles_all.shape[2]])
     radii_o_means = np.zeros([History.states_all.shape[2],History.states_all.shape[0]])

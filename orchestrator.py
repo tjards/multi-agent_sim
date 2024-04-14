@@ -15,10 +15,20 @@ Created on Mon Jan  4 12:45:55 2021
 #%% Import stuff
 # --------------
 import numpy as np
-from utils import reynolds_tools, saber_tools, lemni_tools, starling_tools
-from utils import encirclement_tools as encircle_tools
-from utils import shepherding as shep
-from utils import pinning_RL_tools as pinning_tools
+
+from planner.techniques import encirclement_tools as encircle_tools
+from planner.techniques import lemni_tools 
+from planner.techniques import reynolds_tools
+from planner.techniques import saber_tools
+from planner.techniques import starling_tools
+from planner.techniques import shepherding as shep
+from planner.techniques import pinning_RL_tools as pinning_tools
+
+#from utils import reynolds_tools, saber_tools, lemni_tools, starling_tools
+#from utils import reynolds_tools, saber_tools, starling_tools
+#from utils import encirclement_tools as encircle_tools
+#from utils import shepherding as shep
+#from utils import pinning_RL_tools as pinning_tools
 import copy
 
 # do we want to update the lattice parameters at this level?
@@ -29,32 +39,33 @@ hetero_lattice = 1  # nominally, keep at 1 for now
 
 class Controller:
     
-    def __init__(self, Agents):
+    #def __init__(self, Agents):
+    def __init__(self,tactic_type, nAgents, state):
                 
         # commands
         # --------
-        self.cmd = np.zeros((3,Agents.nVeh))
-        self.cmd[0] = 0.001*np.random.rand(1,Agents.nVeh)-0.5      # command (x)
-        self.cmd[1] = 0.001*np.random.rand(1,Agents.nVeh)-0.5      # command (y)
-        self.cmd[2] = 0.001*np.random.rand(1,Agents.nVeh)-0.5      # command (z)
+        self.cmd = np.zeros((3,nAgents))
+        self.cmd[0] = 0.001*np.random.rand(1,nAgents)-0.5      # command (x)
+        self.cmd[1] = 0.001*np.random.rand(1,nAgents)-0.5      # command (y)
+        self.cmd[2] = 0.001*np.random.rand(1,nAgents)-0.5      # command (z)
 
         # other Parameters
         # ----------------
         self.counter = 0                                        # controller counter (signals when to select pins)
-        self.params = np.zeros((4,Agents.nVeh))                 # store dynamic parameters
-        self.lattice = np.zeros((Agents.nVeh,Agents.nVeh))      # stores lattice parameters
+        self.params = np.zeros((4,nAgents))                 # store dynamic parameters
+        self.lattice = np.zeros((nAgents,nAgents))      # stores lattice parameters
 
         # initialize pin and components
-        self.pin_matrix = np.zeros((Agents.nVeh,Agents.nVeh))
+        self.pin_matrix = np.zeros((nAgents,nAgents))
         self.components = []
         
-        if Agents.tactic_type == 'shep':
-            self.shepherdClass = shep.Shepherding(Agents.state)
+        if tactic_type == 'shep':
+            self.shepherdClass = shep.Shepherding(state)
         
-        if Agents.tactic_type == 'pinning':
+        if tactic_type == 'pinning':
     
-            self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:],Agents.state[3:6,:])
-            Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
+            self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
+            #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
    
     # define commands
     # ---------------
@@ -84,7 +95,7 @@ class Controller:
                 self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:],Agents.state[3:6,:])
                     
                 # pass pin_matrix up to agent as well
-                Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
+                #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
     
         # for each vehicle/node in the network
         for k_node in range(Agents.state[0:3,:].shape[1]): 
@@ -171,7 +182,7 @@ class Controller:
                 # ----------------------------------------------------------
 
                 # compute the commands
-                self.shepherdClass.compute_cmd(Targets, k_node)
+                self.shepherdClass.compute_cmd(Targets.targets, k_node)
         
                 # pull out results
                 cmd_i[:,k_node]                 = self.shepherdClass.cmd
