@@ -8,8 +8,12 @@ Created on Sun Apr 14 13:07:31 2024
 @author: tjards
 """
 
+# import stuff
+# ------------
 import numpy as np
 
+# define the target object
+# ------------------------
 class Targets:
 
     def __init__(self, nVeh):

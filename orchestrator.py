@@ -15,6 +15,7 @@ Created on Mon Jan  4 12:45:55 2021
 #%% Import stuff
 # --------------
 import numpy as np
+import copy
 
 from planner.techniques import encirclement_tools as encircle_tools
 from planner.techniques import lemni_tools 
@@ -24,12 +25,9 @@ from planner.techniques import starling_tools
 from planner.techniques import shepherding as shep
 from planner.techniques import pinning_RL_tools as pinning_tools
 
-#from utils import reynolds_tools, saber_tools, lemni_tools, starling_tools
-#from utils import reynolds_tools, saber_tools, starling_tools
-#from utils import encirclement_tools as encircle_tools
-#from utils import shepherding as shep
-#from utils import pinning_RL_tools as pinning_tools
-import copy
+
+#%% parameters
+# ------------
 
 # do we want to update the lattice parameters at this level?
 hetero_lattice = 1  # nominally, keep at 1 for now 

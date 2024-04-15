@@ -9,16 +9,12 @@ Created on Wed Nov 29 19:07:07 2023
 # import stuff
 # ------------
 import numpy as np
-#import copy
-#from utils import swarm_metrics # do I really need this module?
 from scipy.spatial.distance import cdist
-#from utils import encirclement_tools as encircle_tools
-#from utils import lemni_tools
 import random 
 
 # agent dynamics
 # --------------
-dynamics = 'double_integrator'
+dynamics = 'quadcopter'
 #dynamics = 'double integrator' 
     # 'double integrator' 
     # 'quadcopter'
@@ -29,7 +25,6 @@ iSpread = 10    # initial spread of agents
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
-
 
 # some dependencies for quadcopter
 if dynamics == 'quadcopter':

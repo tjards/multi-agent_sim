@@ -25,15 +25,13 @@ Lasted updated on Fri Feb 02 16:23 2024
 
 @author: tjards
 
-
 dev notes:
- steps for modulization:
-     1. create config files
-     2. create a data file
-     3. plot off data file
-     4. move learner outside
+    
+     1. DONE - create config files
+     2. DONE - create a data file
+     3. DONE - plot off data file
+     4. move learner outside (learning needs to pull from a config file somewhere)
      5. add a sensors module
-
 
 """
 
@@ -41,6 +39,7 @@ dev notes:
 # --------------
 
 # official packages 
+# ------------------
 #from scipy.integrate import ode
 import numpy as np
 import matplotlib.pyplot as plt
@@ -54,28 +53,22 @@ import h5py
 #from datetime import datetime
 import os
 
-# from root folder
-#import animation 
-#import swarm
-#import animation
+# my packages
+# ----------
 import orchestrator  
+from data import data_manager
 
-
+# define data path
+# ----------------
 data_directory = 'data'
 #file_path = os.path.join(data_directory, f"data_{formatted_date}.json")
 #file_path = os.path.join(data_directory, "data.json")
 data_file_path = os.path.join(data_directory, "data.h5")
 
-from data import data_manager
-
-#%% initialize data
-#data = {}
-#data_manager.initialize_data_JSON(data)
-
 #%% Setup Simulation
 # ------------------
 #np.random.seed(0)
-#nAgents = 5
+
 Ti      = 0       # initial time
 Tf      = 20      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
@@ -83,15 +76,14 @@ f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 
 strategy = 'pinning'
-# reynolds  = Reynolds flocking + Olfati-Saber obstacle
-# saber     = Olfati-Saber flocking
-# starling  = swarm like starlings 
-# circle    = encirclement
-# lemni     = dynamic lemniscates and other closed curves
-# pinning   = pinning control
-# shep      = shepherding
+    # reynolds  = Reynolds flocking + Olfati-Saber obstacle
+    # saber     = Olfati-Saber flocking
+    # starling  = swarm like starlings 
+    # circle    = encirclement
+    # lemni     = dynamic lemniscates and other closed curves
+    # pinning   = pinning control
+    # shep      = shepherding
 
-#nObs    = 0
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
 # save to config file
@@ -217,77 +209,18 @@ with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
     config_agents = json.load(configs_agents)
     config_tactic_type = config_agents['tactic_type']
 
-# pull out the data
-# [ ..]
+ani = animation_sim.animateMe(data_file_path, config_Ts, config_tactic_type)
 
-#ani = animation_sim.animateMe(Ts, History, Agents.tactic_type)
-#ani = animation_sim.animateMe(config_Ts, History, config_tactic_type)
-ani = animation_sim.animateMe(config_Ts, data_file_path, config_tactic_type)
-
-# if Agents.dynamics_type == 'quadcopter':  
-#     import quadcopter_module.animation_quad as animation_quad
-#     ani = animation_quad.animateMe(Ts, History, Obstacles, Agents.tactic_type)
-# else:
-#     ani = animation.animateMe(Ts, History, Obstacles, Agents.tactic_type)
-    
 #%% Produce plots
 # --------------
 
 if verbose == 1:
     print('building plots.')
 
-# separtion 
-fig, ax = plt.subplots()
-ax.plot(History.t_all[4::],History.metrics_order_all[4::,1],'-b')
-ax.plot(History.t_all[4::],History.metrics_order_all[4::,5],':b')
-ax.plot(History.t_all[4::],History.metrics_order_all[4::,6],':b')
-ax.fill_between(History.t_all[4::], History.metrics_order_all[4::,5], History.metrics_order_all[4::,6], color = 'blue', alpha = 0.1)
-#note: can include region to note shade using "where = Y2 < Y1
-ax.set(xlabel='Time [s]', ylabel='Mean Distance (with Min/Max Bounds) [m]',
-        title='Separation between Agents')
-#ax.plot([70, 70], [100, 250], '--b', lw=1)
-#ax.hlines(y=5, xmin=Ti, xmax=Tf, linewidth=1, color='r', linestyle='--')
-ax.grid()
-plt.show()
+import visualization.plot_sim as plot_sim
+plot_sim.plotMe(data_file_path)
 
-# radii from target
-radii = np.zeros([History.states_all.shape[2],History.states_all.shape[0]])
-for i in range(0,History.states_all.shape[0]):
-    for j in range(0,History.states_all.shape[2]):
-        radii[j,i] = np.linalg.norm(History.states_all[i,:,j] - History.targets_all[i,:,j])
-        
-fig, ax = plt.subplots()
-for j in range(0,History.states_all.shape[2]):
-    ax.plot(History.t_all[4::],radii[j,4::].ravel(),'-b')
-ax.set(xlabel='Time [s]', ylabel='Distance from Target for Each Agent [m]',
-        title='Distance from Target')
-#plt.axhline(y = 5, color = 'k', linestyle = '--')
-plt.show()
 
-#%% radii from obstacles
-if Obstacles.nObs >  0:
 
-    radii_o = np.zeros([History.states_all.shape[2],History.states_all.shape[0],History.obstacles_all.shape[2]])
-    radii_o_means = np.zeros([History.states_all.shape[2],History.states_all.shape[0]])
-    radii_o_means2 =  np.zeros([History.states_all.shape[0]])
-    
-    for i in range(0,History.states_all.shape[0]):              # the time samples
-        for j in range(0,History.states_all.shape[2]):          # the agents
-            for k in range(0,History.obstacles_all.shape[2]):   # the obstacles
-                radii_o[j,i,k] = np.linalg.norm(History.states_all[i,0:3,j] - History.obstacles_all[i,0:3,k])
-    
-            radii_o_means[j,i] = np.mean(radii_o[j,i,:])
-        radii_o_means2[i] = np.mean(radii_o_means[:,i])
-    
-            
-    fig, ax = plt.subplots()
-    start = int(0/0.02)
-    
-    for j in range(0,History.states_all.shape[2]):
-        ax.plot(History.t_all[start::],radii_o_means2[start::].ravel(),'-g')
-    ax.set(xlabel='Time [s]', ylabel='Mean Distance from Landmarks [m]',
-            title='Learning Progress')
-    #plt.axhline(y = 5, color = 'k', linestyle = '--')
-    
-    plt.show()
+
 

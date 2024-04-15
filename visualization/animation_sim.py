@@ -18,20 +18,18 @@ from matplotlib import animation
 
 from data import data_manager
 
-#%% get quadcopter parameters
+# get quadcopter parameters
 # -------------------------
-plot_quadcopter = 0
+plot_quadcopter = 1
 if plot_quadcopter == 1:
 
-    from quadcopter_module import config
-    from quadcopter_module.initQuad import sys_params, init_cmd, init_state
+    from agents.quadcopter_module import config
+    from agents.quadcopter_module.initQuad import sys_params, init_cmd, init_state
     
     configs = config.config()
     quad_params = sys_params(configs)
 
-#%%
-
-# plotting parameters
+#%% plotting parameters
 # -------------------
 numFrames           = 10    # frame rate (bigger = slower)
 tail                = 200   # trailing trajectory length 
@@ -62,11 +60,9 @@ def quat2Dcm(q):
 
 # main animation function
 # -----------------------
-#def animateMe(Ts, t_all, states_all, cmds_all, targets_all, obstacles_all, walls_plots, showObs, centroid_all, f, tactic_type, pins_all):
-#def animateMe(Ts, History, Obstacles, tactic_type):
-#def animateMe(Ts, History, tactic_type):
-def animateMe(Ts, data_file_path, tactic_type):
+def animateMe(data_file_path, Ts,  tactic_type):
     
+    # extract the data
     _, t_all = data_manager.load_data_HDF5('History', 't_all', data_file_path)
     _, states_all = data_manager.load_data_HDF5('History', 'states_all', data_file_path)
     _, cmds_all = data_manager.load_data_HDF5('History', 'cmds_all', data_file_path)
@@ -81,17 +77,6 @@ def animateMe(Ts, data_file_path, tactic_type):
         
         _, lattices_connections = data_manager.load_data_HDF5('History', 'lattices', data_file_path)
     
-    # extract
-    # -------
-    # t_all           = History.t_all
-    # states_all      = History.states_all
-    # cmds_all        = History.cmds_all
-    # targets_all     = History.targets_all[:,0:3,:]
-    # obstacles_all   = History.obstacles_all
-    # walls_plots     = History.walls_plots
-    # centroid_all    = History.centroid_all
-    # f               = History.f_all
-    # pins_all        = History.pins_all
     quats_all       = []
     
     # pull out key variables
@@ -114,7 +99,7 @@ def animateMe(Ts, data_file_path, tactic_type):
     # ---------------------------
     if plot_quadcopter == 1:
         #quats_all       = History.quads_states_all
-        _, quats_all = data_manager.load_data_HDF5('History', 'quats_all', data_file_path)
+        _, quats_all = data_manager.load_data_HDF5('History', 'quads_states_all', data_file_path)
         quatColour      = 'blue'
         quat_line1      = []
         quat_line2      = []

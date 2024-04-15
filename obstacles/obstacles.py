@@ -6,11 +6,17 @@ Created on Sun Apr 14 13:11:18 2024
 @author: tjards
 """
 
+# import stuff
+# ------------
 import numpy as np
 import copy
 
+# parameters
+# ----------
 nObs    = 0
 
+# define the obstacle object
+# --------------------------
 class Obstacles:
     
     def __init__(self, tactic_type, targets):
