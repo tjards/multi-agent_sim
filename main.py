@@ -30,6 +30,7 @@ dev notes:
      1. DONE - create config files
      2. DONE - create a data file
      3. DONE - plot off data file
+     3. incrementally add History to data
      4. move learner outside (learning needs to pull from a config file somewhere)
      5. add a sensors module
 
@@ -40,7 +41,6 @@ dev notes:
 
 # official packages 
 # ------------------
-#from scipy.integrate import ode
 import numpy as np
 import matplotlib.pyplot as plt
 #plt.style.use('dark_background')
@@ -50,7 +50,6 @@ plt.style.use('default')
 #plt.style.use('Solarize_Light2')
 import json
 import h5py
-#from datetime import datetime
 import os
 
 # my packages
@@ -62,7 +61,6 @@ from data import data_manager
 # ----------------
 data_directory = 'data'
 #file_path = os.path.join(data_directory, f"data_{formatted_date}.json")
-#file_path = os.path.join(data_directory, "data.json")
 data_file_path = os.path.join(data_directory, "data.h5")
 
 #%% Setup Simulation
@@ -70,7 +68,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 #np.random.seed(0)
 
 Ti      = 0       # initial time
-Tf      = 20      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 5      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
@@ -88,7 +86,6 @@ strategy = 'pinning'
 
 # save to config file
 config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1}
-#config_path = os.path.join("config", "config_sim.json")
 with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
     json.dump(config_sim, configs_sim)
 
@@ -113,7 +110,7 @@ with open(os.path.join("config", "config_targets.json"), 'w') as configs_targets
 # instantiate the planner
 # -----------------------
 import planner.trajectory as trajectory
-Trajectory = trajectory.Trajectory(Targets.targets)
+Trajectory = trajectory.Trajectory(Agents.tactic_type, Targets.targets, Agents.nAgents)
 
 # instantiate the obstacles 
 # -------------------------
@@ -125,17 +122,28 @@ with open(os.path.join("config", "config_obstacles.json"), 'w') as configs_obsta
 # new: move the learning agent out here
 #import learner.RL_tools as RL
 
-History = data_manager.History(Agents, Targets, Obstacles, Controller, Ts, Tf, Ti, f)
+# store the data
+# --------------
+Database = data_manager.History(Agents, Targets, Obstacles, Controller, Trajectory, Ts, Tf, Ti, f)
 
 #%% Run Simulation
 # ----------------------
 t = Ti
 i = 1
 
+# pull out constants
+rVeh        = Agents.rVeh
+tactic_type = Agents.tactic_type
+dynamics    = Agents.config_agents['dynamics']
+
 if verbose == 1:
     print('starting simulation with ',Agents.nAgents,' agents.')
 
 while round(t,3) < Tf:
+    
+    # initialize keyword arguments
+    # ----------------------------
+    my_kwargs = {}
     
     # Evolve the target
     # -----------------    
@@ -143,16 +151,15 @@ while round(t,3) < Tf:
     
     # Update the obstacles (if required)
     # ----------------------------------
-    Obstacles.evolve(Targets.targets, Agents.state, Agents.rVeh)
+    Obstacles.evolve(Targets.targets, Agents.state, rVeh)
 
     # Evolve the states
     # -----------------
-    #Agents.evolve(Controller,t,Ts)
-    Agents.evolve(Controller.cmd, Controller.pin_matrix,t,Ts)
+    Agents.evolve(Controller.cmd, Controller.pin_matrix, t, Ts)
     
     # Store results 
     # -------------
-    History.update(Agents, Targets, Obstacles, Controller, t, f, i)
+    Database.update(Agents, Targets, Obstacles, Controller, Trajectory, t, f, i)
     
     # Increment 
     # ---------
@@ -163,20 +170,18 @@ while round(t,3) < Tf:
     if verbose == 1 and (round(t,2)).is_integer():
         print(round(t,1),' of ',Tf,' sec completed.')
     
-    #%% Compute Trajectory
-    # --------------------
-    #Trajectory.update(Agents, Targets, History, t, i)
-    
-    my_kwargs = {}
-    if Agents.tactic_type == 'lemni':
-        my_kwargs['lemni_all'] = History.lemni_all
-        my_kwargs['lemni'] = Agents
-    
-    Trajectory.update(Agents.tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)
+    # Compute Trajectory
+    # --------------------    
+    if tactic_type == 'lemni':
+        my_kwargs['lemni_all'] = Database.lemni_all
+    Trajectory.update(tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)
                         
-    #%% Compute the commads (next step)
+    # Compute the commads (next step)
     # --------------------------------  
-    Controller.commands(Agents, Obstacles, Targets, Trajectory, History) 
+    if tactic_type == 'pinning' and dynamics == 'quadcopter':
+        my_kwargs['quads_headings'] = Agents.quads_headings
+        
+    Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
       
 #%% Save data
 # -----------
@@ -184,15 +189,10 @@ while round(t,3) < Tf:
 if verbose == 1:
     print('saving data.')
 
-#data_manager.save_data_JSON(data, Agents, Targets, Obstacles, History)
-data_manager.save_data_HDF5(History, data_file_path)
+data_manager.save_data_HDF5(Database, data_file_path)
 
 if verbose == 1:
     print('done.')
-
-# test
-key, values = data_manager.load_data_HDF5('History', 't_all', data_file_path)
-
 
 #%% Produce animation of simulation
 # --------------------------------- 

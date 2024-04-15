@@ -67,22 +67,25 @@ class Controller:
    
     # define commands
     # ---------------
-    def commands(self, Agents, Obstacles, Targets, Trajectory, History):   
+    #def commands(self, Agents, Obstacles, Targets, Trajectory, History):   
+    def commands(self, state, tactic_type, centroid, targets, obstacles_plus, walls, trajectory, dynamics_type, **mykwargs_cmd):  
  
+        #Agents.state, Agents.tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory
+        
         # initialize 
-        u_int = np.zeros((3,Agents.state[0:3,:].shape[1]))     # interactions
-        u_obs = np.zeros((3,Agents.state[0:3,:].shape[1]))     # obstacles 
-        u_nav = np.zeros((3,Agents.state[0:3,:].shape[1]))     # navigation
-        u_enc = np.zeros((3,Agents.state[0:3,:].shape[1]))     # encirclement 
-        cmd_i = np.zeros((3,Agents.state[0:3,:].shape[1]))     # store the commands
-        self.params = np.zeros((Agents.state[0:3,:].shape[1],Agents.state[0:3,:].shape[1])) # store pins 
+        u_int = np.zeros((3,state[0:3,:].shape[1]))     # interactions
+        u_obs = np.zeros((3,state[0:3,:].shape[1]))     # obstacles 
+        u_nav = np.zeros((3,state[0:3,:].shape[1]))     # navigation
+        u_enc = np.zeros((3,state[0:3,:].shape[1]))     # encirclement 
+        cmd_i = np.zeros((3,state[0:3,:].shape[1]))     # store the commands
+        self.params = np.zeros((state[0:3,:].shape[1],state[0:3,:].shape[1])) # store pins 
             
         # if doing Reynolds, reorder the agents 
-        if Agents.tactic_type == 'reynolds':
-            distances = reynolds_tools.order(Agents.state[0:3,:])
+        if tactic_type == 'reynolds':
+            distances = reynolds_tools.order(state[0:3,:])
             
         # if doing pinning control, select pins (when it's time)
-        if Agents.tactic_type == 'pinning':
+        if tactic_type == 'pinning':
             
             # increment the counter 
             self.counter += 1
@@ -90,83 +93,84 @@ class Controller:
             # only update the pins at Ts/100 (tunable)
             if self.counter == 100:
                 self.counter = 0
-                self.pin_matrix, self.components = pinning_tools.select_pins_components(Agents.state[0:3,:],Agents.state[3:6,:])
+                self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
                     
                 # pass pin_matrix up to agent as well
                 #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
     
         # for each vehicle/node in the network
-        for k_node in range(Agents.state[0:3,:].shape[1]): 
+        for k_node in range(state[0:3,:].shape[1]): 
                      
             # Reynolds Flocking
             # ------------------
-            if Agents.tactic_type == 'reynolds':
+            if tactic_type == 'reynolds':
                
-               cmd_i[:,k_node] = reynolds_tools.compute_cmd( Targets.targets[0:3,:], Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], k_node, distances)
+               cmd_i[:,k_node] = reynolds_tools.compute_cmd( targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, distances)
                
                # steal obstacle avoidance term from saber
                # ----------------------------------------
-               u_obs[:,k_node] = saber_tools.compute_cmd_b(Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls, k_node)
+               u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
             
             # Saber Flocking
             # ---------------                                
-            if Agents.tactic_type == 'saber':
+            if tactic_type == 'saber':
                    
                 # Lattice Flocking term (phi_alpha)
                 # ---------------------------------  
-                u_int[:,k_node] = saber_tools.compute_cmd_a(Agents.state[0:3,:], Agents.state[3:6,:],  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node)    
+                u_int[:,k_node] = saber_tools.compute_cmd_a(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)    
             
                 # Navigation term (phi_gamma)
                 # ---------------------------
-                u_nav[:,k_node] = saber_tools.compute_cmd_g(Agents.state[0:3,:], Agents.state[3:6,:],  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node)
+                u_nav[:,k_node] = saber_tools.compute_cmd_g(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)
                               
                 # Obstacle Avoidance term (phi_beta)
                 # ---------------------------------   
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls, k_node)
+                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
     
             # Encirclement term (phi_delta)
             # ---------------------------- 
-            if Agents.tactic_type == 'circle':       
+            if tactic_type == 'circle':       
                 
-                u_enc[:,k_node] = encircle_tools.compute_cmd(Agents.state[0:3,:], Agents.state[3:6,:], Trajectory.trajectory[0:3,:],Trajectory.trajectory[3:6,:], k_node)
+                u_enc[:,k_node] = encircle_tools.compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
                 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls, k_node)
+                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                      
             # Lemniscatic term (phi_lima)
             # ---------------------------- 
-            if Agents.tactic_type == 'lemni':    
+            if tactic_type == 'lemni':    
                 
-                u_enc[:,k_node] = lemni_tools.compute_cmd(Agents.state[0:3,:], Agents.state[3:6,:], Trajectory.trajectory[0:3,:],Trajectory.trajectory[3:6,:], k_node)
-                
-                # steal obstacle avoidance term from saber
-                # ----------------------------------------
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls, k_node)
+                u_enc[:,k_node] = lemni_tools.compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
                 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls, k_node)
+                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                
+                # steal obstacle avoidance term from saber
+                # ----------------------------------------
+                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                       
             # Starling
             # --------
-            if Agents.tactic_type == 'starling':
+            if tactic_type == 'starling':
                
                 # compute command 
-                cmd_i[:,k_node], Controller.params = starling_tools.compute_cmd(Targets.targets[0:3,:], Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], k_node, Controller.params, 0.02)
+                cmd_i[:,k_node], Controller.params = starling_tools.compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, self.params, 0.02)
             
             # Pinning
             # --------
-            if Agents.tactic_type == 'pinning':
+            if tactic_type == 'pinning':
                 
                 # update some arguments 
                 my_kwargs = {}
                 my_kwargs['pin_matrix'] = self.pin_matrix
-                if Agents.dynamics_type == 'quadcopter':
-                    my_kwargs['headings'] = Agents.quads_headings                    
+                if dynamics_type == 'quadcopter':
+                    quads_headings = mykwargs_cmd['quads_headings']
+                    my_kwargs['headings'] = quads_headings                    
                     
                 # compute command
-                cmd_i[:,k_node] = pinning_tools.compute_cmd(Agents.centroid, Agents.state[0:3,:], Agents.state[3:6,:], Obstacles.obstacles_plus, Obstacles.walls,  Targets.targets[0:3,:], Targets.targets[3:6,:], k_node, **my_kwargs)
+                cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **my_kwargs)
                 
                 # update the lattice parameters (needed for plots)
                 if hetero_lattice == 1:
@@ -174,13 +178,13 @@ class Controller:
                 
             # Shepherding
             # ------------
-            if Agents.tactic_type == 'shep':
+            if tactic_type == 'shep':
                 
                 # compute command, pin_matrix records shepherds = 1, herd = 0
                 # ----------------------------------------------------------
 
                 # compute the commands
-                self.shepherdClass.compute_cmd(Targets.targets, k_node)
+                self.shepherdClass.compute_cmd(targets, k_node)
         
                 # pull out results
                 cmd_i[:,k_node]                 = self.shepherdClass.cmd
@@ -188,19 +192,19 @@ class Controller:
   
             # Mixer
             # -----         
-            if Agents.tactic_type == 'saber':
+            if tactic_type == 'saber':
                 cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
-            elif Agents.tactic_type == 'reynolds':
+            elif tactic_type == 'reynolds':
                 cmd_i[:,k_node] = cmd_i[:,k_node] + u_obs[:,k_node] # adds the saber obstacle avoidance 
-            elif Agents.tactic_type == 'circle':
+            elif tactic_type == 'circle':
                 cmd_i[:,k_node] = u_obs[:,k_node] + u_enc[:,k_node] 
-            elif Agents.tactic_type == 'lemni':
+            elif tactic_type == 'lemni':
                 cmd_i[:,k_node] = u_obs[:,k_node] + u_enc[:,k_node]
-            elif Agents.tactic_type == 'starling':
+            elif tactic_type == 'starling':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
-            elif Agents.tactic_type == 'pinning':
+            elif tactic_type == 'pinning':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
-            elif Agents.tactic_type == 'shep':
+            elif tactic_type == 'shep':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
 
         # update the commands

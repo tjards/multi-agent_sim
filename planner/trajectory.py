@@ -17,9 +17,13 @@ from .techniques import lemni_tools
 # ----------------------------
 class Trajectory:
     
-    def __init__(self, targets):
+    def __init__(self, tactic_type, targets, nAgents):
         
         self.trajectory = copy.deepcopy(targets)
+        
+        #if tactic_type == 'lemni':
+            
+        self.lemni = np.zeros([1, nAgents])
     
     # WARNING: untested code
     def exclude(self, state, targets, lemni_all, exclusion):
@@ -62,6 +66,6 @@ class Trajectory:
             #from .techniques import lemni_tools
             
             lemni_all = kwargs.get('lemni_all')
-            Agents = kwargs.get('lemni')
+            #Agents = kwargs.get('lemni')
             
-            self.trajectory, Agents.lemni = lemni_tools.lemni_target(lemni_all,state,targets,i,t)
+            self.trajectory, self.lemni = lemni_tools.lemni_target(lemni_all,state,targets,i,t)

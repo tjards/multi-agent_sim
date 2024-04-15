@@ -35,4 +35,10 @@ class config():
         # Sample rate for controller
         # --------------------------- 
         self.Ts         =   0.005  # default 0.005 
+        
+        # Heading-related parameters
+        # --------------------------
+        self.heading_type        = 2 #  0 = forward, 1 = random, 2 = centroid 
+        self.v_heading_adjust    = 0.10 # min speed at which quadcopter adjust heading
+        self.v_heading_saturate  = 0.50 # max speed at which quadcopter adjust heading
    

@@ -38,14 +38,12 @@ if dynamics == 'quadcopter':
     config_agents['quad_Ts'] = quadcopter_config.Ts
     from .quadcopter_module.ctrl import return_gains as quadcopter_gains
     config_agents.update(quadcopter_gains())
-
-# hyper parameters
-# ---------------
-
-# note: move quadcopter low-level controller to quad files 
-heading_type        = 2 #  0 = forward, 1 = random, 2 = centroid 
-v_heading_adjust    = 0.10 # min speed at which quadcopter adjust heading
-v_heading_saturate  = 0.50 # max speed at which quadcopter adjust heading
+    config_agents['heading_type']        = quadcopter_config.heading_type 
+    config_agents['v_heading_adjust']    = quadcopter_config.v_heading_adjust
+    config_agents['v_heading_saturate']  = quadcopter_config.v_heading_saturate
+    heading_type = config_agents['heading_type']        
+    v_heading_adjust = config_agents['v_heading_adjust']    
+    v_heading_saturate = config_agents['v_heading_saturate']  
 
 class Agents:
     
@@ -85,7 +83,7 @@ class Agents:
         # Other Parameters
         # ----------------
         #self.params = np.zeros((4,self.nVeh))  # store dynamic parameters
-        self.lemni                   = np.zeros([1, self.nAgents])
+        #self.lemni                   = np.zeros([1, self.nAgents])
         
         # agent dynamics
         # --------------
