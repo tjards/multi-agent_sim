@@ -16,6 +16,8 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import animation
 
+from data import data_manager
+
 #%% get quadcopter parameters
 # -------------------------
 plot_quadcopter = 0
@@ -62,19 +64,34 @@ def quat2Dcm(q):
 # -----------------------
 #def animateMe(Ts, t_all, states_all, cmds_all, targets_all, obstacles_all, walls_plots, showObs, centroid_all, f, tactic_type, pins_all):
 #def animateMe(Ts, History, Obstacles, tactic_type):
-def animateMe(Ts, History, tactic_type):
+#def animateMe(Ts, History, tactic_type):
+def animateMe(Ts, data_file_path, tactic_type):
+    
+    _, t_all = data_manager.load_data_HDF5('History', 't_all', data_file_path)
+    _, states_all = data_manager.load_data_HDF5('History', 'states_all', data_file_path)
+    _, cmds_all = data_manager.load_data_HDF5('History', 'cmds_all', data_file_path)
+    _, targets_all = data_manager.load_data_HDF5('History', 'targets_all', data_file_path)
+    _, obstacles_all = data_manager.load_data_HDF5('History', 'obstacles_all', data_file_path)
+    _, walls_plots = data_manager.load_data_HDF5('History', 'walls_plots', data_file_path)
+    _, centroid_all = data_manager.load_data_HDF5('History', 'centroid_all', data_file_path)
+    _, f = data_manager.load_data_HDF5('History', 'f_all', data_file_path)
+    _, pins_all = data_manager.load_data_HDF5('History', 'pins_all', data_file_path)
+    
+    if updated_connections == 1:
+        
+        _, lattices_connections = data_manager.load_data_HDF5('History', 'lattices', data_file_path)
     
     # extract
     # -------
-    t_all           = History.t_all
-    states_all      = History.states_all
-    cmds_all        = History.cmds_all
-    targets_all     = History.targets_all[:,0:3,:]
-    obstacles_all   = History.obstacles_all
-    walls_plots     = History.walls_plots
-    centroid_all    = History.centroid_all
-    f               = History.f_all
-    pins_all        = History.pins_all
+    # t_all           = History.t_all
+    # states_all      = History.states_all
+    # cmds_all        = History.cmds_all
+    # targets_all     = History.targets_all[:,0:3,:]
+    # obstacles_all   = History.obstacles_all
+    # walls_plots     = History.walls_plots
+    # centroid_all    = History.centroid_all
+    # f               = History.f_all
+    # pins_all        = History.pins_all
     quats_all       = []
     
     # pull out key variables
@@ -96,12 +113,14 @@ def animateMe(Ts, History, tactic_type):
     # initialize quadcopter lines
     # ---------------------------
     if plot_quadcopter == 1:
-        quats_all       = History.quads_states_all
+        #quats_all       = History.quads_states_all
+        _, quats_all = data_manager.load_data_HDF5('History', 'quats_all', data_file_path)
         quatColour      = 'blue'
         quat_line1      = []
         quat_line2      = []
         quat_line3      = []
-        for iVeh in range(0,History.quads_states_all.shape[2]):
+        #for iVeh in range(0,History.quads_states_all.shape[2]):
+        for iVeh in range(0,quats_all.shape[2]):
             quat_line1.append([])
             quat_line2.append([])
             quat_line3.append([])
@@ -356,12 +375,11 @@ def animateMe(Ts, History, tactic_type):
                         
                         # update the connection threshold
                         if updated_connections == 1:
-                            connection_thresh_updated = History.lattices[i*numFrames,j,k_neigh] + 0.5
+                            #connection_thresh_updated = History.lattices[i*numFrames,j,k_neigh] + 0.5                            
+                            connection_thresh_updated = lattices_connections[i*numFrames,j,k_neigh] + 0.5
                         else:
                             connection_thresh_updated = connection_thresh 
-                        
-                        
-                        
+
                         if dist <= connection_thresh_updated: 
                             # first, itself
                             x_lat[2*k_neigh,j] = pos[0,j]
@@ -415,7 +433,7 @@ def animateMe(Ts, History, tactic_type):
         titleType2.set_text('%s : %s' % ("Centroid Distance", cd))
         
     ani = animation.FuncAnimation(fig=fig, func=update, blit=False, frames=len(t_all[0:-2:numFrames]), interval=(Ts*100*numFrames))
-    ani.save('Figs/animation3D_quad.gif')
+    ani.save('visualization/animations/animation3D.gif')
     plt.show()
 
     

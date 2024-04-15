@@ -60,6 +60,12 @@ import os
 #import animation
 import orchestrator  
 
+
+data_directory = 'data'
+#file_path = os.path.join(data_directory, f"data_{formatted_date}.json")
+#file_path = os.path.join(data_directory, "data.json")
+data_file_path = os.path.join(data_directory, "data.h5")
+
 from data import data_manager
 
 #%% initialize data
@@ -90,8 +96,8 @@ strategy = 'pinning'
 
 # save to config file
 config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1}
-config_path = os.path.join("config", "config_sim.json")
-with open(config_path, 'w') as configs_sim:
+#config_path = os.path.join("config", "config_sim.json")
+with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
     json.dump(config_sim, configs_sim)
 
 #%% instantiate the agents
@@ -187,13 +193,13 @@ if verbose == 1:
     print('saving data.')
 
 #data_manager.save_data_JSON(data, Agents, Targets, Obstacles, History)
-data_manager.save_data_HDF5(History)
+data_manager.save_data_HDF5(History, data_file_path)
 
 if verbose == 1:
     print('done.')
 
 # test
-key, values = data_manager.load_data_HDF5('History', 't_all')
+key, values = data_manager.load_data_HDF5('History', 't_all', data_file_path)
 
 
 #%% Produce animation of simulation
@@ -202,8 +208,21 @@ if verbose == 1:
     print('building animation.')
 
 import visualization.animation_sim as animation_sim
-ani = animation_sim.animateMe(Ts, History, Agents.tactic_type)
 
+# pull out the relevant configs
+with open(os.path.join("config", "config_sim.json"), 'r') as configs_sim:
+    config_sim = json.load(configs_sim)
+    config_Ts = config_sim['Ts']
+with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
+    config_agents = json.load(configs_agents)
+    config_tactic_type = config_agents['tactic_type']
+
+# pull out the data
+# [ ..]
+
+#ani = animation_sim.animateMe(Ts, History, Agents.tactic_type)
+#ani = animation_sim.animateMe(config_Ts, History, config_tactic_type)
+ani = animation_sim.animateMe(config_Ts, data_file_path, config_tactic_type)
 
 # if Agents.dynamics_type == 'quadcopter':  
 #     import quadcopter_module.animation_quad as animation_quad
