@@ -44,6 +44,14 @@ if dynamics == 'quadcopter':
     heading_type = config_agents['heading_type']        
     v_heading_adjust = config_agents['v_heading_adjust']    
     v_heading_saturate = config_agents['v_heading_saturate']  
+    
+    from .quadcopter_module.initQuad import sys_params
+    quad_params = sys_params(quadcopter_config)
+    for key, value in quad_params.items():
+        if isinstance(value, np.ndarray):
+            quad_params[key] = value.tolist()
+    config_agents['quad_params'] = quad_params
+    
 
 class Agents:
     
@@ -51,25 +59,16 @@ class Agents:
         
         # initite attributes 
         # ------------------
-        self.nAgents    =   nAgents      # number of vehicles
-        self.rVeh    =   rAgents     # physical radius of vehicle
-        self.tactic_type = tactic_type    
-                        # reynolds  = Reynolds flocking + Olfati-Saber obstacle
-                        # saber     = Olfati-Saber flocking
-                        # starling  = swarm like starlings 
-                        # circle    = encirclement
-                        # lemni     = dynamic lemniscates and other closed curves
-                        # pinning   = pinning control
-                        # shep      = shepherding
-        self.dynamics_type = dynamics
-        self.random_seeds = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
+        self.nAgents        = nAgents      # number of vehicles
+        self.rVeh           = rAgents     # physical radius of vehicle
+        self.tactic_type    = tactic_type    
+        self.dynamics_type  = dynamics
+        self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
         
         config_agents.update({'tactic_type': self.tactic_type})
         
         # Vehicles states
         # ---------------
-        #iSpread =  5      # initial spread of vehicles
-        #config_agents.update({'iSpread': iSpread})
         self.state = np.zeros((6,self.nAgents))
         self.state[0,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (y)
@@ -79,11 +78,6 @@ class Agents:
         self.state[5,:] = 0*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
         self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
         self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
-        
-        # Other Parameters
-        # ----------------
-        #self.params = np.zeros((4,self.nVeh))  # store dynamic parameters
-        #self.lemni                   = np.zeros([1, self.nAgents])
         
         # agent dynamics
         # --------------
@@ -207,7 +201,6 @@ class Agents:
 
     # evolve through agent dynamics
     # -----------------------------    
-    #def evolve(self, Controller, t, Ts):
     def evolve(self, cmd, pin_matrix, t, Ts):
         
         # constraints

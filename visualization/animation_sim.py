@@ -15,6 +15,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import animation
+import os
+import json
 
 from data import data_manager
 
@@ -22,12 +24,15 @@ from data import data_manager
 # -------------------------
 plot_quadcopter = 1
 if plot_quadcopter == 1:
-
-    from agents.quadcopter_module import config
-    from agents.quadcopter_module.initQuad import sys_params, init_cmd, init_state
-    
-    configs = config.config()
-    quad_params = sys_params(configs)
+    quad_params = {}
+    with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
+        config_agents = json.load(configs_agents)
+        dxm = config_agents['quad_params']['dxm']
+        dym = config_agents['quad_params']['dym']
+        dzm = config_agents['quad_params']['dzm']
+        quad_params["dxm"] = dxm
+        quad_params["dym"] = dym
+        quad_params["dzm"] = dzm
 
 #%% plotting parameters
 # -------------------

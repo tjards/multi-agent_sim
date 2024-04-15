@@ -137,9 +137,6 @@ def YPRToQuat(r1, r2, r3):
     
     return q
 
-
-
-
 def init_state(params,config):
     
     x0     = 0.  # m

@@ -185,7 +185,6 @@ while round(t,3) < Tf:
       
 #%% Save data
 # -----------
-
 if verbose == 1:
     print('saving data.')
 
@@ -196,10 +195,10 @@ if verbose == 1:
 
 #%% Produce animation of simulation
 # --------------------------------- 
+import visualization.animation_sim as animation_sim
+
 if verbose == 1:
     print('building animation.')
-
-import visualization.animation_sim as animation_sim
 
 # pull out the relevant configs
 with open(os.path.join("config", "config_sim.json"), 'r') as configs_sim:
@@ -213,11 +212,11 @@ ani = animation_sim.animateMe(data_file_path, config_Ts, config_tactic_type)
 
 #%% Produce plots
 # --------------
+import visualization.plot_sim as plot_sim
 
 if verbose == 1:
     print('building plots.')
 
-import visualization.plot_sim as plot_sim
 plot_sim.plotMe(data_file_path)
 
 

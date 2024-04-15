@@ -100,7 +100,6 @@ qMax = 200.0*deg2rad
 #rMax = 50.0*deg2rad
 rMax = 25.0*deg2rad
 
-
 rateMax = np.array([pMax, qMax, rMax])
 
 config_quad_ll_gains = {'quad_low_level_pos_P_gain': list(pos_P_gain),
@@ -117,8 +116,7 @@ def return_gains():
     
     return config_quad_ll_gains
 
-
-## helpers
+# helpers
 # -------
 def mixerFM(quad, thr, moment):
     t = np.array([thr, moment[0], moment[1], moment[2]])
