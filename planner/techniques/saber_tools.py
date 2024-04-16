@@ -12,7 +12,8 @@ Created on Sat Sep 11 10:17:52 2021
 #%% Import stuff
 # ------------
 import numpy as np
-
+import os
+import json
 
 #%% Hyperparameters
 # -----------------
@@ -35,11 +36,32 @@ c1_g = 1                # navigation/target tracking
 c2_g = 2*np.sqrt(1)
 
 # key ranges 
-d       = 2             # lattice scale (Saber flocking, distance between a-agents)
+d       = 5             # lattice scale (Saber flocking, distance between a-agents)
 r       = 2*d           # range at which neighbours can be sensed (Saber flocking, interaction range of a-agents)
 d_prime = 0.5 #0.6*d      # desired separation (Saber flocking, distance between a- and b-agents)
 r_prime = 2*2*d_prime     # range at which obstacles can be sensed, (Saber flocking, interaction range of a- and b-agents)
 
+#%% save configs
+# --------------
+config = {}
+with open(os.path.join("config", "config_planner_saber.json"), 'w') as configs:
+    config['a']         = a
+    config['b']         = b
+    config['c']         = c
+    config['eps']       = eps
+    config['h']         = h
+    config['pi']        = pi
+    config['c1_a']      = c1_a
+    config['c2_a']      = c2_a
+    config['c1_b']      = c1_b
+    config['c2_b']      = c2_b
+    config['c1_g']      = c1_g
+    config['c2_g']      = c2_g
+    config['d']         = d
+    config['d_prime']   = d_prime
+    config['r']         = r
+    config['r_prime']   = r_prime
+    json.dump(config, configs)
 
 #%% Useful functions
 # ------------------

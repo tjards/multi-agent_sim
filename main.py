@@ -30,9 +30,10 @@ dev notes:
      1. DONE - create config files
      2. DONE - create a data file
      3. DONE - plot off data file
-     3. incrementally add History to data
-     4. move learner outside (learning needs to pull from a config file somewhere)
-     5. add a sensors module
+     4. incrementally add History to data
+     5. fix planner/techniques dependencies
+     6. move learner outside (learning needs to pull from a config file somewhere)
+     7. add a sensors module
 
 """
 
@@ -54,7 +55,6 @@ import os
 
 # my packages
 # ----------
-import orchestrator  
 from data import data_manager
 
 # define data path
@@ -98,6 +98,7 @@ with open(os.path.join("config", "config_agents.json"), 'w') as configs_agents:
 
 # instantiate the orchestrator
 # ----------------------------
+import orchestrator  
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
 
 # instantiate the targets

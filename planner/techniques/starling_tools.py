@@ -8,8 +8,11 @@ Created on Thu Sep  9 19:12:59 2021
 This program implements Reynolds Rules of Flocking ("boids")
 
 """
-
+# import stuff
+# ------------
 import numpy as np
+import os
+import json
 
 # Hyperparameters
 # ----------------
@@ -38,6 +41,36 @@ eps         = 0.00001       # to stop divides by zero
 
 sigma       = np.sqrt(np.divide(np.square(r_sep-r_h),4.60517)) #std dev of the gaussion set, such that at that separation zone, near zero
 sigma_sqr   = np.square(sigma)
+
+
+#%save configs
+# --------------
+config = {}
+with open(os.path.join("config", "config_planner_starling.json"), 'w') as configs:
+    config['v_o']       = v_o
+    config['m']         = m
+    config['tau']       = tau
+    config['del_u']     = del_u
+    config['s']         = s
+    config['R_max']     = R_max
+    config['n_c']       = n_c
+    config['r_sep']     = r_sep
+    config['r_h']       = r_h
+    config['r_roost']   = r_roost
+    config['w_s']       = w_s
+    config['w_c']       = w_c
+    config['w_a']       = w_a
+    config['w_roost_h'] = w_roost_h
+    config['w_roost_v'] = w_roost_v
+    config['w_rand']    = w_rand
+    config['C_c']       = C_c
+    config['alpha']     = alpha
+    config['eps']       = eps
+    config['sigma']     = sigma
+    config['sigma_sqr'] = sigma_sqr
+
+    json.dump(config, configs)
+
 
 # Some useful functions
 # ---------------------

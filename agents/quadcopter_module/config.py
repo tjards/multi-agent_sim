@@ -13,7 +13,7 @@ modified for application in this larger project by P. Travis Jardine
 """
 
 import numpy as np
-import utils.quaternions as quat
+#from .utils import quaternions as quat
 #import utils.lemni_tools as lemni_tools
 
 class config():

@@ -9,7 +9,9 @@ This module implements dynamic encirclement
 """
 
 import numpy as np
-from utils import quaternions as quat
+import os
+import json
+from .utils import quaternions as quat
 
 # delta_phi_desired = 2Pi/N
 
@@ -32,13 +34,25 @@ quat_0 = quat.e2q(np.array([0,0,0]))    # if lemniscate, this has to be all zero
 quatern = quat_0                        # uncessary duplicate (legacy code)
 quat_0_ = quat.quatjugate(quat_0)       # used to untwist   
 
+#%% save configs
+# --------------
+config = {}
+with open(os.path.join("config", "config_planner_encirclement.json"), 'w') as configs:
+    config['c1_d']      = c1_d
+    config['c2_d']      = c2_d
+    config['r_max']     = r_max
+    config['r_desired'] = r_desired
+    config['phi_dot_d'] = phi_dot_d
+    config['ref_plane'] = ref_plane
+    config['quat_0']    = list(quat_0)
+    json.dump(config, configs)
+
 #%% Useful functions
 # -------------------
 
 def get_params():
     
     return r_desired, phi_dot_d, ref_plane, quat_0
-
 
 def sigma_1(z):    
     sigma_1 = np.divide(z,np.sqrt(1+z**2))    

@@ -10,12 +10,9 @@ Created on Thu Feb 18 14:20:17 2021
 """
 #%% Import stuff
 import numpy as np
-import pickle 
-import matplotlib.pyplot as plt
-
-# dependencies
-from utils import quaternions as quat
-#from utils import encirclement_tools as encircle_tools
+import os
+import json
+from .utils import quaternions as quat
 from . import encirclement_tools as encircle_tools
 
 #%% Parameters
@@ -43,6 +40,15 @@ r_desired, phi_dot_d, ref_plane, quat_0 = encircle_tools.get_params()
 unit_lem    = np.array([1,0,0]).reshape((3,1))  # sets twist orientation (i.e. orientation of lemniscate along x)
 stretch     = -1*r_desired                      # stretch for lemni type 4 (legacy, remove later)
 quat_0_ = quat.quatjugate(quat_0)               # used to untwist                               
+
+#%% save configs
+# --------------
+config = {}
+with open(os.path.join("config", "config_planner_lemniscate.json"), 'w') as configs:
+    config['c1_d']      = c1_d
+    config['c2_d']      = c2_d
+    #config['unit_lem']  = list(unit_lem)
+    json.dump(config, configs)
 
 #%% Useful functions 
 

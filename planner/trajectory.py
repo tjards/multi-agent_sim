@@ -10,8 +10,17 @@ Created on Sun Apr 14 13:19:27 2024
 # ------------
 import copy
 import numpy as np
-from .techniques import encirclement_tools as encircle_tools
-from .techniques import lemni_tools
+import os
+import json
+
+with open(os.path.join("config", "config_agents.json"), 'r') as tactic_tests:
+    tactic_test = json.load(tactic_tests)
+    tactic_type = tactic_test['tactic_type']
+    
+if tactic_type == 'circle':
+    from .techniques import encirclement_tools as encircle_tools
+elif tactic_type == 'lemni':
+    from .techniques import lemni_tools 
 
 # define the trajectory object
 # ----------------------------
@@ -20,8 +29,6 @@ class Trajectory:
     def __init__(self, tactic_type, targets, nAgents):
         
         self.trajectory = copy.deepcopy(targets)
-        
-        #if tactic_type == 'lemni':
             
         self.lemni = np.zeros([1, nAgents])
     

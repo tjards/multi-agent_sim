@@ -25,6 +25,8 @@ Dev notes:
 import numpy as np
 from scipy.spatial.distance import cdist
 import copy
+import os
+import json
 
 #%% hyperparameters
 # -----------------
@@ -73,6 +75,34 @@ type_avoid = 'ref_point'
 
 # adjustments
 cmd_adjust = 0.02
+
+
+#%% save configs
+# --------------
+config = {}
+with open(os.path.join("config", "config_planner_shepherding.json"), 'w') as configs:
+    config['nShepherds'] = nShepherds
+    config['r_R'] = r_R
+    config['r_O'] = r_O
+    config['r_A'] = r_A
+    config['r_I'] = r_I
+    config['a_R'] = a_R
+    config['a_O'] = a_O
+    config['a_A'] = a_A
+    config['a_I'] = a_I
+    config['a_V'] = a_V
+    config['r_S'] = r_S
+    config['r_Oi']      = r_Oi
+    config['r_Od']      = r_Od
+    config['r_Or']      = r_Or
+    config['a_N']       = a_N
+    config['a_R_s']     = a_R_s
+    config['a_R_s_v']   = a_R_s_v
+    config['a_V_s']     = a_V_s
+    config['type_shepherd'] = type_shepherd
+    config['type_avoid']    = type_avoid
+    config['cmd_adjust']    = cmd_adjust
+    json.dump(config, configs)
 
 #%% obstacle avoidance helpers (shepherds)
 # ---------------------------------------

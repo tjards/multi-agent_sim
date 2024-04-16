@@ -21,7 +21,7 @@ dynamics = 'quadcopter'
 
 nAgents = 5    # number of agents
 rAgents = 0.5   # physics radius of agents 
-iSpread = 10    # initial spread of agents
+iSpread = 5    # initial spread of agents
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 

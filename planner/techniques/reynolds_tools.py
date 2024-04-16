@@ -10,6 +10,8 @@ This program implements Reynolds Rules of Flocking ("boids")
 """
 
 import numpy as np
+import os
+import json
 
 # Hyperparameters
 # ----------------
@@ -35,6 +37,24 @@ agents_min_coh  = 2     # min number of agents
 r               = 10    # range at which neighbours can be sensed  
 r_prime         = 10     # range at which obstacles can be sensed
 
+# save configs
+# --------------
+config = {}
+with open(os.path.join("config", "config_planner_reynolds.json"), 'w') as configs:
+    config['escort']    = escort
+    config['cd_1']      = cd_1
+    config['cd_2']      = cd_2
+    config['cd_3']      = cd_3
+    config['cd_track']  = cd_track
+    config['maxu']              = maxu
+    config['maxv']              = maxv
+    config['recovery']          = recovery
+    config['far_away']          = far_away
+    config['mode_min_coh']      = mode_min_coh
+    config['agents_min_coh']    = agents_min_coh
+    config['r']                 = r
+    config['r_prime']           = r_prime
+    json.dump(config, configs)
 
 # Some useful functions
 # ---------------------

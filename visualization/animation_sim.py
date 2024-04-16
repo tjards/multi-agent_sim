@@ -22,7 +22,14 @@ from data import data_manager
 
 # get quadcopter parameters
 # -------------------------
-plot_quadcopter = 1
+
+with open(os.path.join("config", "config_agents.json"), 'r') as quad_tests:
+    quad_test = json.load(quad_tests)
+    if quad_test['dynamics'] ==' quadcopter':
+        plot_quadcopter = 1
+    else:
+        plot_quadcopter = 0
+        
 if plot_quadcopter == 1:
     quad_params = {}
     with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:

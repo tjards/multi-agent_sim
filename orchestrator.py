@@ -16,19 +16,44 @@ Created on Mon Jan  4 12:45:55 2021
 # --------------
 import numpy as np
 import copy
+import os
+import json
 
-from planner.techniques import encirclement_tools as encircle_tools
-from planner.techniques import lemni_tools 
-from planner.techniques import reynolds_tools
-from planner.techniques import saber_tools
-from planner.techniques import starling_tools
-from planner.techniques import shepherding as shep
-from planner.techniques import pinning_RL_tools as pinning_tools
+with open(os.path.join("config", "config_agents.json"), 'r') as tactic_tests:
+    tactic_test = json.load(tactic_tests)
+    tactic_type = tactic_test['tactic_type']
+
+if tactic_type == 'circle':
+    from planner.techniques import encirclement_tools as encircle_tools
+    from planner.techniques import saber_tools
+elif tactic_type == 'lemni':
+    from planner.techniques import lemni_tools
+    from planner.techniques import saber_tools
+elif tactic_type == 'reynolds':
+    from planner.techniques import reynolds_tools
+    from planner.techniques import saber_tools
+elif tactic_type == 'saber':
+    from planner.techniques import saber_tools
+elif tactic_type == 'starling':
+    from planner.techniques import starling_tools
+elif tactic_type == 'shep':
+    from planner.techniques import shepherding as shep
+elif tactic_type == 'pinning':
+    from planner.techniques import pinning_RL_tools as pinning_tools
+
+# from planner.techniques import encirclement_tools as encircle_tools
+# from planner.techniques import lemni_tools 
+# from planner.techniques import reynolds_tools
+# from planner.techniques import saber_tools
+# from planner.techniques import starling_tools
+# from planner.techniques import shepherding as shep
+# from planner.techniques import pinning_RL_tools as pinning_tools
 
 
 #%% parameters
 # ------------
 
+# this needs to pull from SOMEWHERE
 # do we want to update the lattice parameters at this level?
 hetero_lattice = 1  # nominally, keep at 1 for now 
 
