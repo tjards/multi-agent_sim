@@ -27,13 +27,6 @@ Lasted updated on Fri Feb 02 16:23 2024
 
 dev notes:
     
-     1. DONE - create config files
-     2. DONE - create a data file
-     3. DONE - plot off data file
-     4. incrementally add History to data
-     5. fix planner/techniques dependencies
-     6. move learner outside (learning needs to pull from a config file somewhere)
-     7. add a sensors module
 
 """
 
@@ -64,13 +57,13 @@ data_file_path = os.path.join(data_directory, "data.h5")
 #np.random.seed(0)
 
 Ti      = 0       # initial time
-Tf      = 500      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 10      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
-
 system   = 'swarm' 
 strategy = 'pinning'
+
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
     # starling  = swarm like starlings 
@@ -82,7 +75,8 @@ strategy = 'pinning'
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
 # save to config file
-config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1}
+# -------------------
+config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1, 'system': system, 'strategy': strategy}
 with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
     json.dump(config_sim, configs_sim)
 
@@ -108,9 +102,6 @@ if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
          Controller.Learners['learning_lattice'] = Learners['learning_lattice']
      
      
-     
-     
-
 #%% initialize the data store
 # ---------------------------
 from data import data_manager
@@ -120,8 +111,6 @@ Database = data_manager.History(Agents, Targets, Obstacles, Controller, Trajecto
 # ----------------------
 t = Ti
 i = 1
-
-
 
 if verbose == 1:
     print('starting simulation with ',Agents.nAgents,' agents.')
@@ -198,7 +187,7 @@ with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
     config_agents = json.load(configs_agents)
     config_tactic_type = config_agents['tactic_type']
 
-#ani = animation_sim.animateMe(data_file_path, config_Ts, config_tactic_type)
+ani = animation_sim.animateMe(data_file_path, config_Ts, config_tactic_type)
 
 #%% Produce plots
 # --------------

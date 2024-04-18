@@ -38,8 +38,8 @@ states_grid     = 1         # represent states in Q-table as a grid? 1 = yes, 0 
 
 #%% data saving
 # -------------
-data_directory = 'Data'
-file_path = os.path.join(data_directory, "data_Q.json")
+data_directory = 'data'
+file_path = os.path.join(data_directory, "data_Q_learning.json")
 
 # converts to dict to json'able
 def convert_to_json_serializable(obj):

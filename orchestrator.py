@@ -19,10 +19,12 @@ import copy
 import os
 import json
 
-with open(os.path.join("config", "config_agents.json"), 'r') as tactic_tests:
+# read the configs
+with open(os.path.join("config", "config_sim.json"), 'r') as tactic_tests:
     tactic_test = json.load(tactic_tests)
-    tactic_type = tactic_test['tactic_type']
+    tactic_type = tactic_test['strategy']
 
+# load the modules, as appropriate
 if tactic_type == 'circle':
     from planner.techniques import encirclement_tools as encircle_tools
     from planner.techniques import saber_tools
@@ -40,18 +42,12 @@ elif tactic_type == 'shep':
     from planner.techniques import shepherding as shep
 elif tactic_type == 'pinning':
     from planner.techniques import pinning_RL_tools as pinning_tools
+    with open(os.path.join("config", "config_planner_pinning.json"), 'r') as planner_pinning_tests:
+        planner_configs = json.load(planner_pinning_tests)
+        lattice_consensus = planner_configs['hetero_lattice']
             
-
-#%% parameters
-# ------------
-
-# this needs to pull from SOMEWHERE
-# do we want to update the lattice parameters at this level?
-hetero_lattice = 1  # nominally, keep at 1 for now 
-
-#%% Tactic Command Equations 
-# --------------------------
-
+#%% Build the system
+# ------------------
 def build_system(system, strategy):
     
     if system == 'swarm':
@@ -62,12 +58,7 @@ def build_system(system, strategy):
         Agents = agents.Agents(strategy)
         with open(os.path.join("config", "config_agents.json"), 'w') as configs_agents:
             json.dump(Agents.config_agents, configs_agents)
-    
-        # # instantiate the orchestrator
-        # # ----------------------------
-        # import orchestrator  
-        # Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
-    
+        
         # instantiate the targets
         # -----------------------
         import targets.targets as targets
@@ -87,23 +78,28 @@ def build_system(system, strategy):
         with open(os.path.join("config", "config_obstacles.json"), 'w') as configs_obstacles:
             json.dump(Obstacles.config_obstacles, configs_obstacles)
             
-            
         # instatiate any learning
         # -----------------------
         Learners = {}
+        
+        # pinning control case
         if tactic_type == 'pinning':
             with open(os.path.join("config", "config_planner_pinning.json"), 'r') as planner_pinning_tests:
                 planner_configs = json.load(planner_pinning_tests)
+                
+                # need one learner to achieve consensus on lattice size
                 lattice_consensus = planner_configs['hetero_lattice']
                 if lattice_consensus == 1:
                     import learner.consensus_lattice as consensus_lattice
                     Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['directional'], planner_configs['d_min'], planner_configs['d'])
+                    
+                    #LOAD
                     Learners['consensus_lattice'] = Consensuser
                     
-                    # we can also learn the lattice size
+                    # we can also tune these lattice sizes (optional)
                     lattice_learner = planner_configs['learning']
                     if lattice_learner == 1:
-                        import learner.RL_tools as learning_lattice
+                        import learner.QL_learning_lattice as learning_lattice
                         
                         # initiate the learning agent
                         Learning_agent = learning_lattice.q_learning_agent(Consensuser.params_n)
@@ -114,14 +110,15 @@ def build_system(system, strategy):
                         
                         # overide the module-level parameter selection
                         for i in range(Consensuser.d_weighted.shape[1]):
-                     
                             Learning_agent.match_parameters_i(Consensuser, i)
                             
+                        # LOAD    
                         Learners['learning_lattice'] = Learning_agent
-                
                 
     return Agents, Targets, Trajectory, Obstacles, Learners
 
+#%% Master controller
+# -------------------
 class Controller:
     
     #def __init__(self, Agents):
@@ -139,7 +136,7 @@ class Controller:
         self.counter = 0                                        # controller counter (signals when to select pins)
         self.params = np.zeros((4,nAgents))                 # store dynamic parameters
         self.lattice = np.zeros((nAgents,nAgents))      # stores lattice parameters
-
+        
         # initialize pin and components
         self.pin_matrix = np.zeros((nAgents,nAgents))
         self.components = []
@@ -152,6 +149,12 @@ class Controller:
     
             #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
             self.pin_matrix, self.components = np.ones((nAgents,nAgents)), list(range(0,nAgents))
+            d_init = pinning_tools.return_lattice_param()
+            i = 0
+            while (i < nAgents):
+                self.lattice[i,:] = d_init
+                i+=1
+            
             #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
    
     # define commands
@@ -182,7 +185,12 @@ class Controller:
             # only update the pins at Ts/100 (tunable)
             if self.counter == 100:
                 self.counter = 0
-                mykwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
+                if 'consensus_lattice' in self.Learners:
+                    mykwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
+                else:
+                    mykwargs_cmd['d_weighted'] = self.lattice # redundant below
+                    
+                    
                 self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **mykwargs_cmd)
                     
                 # pass pin_matrix up to agent as well
@@ -265,13 +273,12 @@ class Controller:
                     # and learning these?
                     if 'learning_lattice' in self.Learners:
                         my_kwargs['learning_lattice'] = self.Learners['learning_lattice']
-                                        
-                    
+                                            
                 # compute command
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **my_kwargs)
                 
                 # update the lattice parameters (needed for plots)
-                if hetero_lattice == 1:
+                if 'consensus_lattice' in self.Learners:
                     #self.lattice = pinning_tools.get_lattices()
                     self.lattice = self.Learners['consensus_lattice'].d_weighted
                 
