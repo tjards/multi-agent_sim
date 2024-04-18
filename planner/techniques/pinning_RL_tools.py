@@ -72,7 +72,7 @@ from .utils import conic_tools as sensor
 
 # learning parameters
 hetero_lattice = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
-learning = 0           # do we want to learn lattice size? 1 = yes (QL), 0 = no
+learning = 1           # do we want to learn lattice size? 1 = yes (QL), 0 = no
 
 # other parameters
 directional = 0         # do I care about direction for sensor range? 1 = yes, 0 = no
@@ -135,61 +135,61 @@ with open(os.path.join("config", "config_planner_pinning.json"), 'w') as configs
 
 
 #%% convenient place to store parameters
-class parameterizer:
+# class parameterizer:
     
-    def __init__(self, params_n, hetero_lattice):
+#     def __init__(self, params_n, hetero_lattice):
         
-        # select parameter ranges
-        if hetero_lattice == 1:
-            self.params_range = [d_min,d]
-        else:
-            self.params_range = [d,d]
+#         # select parameter ranges
+#         if hetero_lattice == 1:
+#             self.params_range = [d_min,d]
+#         else:
+#             self.params_range = [d,d]
         
-        # parameters
-        self.params_n   = params_n  # number of parameters
-        #self.params     = [random.uniform(self.params_range[0], self.params_range[1]) for _ in range(self.params_n)] # options for these parameters
-        self.params     = [round(random.uniform(self.params_range[0], self.params_range[1]),1) for _ in range(self.params_n)] # options for these parameters
-        self.alpha      = 0.6 #0.5                 # (0,1)
-        self.beta       = 1-self.alpha        # (0,1) # assume all equal now, but this can vary per agent (maybe, just touching)
+#         # parameters
+#         self.params_n   = params_n  # number of parameters
+#         #self.params     = [random.uniform(self.params_range[0], self.params_range[1]) for _ in range(self.params_n)] # options for these parameters
+#         self.params     = [round(random.uniform(self.params_range[0], self.params_range[1]),1) for _ in range(self.params_n)] # options for these parameters
+#         self.alpha      = 0.6 #0.5                 # (0,1)
+#         self.beta       = 1-self.alpha        # (0,1) # assume all equal now, but this can vary per agent (maybe, just touching)
         
-        # store the parameters
-        self.d_weighted  = np.zeros((len(self.params),len(self.params)))   
-        i = 0
-        while (i < len(self.params)):
-            self.d_weighted[i,:] = self.params[i]
-            i+=1
+#         # store the parameters
+#         self.d_weighted  = np.zeros((len(self.params),len(self.params)))   
+#         i = 0
+#         while (i < len(self.params)):
+#             self.d_weighted[i,:] = self.params[i]
+#             i+=1
         
-        # store whether agents are in proximity to eachother (1 =  yes, 0 = no)
-        self.prox_i = np.zeros((len(self.params),len(self.params)))
+#         # store whether agents are in proximity to eachother (1 =  yes, 0 = no)
+#         self.prox_i = np.zeros((len(self.params),len(self.params)))
         
-        if directional:
-            self.headings = np.zeros((1,self.params_n))
+#         if directional:
+#             self.headings = np.zeros((1,self.params_n))
     
-    def update(self, k_node, k_neigh):
+#     def update(self, k_node, k_neigh):
         
-        #print('agent ', k_node,' d from agent ', k_neigh, ': ', d )
-        self.d_weighted[k_node, k_neigh] = self.alpha * self.d_weighted[k_node, k_neigh]
-        self.d_weighted[k_node, k_neigh] += (self.beta * self.d_weighted[k_neigh, k_node])
-        #print("Agent ", k_node, "/ ", k_neigh, " param: ", self.d_weighted[k_node, k_neigh])
+#         #print('agent ', k_node,' d from agent ', k_neigh, ': ', d )
+#         self.d_weighted[k_node, k_neigh] = self.alpha * self.d_weighted[k_node, k_neigh]
+#         self.d_weighted[k_node, k_neigh] += (self.beta * self.d_weighted[k_neigh, k_node])
+#         #print("Agent ", k_node, "/ ", k_neigh, " param: ", self.d_weighted[k_node, k_neigh])
 
     
 #%% instatiate class for parameters
-REMOVE_paramClass = parameterizer(params_n, hetero_lattice)
+# REMOVE_paramClass = parameterizer(params_n, hetero_lattice)
 
-# if learning, align parameters with controller
-if learning == 1:
+# # if learning, align parameters with controller
+# if learning == 1:
     
-    learning_agent = RL.q_learning_agent(REMOVE_paramClass.params_n)
+#     learning_agent = RL.q_learning_agent(REMOVE_paramClass.params_n)
     
-    # ensure parameters match controller
-    if REMOVE_paramClass.d_weighted.shape[1] != len(learning_agent.action):
-        raise ValueError("Error! Mis-match in dimensions of controller and RL parameters")
+#     # ensure parameters match controller
+#     if REMOVE_paramClass.d_weighted.shape[1] != len(learning_agent.action):
+#         raise ValueError("Error! Mis-match in dimensions of controller and RL parameters")
     
-    # overide the module-level parameter selection
-    for i in range(REMOVE_paramClass.d_weighted.shape[1]):
+#     # overide the module-level parameter selection
+#     for i in range(REMOVE_paramClass.d_weighted.shape[1]):
         
-        # TRAVIS - I commented this out just to get consensus_lattice working;you MUST bring this back for RL (it loaded RL values into consensuser)
-        learning_agent.match_parameters_i(REMOVE_paramClass, i)
+#         # TRAVIS - I commented this out just to get consensus_lattice working;you MUST bring this back for RL (it loaded RL values into consensuser)
+#         learning_agent.match_parameters_i(REMOVE_paramClass, i)
 
 #%% Useful functions
 # ----------------
@@ -249,6 +249,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
     
     headings            = kwargs.get('headings')
     paramClass          = kwargs.get('consensus_lattice') # rename this object 
+    learning_agent      = kwargs.get('learning_lattice')
     
     if directional and headings is None:
         print('Warning: no heading information available in directional pinnning mode.')

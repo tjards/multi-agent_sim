@@ -99,7 +99,26 @@ def build_system(system, strategy):
                     import learner.consensus_lattice as consensus_lattice
                     Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['directional'], planner_configs['d_min'], planner_configs['d'])
                     Learners['consensus_lattice'] = Consensuser
-                    #print('load consensus learner here')
+                    
+                    # we can also learn the lattice size
+                    lattice_learner = planner_configs['learning']
+                    if lattice_learner == 1:
+                        import learner.RL_tools as learning_lattice
+                        
+                        # initiate the learning agent
+                        Learning_agent = learning_lattice.q_learning_agent(Consensuser.params_n)
+                        
+                        # ensure parameters match controller
+                        if Consensuser.d_weighted.shape[1] != len(Learning_agent.action):
+                            raise ValueError("Error! Mis-match in dimensions of controller and RL parameters")
+                        
+                        # overide the module-level parameter selection
+                        for i in range(Consensuser.d_weighted.shape[1]):
+                     
+                            Learning_agent.match_parameters_i(Consensuser, i)
+                            
+                        Learners['learning_lattice'] = Learning_agent
+                
                 
     return Agents, Targets, Trajectory, Obstacles, Learners
 
@@ -243,6 +262,9 @@ class Controller:
                 # if we are using consensus lattice
                 if 'consensus_lattice' in self.Learners:
                     my_kwargs['consensus_lattice'] = self.Learners['consensus_lattice']
+                    # and learning these?
+                    if 'learning_lattice' in self.Learners:
+                        my_kwargs['learning_lattice'] = self.Learners['learning_lattice']
                                         
                     
                 # compute command

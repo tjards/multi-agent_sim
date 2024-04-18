@@ -26,7 +26,7 @@ class Consensuser:
         self.params_n   = params_n  # number of parameters
         #self.params     = [random.uniform(self.params_range[0], self.params_range[1]) for _ in range(self.params_n)] # options for these parameters
         self.params     = [round(random.uniform(self.params_range[0], self.params_range[1]),1) for _ in range(self.params_n)] # options for these parameters
-        self.alpha      = 0.2 #0.5                 # (0,1)
+        self.alpha      = 0.6 #0.5                 # (0,1)
         self.beta       = 1-self.alpha        # (0,1) # assume all equal now, but this can vary per agent (maybe, just touching)
         
         # store the parameters
