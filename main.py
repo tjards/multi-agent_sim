@@ -53,10 +53,6 @@ import json
 import h5py
 import os
 
-# my packages
-# ----------
-from data import data_manager
-
 # define data path
 # ----------------
 data_directory = 'data'
@@ -68,11 +64,12 @@ data_file_path = os.path.join(data_directory, "data.h5")
 #np.random.seed(0)
 
 Ti      = 0       # initial time
-Tf      = 5      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 10      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 
+system   = 'swarm' 
 strategy = 'pinning'
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -89,42 +86,26 @@ config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1}
 with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
     json.dump(config_sim, configs_sim)
 
-#%% instantiate the agents
-# ------------------------
-import agents.agents as agents
-Agents = agents.Agents(strategy)
-with open(os.path.join("config", "config_agents.json"), 'w') as configs_agents:
-    json.dump(Agents.config_agents, configs_agents)
-
-# instantiate the orchestrator
-# ----------------------------
-import orchestrator  
+#%% build the system
+# ------------------
+import orchestrator
+Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy)
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
 
-# instantiate the targets
-# -----------------------
-import targets.targets as targets
-Targets = targets.Targets(Agents.nAgents)
-with open(os.path.join("config", "config_targets.json"), 'w') as configs_targets:
-    json.dump(Targets.config_targets, configs_targets)
+# pull out constants
+rVeh        = Agents.rVeh
+tactic_type = Agents.tactic_type
+dynamics    = Agents.config_agents['dynamics']
 
-# instantiate the planner
-# -----------------------
-import planner.trajectory as trajectory
-Trajectory = trajectory.Trajectory(Agents.tactic_type, Targets.targets, Agents.nAgents)
+Controller.Learners = {}
+# merge learning with controllers (add this to the orchestrator later)
+if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
+    
+     Controller.Learners['consensus_lattice'] = Learners['consensus_lattice']
 
-# instantiate the obstacles 
-# -------------------------
-import obstacles.obstacles as obstacles
-Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets)
-with open(os.path.join("config", "config_obstacles.json"), 'w') as configs_obstacles:
-    json.dump(Obstacles.config_obstacles, configs_obstacles)
-
-# new: move the learning agent out here
-#import learner.RL_tools as RL
-
-# store the data
-# --------------
+#%% initialize the data store
+# ---------------------------
+from data import data_manager
 Database = data_manager.History(Agents, Targets, Obstacles, Controller, Trajectory, Ts, Tf, Ti, f)
 
 #%% Run Simulation
@@ -132,10 +113,7 @@ Database = data_manager.History(Agents, Targets, Obstacles, Controller, Trajecto
 t = Ti
 i = 1
 
-# pull out constants
-rVeh        = Agents.rVeh
-tactic_type = Agents.tactic_type
-dynamics    = Agents.config_agents['dynamics']
+
 
 if verbose == 1:
     print('starting simulation with ',Agents.nAgents,' agents.')
@@ -181,6 +159,9 @@ while round(t,3) < Tf:
     # --------------------------------  
     if tactic_type == 'pinning' and dynamics == 'quadcopter':
         my_kwargs['quads_headings'] = Agents.quads_headings
+        
+    #if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
+    #    my_kwargs['Consensuser'] = Learners['consensus_lattice']
         
     Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
       

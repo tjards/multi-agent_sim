@@ -40,15 +40,7 @@ elif tactic_type == 'shep':
     from planner.techniques import shepherding as shep
 elif tactic_type == 'pinning':
     from planner.techniques import pinning_RL_tools as pinning_tools
-
-# from planner.techniques import encirclement_tools as encircle_tools
-# from planner.techniques import lemni_tools 
-# from planner.techniques import reynolds_tools
-# from planner.techniques import saber_tools
-# from planner.techniques import starling_tools
-# from planner.techniques import shepherding as shep
-# from planner.techniques import pinning_RL_tools as pinning_tools
-
+            
 
 #%% parameters
 # ------------
@@ -59,6 +51,57 @@ hetero_lattice = 1  # nominally, keep at 1 for now
 
 #%% Tactic Command Equations 
 # --------------------------
+
+def build_system(system, strategy):
+    
+    if system == 'swarm':
+    
+        # instantiate the agents
+        # ------------------------
+        import agents.agents as agents
+        Agents = agents.Agents(strategy)
+        with open(os.path.join("config", "config_agents.json"), 'w') as configs_agents:
+            json.dump(Agents.config_agents, configs_agents)
+    
+        # # instantiate the orchestrator
+        # # ----------------------------
+        # import orchestrator  
+        # Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
+    
+        # instantiate the targets
+        # -----------------------
+        import targets.targets as targets
+        Targets = targets.Targets(Agents.nAgents)
+        with open(os.path.join("config", "config_targets.json"), 'w') as configs_targets:
+            json.dump(Targets.config_targets, configs_targets)
+    
+        # instantiate the planner
+        # -----------------------
+        import planner.trajectory as trajectory
+        Trajectory = trajectory.Trajectory(Agents.tactic_type, Targets.targets, Agents.nAgents)
+    
+        # instantiate the obstacles 
+        # -------------------------
+        import obstacles.obstacles as obstacles
+        Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets)
+        with open(os.path.join("config", "config_obstacles.json"), 'w') as configs_obstacles:
+            json.dump(Obstacles.config_obstacles, configs_obstacles)
+            
+            
+        # instatiate any learning
+        # -----------------------
+        Learners = {}
+        if tactic_type == 'pinning':
+            with open(os.path.join("config", "config_planner_pinning.json"), 'r') as planner_pinning_tests:
+                planner_configs = json.load(planner_pinning_tests)
+                lattice_consensus = planner_configs['hetero_lattice']
+                if lattice_consensus == 1:
+                    import learner.consensus_lattice as consensus_lattice
+                    Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['directional'], planner_configs['d_min'], planner_configs['d'])
+                    Learners['consensus_lattice'] = Consensuser
+                    #print('load consensus learner here')
+                
+    return Agents, Targets, Trajectory, Obstacles, Learners
 
 class Controller:
     
@@ -82,12 +125,14 @@ class Controller:
         self.pin_matrix = np.zeros((nAgents,nAgents))
         self.components = []
         
+        # accomplish this in the orchestrator later
         if tactic_type == 'shep':
             self.shepherdClass = shep.Shepherding(state)
         
         if tactic_type == 'pinning':
     
-            self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
+            #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
+            self.pin_matrix, self.components = np.ones((nAgents,nAgents)), list(range(0,nAgents))
             #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
    
     # define commands
@@ -118,7 +163,8 @@ class Controller:
             # only update the pins at Ts/100 (tunable)
             if self.counter == 100:
                 self.counter = 0
-                self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
+                mykwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
+                self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **mykwargs_cmd)
                     
                 # pass pin_matrix up to agent as well
                 #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
@@ -192,14 +238,22 @@ class Controller:
                 my_kwargs['pin_matrix'] = self.pin_matrix
                 if dynamics_type == 'quadcopter':
                     quads_headings = mykwargs_cmd['quads_headings']
-                    my_kwargs['headings'] = quads_headings                    
+                    my_kwargs['headings'] = quads_headings
+
+                # if we are using consensus lattice
+                if 'consensus_lattice' in self.Learners:
+                    my_kwargs['consensus_lattice'] = self.Learners['consensus_lattice']
+                                        
                     
                 # compute command
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **my_kwargs)
                 
                 # update the lattice parameters (needed for plots)
                 if hetero_lattice == 1:
-                    self.lattice = pinning_tools.get_lattices()
+                    #self.lattice = pinning_tools.get_lattices()
+                    self.lattice = self.Learners['consensus_lattice'].d_weighted
+                
+                #print(self.lattice)
                 
             # Shepherding
             # ------------

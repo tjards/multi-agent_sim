@@ -62,27 +62,32 @@ Dev notes:
 # --------------
 import numpy as np
 import random
-from utils import graph_tools as grph
-from utils import conic_tools as sensor
+import os
+import json
+from .utils import graph_tools as grph
+from .utils import conic_tools as sensor
 
 #%% simulation setup
 # ------------------
 
-# do we want to learn lattice size?
-learning = 0        # 1 = yes, 0 = no
+# learning parameters
+hetero_lattice = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
+learning = 0           # do we want to learn lattice size? 1 = yes (QL), 0 = no
+
+# other parameters
+directional = 0         # do I care about direction for sensor range? 1 = yes, 0 = no
+
 if learning == 1:
     from learner import RL_tools as RL
     
-# do I care about direction for sensor range? 
-directional = 0     # 1 = yes, 0 = no
 if directional == 1:
-    from utils import graph_tools_directional as grph_dir
-
+    from .utils import graph_tools_directional as grph_dir
+    
 #%% Hyperparameters
 # -----------------
 
 # key ranges 
-d                   = 5            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
+d                   = 15            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
 r                   = 1.3*d         # range at which neighbours can be sensed 
 d_prime             = 1             # desired separation from obstacles  
 r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
@@ -91,7 +96,7 @@ rg                  = d + 0.5       # range for graph analysis (nominally, d + s
 sensor_aperature    = 180           # used if directional == 1, wide angle = 100
 
 # other options
-hetero_lattice = 0     # support heterogeneous lattice size? 0 = no, 1 = yes
+#hetero_lattice = 0     # support heterogeneous lattice size? 0 = no, 1 = yes
 params_n       = 5     # this must match the number of agents (pull automatically later)
 
 # gains
@@ -116,6 +121,18 @@ c   = np.divide(np.abs(a-b),np.sqrt(4*a*b))
 eps = 0.1
 h   = 0.2 # 0.2 for lattice, for obs this should be 0.9
 pi  = 3.141592653589793
+
+#%% save configs
+# --------------
+config = {}
+with open(os.path.join("config", "config_planner_pinning.json"), 'w') as configs:
+    config['hetero_lattice']      = hetero_lattice
+    config['learning']            = learning
+    config['directional']         = directional
+    config['d']                   = d
+    config['d_min']               = d_min
+    json.dump(config, configs)
+
 
 #%% convenient place to store parameters
 class parameterizer:
@@ -148,8 +165,6 @@ class parameterizer:
         if directional:
             self.headings = np.zeros((1,self.params_n))
     
-    
-    
     def update(self, k_node, k_neigh):
         
         #print('agent ', k_node,' d from agent ', k_neigh, ': ', d )
@@ -159,21 +174,22 @@ class parameterizer:
 
     
 #%% instatiate class for parameters
-paramClass = parameterizer(params_n, hetero_lattice)
+REMOVE_paramClass = parameterizer(params_n, hetero_lattice)
 
 # if learning, align parameters with controller
 if learning == 1:
     
-    learning_agent = RL.q_learning_agent(paramClass.params_n)
+    learning_agent = RL.q_learning_agent(REMOVE_paramClass.params_n)
     
     # ensure parameters match controller
-    if paramClass.d_weighted.shape[1] != len(learning_agent.action):
+    if REMOVE_paramClass.d_weighted.shape[1] != len(learning_agent.action):
         raise ValueError("Error! Mis-match in dimensions of controller and RL parameters")
     
     # overide the module-level parameter selection
-    for i in range(paramClass.d_weighted.shape[1]):
+    for i in range(REMOVE_paramClass.d_weighted.shape[1]):
         
-        learning_agent.match_parameters_i(paramClass, i)
+        # TRAVIS - I commented this out just to get consensus_lattice working;you MUST bring this back for RL (it loaded RL values into consensuser)
+        learning_agent.match_parameters_i(REMOVE_paramClass, i)
 
 #%% Useful functions
 # ----------------
@@ -224,14 +240,15 @@ def phi_b(q_i, q_ik, d_b):
 #%% Control systems functions
 # -------------------------
 
-def get_lattices():
-        
-    return paramClass.d_weighted
+#def get_lattices():
+#        
+#    return paramClass.d_weighted
 
 # form the lattice
 def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **kwargs):
     
     headings            = kwargs.get('headings')
+    paramClass          = kwargs.get('consensus_lattice') # rename this object 
     
     if directional and headings is None:
         print('Warning: no heading information available in directional pinnning mode.')
@@ -430,8 +447,9 @@ def select_pins_random(states_q):
     return pin_matrix
 
 # select by components
-def select_pins_components(states_q, states_p):
-        
+#def select_pins_components(states_q, states_p):
+def select_pins_components(states_q, states_p, **kwargs):
+    
     # initialize the pins
     pin_matrix = np.zeros((states_q.shape[1],states_q.shape[1]))
     
@@ -440,7 +458,10 @@ def select_pins_components(states_q, states_p):
         A = grph.adj_matrix(states_q, rg)
         components = grph.find_connected_components_A(A)
     else:
-        A = grph_dir.adj_matrix_bearing(states_q,states_p,paramClass.d_weighted, sensor_aperature, paramClass.headings)
+        d_weighted  = kwargs['d_weighted']
+        headings    = kwargs['quads_headings']
+        #A = grph_dir.adj_matrix_bearing(states_q,states_p,paramClass.d_weighted, sensor_aperature, paramClass.headings)
+        A = grph_dir.adj_matrix_bearing(states_q,states_p,d_weighted, sensor_aperature, headings)
         components = grph_dir.find_one_way_connected_components_deg(A)
     
     # Gramian method
