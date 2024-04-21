@@ -54,10 +54,10 @@ data_file_path = os.path.join(data_directory, "data.h5")
 
 #%% Setup Simulation
 # ------------------
-#np.random.seed(0)
+np.random.seed(0)
 
 Ti      = 0       # initial time
-Tf      = 5      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 2000      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
@@ -85,21 +85,23 @@ with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
 import orchestrator
 Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy)
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
+Controller.learning_agents(Agents.tactic_type, Learners)
+
 
 # pull out constants
 rVeh        = Agents.rVeh
 tactic_type = Agents.tactic_type
 dynamics    = Agents.config_agents['dynamics']
 
-Controller.Learners = {}
-# merge learning with controllers (add this to the orchestrator later)
-if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
+# Controller.Learners = {}
+# # merge learning with controllers (add this to the orchestrator later)
+# if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
     
-     Controller.Learners['consensus_lattice'] = Learners['consensus_lattice']
+#      Controller.Learners['consensus_lattice'] = Learners['consensus_lattice']
      
-     if 'learning_lattice' in Learners:
+#      if 'learning_lattice' in Learners:
          
-         Controller.Learners['learning_lattice'] = Learners['learning_lattice']
+#          Controller.Learners['learning_lattice'] = Learners['learning_lattice']
      
      
 #%% initialize the data store
@@ -172,6 +174,17 @@ data_manager.save_data_HDF5(Database, data_file_path)
 
 if verbose == 1:
     print('done.')
+    
+    
+#%% Produce plots
+# --------------
+import visualization.plot_sim as plot_sim
+
+if verbose == 1:
+    print('building plots.')
+
+plot_sim.plotMe(data_file_path)
+
 
 #%% Produce animation of simulation
 # --------------------------------- 
@@ -190,14 +203,6 @@ with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
 
 ani = animation_sim.animateMe(data_file_path, config_Ts, config_tactic_type)
 
-#%% Produce plots
-# --------------
-import visualization.plot_sim as plot_sim
-
-if verbose == 1:
-    print('building plots.')
-
-plot_sim.plotMe(data_file_path)
 
 
 

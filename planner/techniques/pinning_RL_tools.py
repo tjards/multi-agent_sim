@@ -72,10 +72,10 @@ from .utils import conic_tools as sensor
 
 # learning parameters
 hetero_lattice  = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
-learning        = 0           # do we want to learn lattice size? 1 = yes (QL), 0 = no
+learning        = 1           # do we want to learn lattice size? 1 = yes (QL), 0 = no
 
 # other parameters
-directional = 1         # do I care about direction for sensor range? 1 = yes, 0 = no
+directional = 0         # do I care about direction for sensor range? 1 = yes, 0 = no
     
 if directional == 1:
     from .utils import graph_tools_directional as grph_dir
@@ -278,6 +278,10 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
         if learning_agent.time_count_i[k_node] > learning_agent.time_horizon and np.max(abs(states_p[:,k_node]))<learning_agent.time_horizon_v:
             
             # learn
+            #if landmarks.shape[1] == 0:
+            #    landmarks = np.append(landmarks,np.zeros((4,1))).reshape(4,-1)
+            #    print('no landmarks detected, using origin')
+                
             
             # update the state (do in blocks of 10)
             learning_agent.state = np.around(states_q[0:3,k_node]-targets[0:3,k_node],-1)

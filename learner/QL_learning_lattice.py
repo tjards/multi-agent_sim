@@ -33,7 +33,7 @@ from scipy.spatial import distance
 options_range   = [4, 15]    # range of action options [min, max]
 nOptions        = 2         # number of action options (evenly spaced between [min, max])
 time_horizon    = 120       # how long to apply action and await reward (eg., 1 sec/0.02 sample per sec = 50)
-time_horizon_v  = 0.2       # optional, max speed constraint to permit new action (higher makes more stable)
+time_horizon_v  = 0.1       # optional, max speed constraint to permit new action (higher makes more stable)
 states_grid     = 1         # represent states in Q-table as a grid? 1 = yes, 0 = no
 
 #%% data saving
@@ -66,11 +66,11 @@ class q_learning_agent:
         self.action_options = {state: np.linspace(options_range[0], options_range[1], self.nOptions) for state in range(self.nAgents)}
         #self.explore_rate   = 1     # [0,1], 1 = always learn, 0 = always exploit best option
         self.explore_rate = 1*np.ones((nAgents)) # now each agent has its own
-        self.learn_rate     = 0.4   # [0,1]
+        self.learn_rate     = 0.3   # [0,1]
         self.discount       = 0.2 #0.8   # balance immediate/future rewards, (gamma): 0.8 to 0.99
         self.time_horizon   = time_horizon
         self.time_horizon_v = time_horizon_v
-        self.explore_exp_decay = 0.03 # [0.01 (slower decay), 0.1 (faster decay)]: a, where et = e0 * e^{-at}
+        self.explore_exp_decay = 0.05 #0.03 # [0.01 (slower decay), 0.1 (faster decay)]: a, where et = e0 * e^{-at}
         
         # initialize timers (global)
         self.time_count     = 0     # initialize 

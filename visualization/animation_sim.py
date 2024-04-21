@@ -43,7 +43,7 @@ if plot_quadcopter == 1:
 
 #%% plotting parameters
 # -------------------
-numFrames           = 10    # frame rate (bigger = slower)
+numFrames           = 50    # frame rate (bigger = slower)
 tail                = 200   # trailing trajectory length 
 zoom                = 1     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
 pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
@@ -137,7 +137,7 @@ def animateMe(data_file_path, Ts,  tactic_type):
     for i in range(0, nVeh):
         centroids = ax.plot([], [], [], 'kx')
         centroids_line = ax.plot([], [], [], '--', lw=1, color='black')
-        line_dot = ax.plot([], [], [], 'bo', ms=0.5)
+        line_dot = ax.plot([], [], [], 'bo', ms=3)
         line_tail = ax.plot([], [], [], ':', lw=1, color='blue')
         line_head = ax.plot([], [], [], '-', lw=1, color='magenta')
         line_target = ax.plot([], [], [], 'gx')

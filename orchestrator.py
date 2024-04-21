@@ -141,7 +141,6 @@ class Controller:
         self.pin_matrix = np.zeros((nAgents,nAgents))
         self.components = []
         
-        # accomplish this in the orchestrator later
         if tactic_type == 'shep':
             self.shepherdClass = shep.Shepherding(state)
         
@@ -157,6 +156,27 @@ class Controller:
             
             #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
    
+    # integrate learninging agents
+    # ----------------------------
+    def learning_agents(self, tactic_type, Learners):
+        
+        self.Learners = {}
+        # merge learning with controllers (add this to the orchestrator later)
+        if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
+            
+             self.Learners['consensus_lattice'] = Learners['consensus_lattice']
+             print('Consensus-based lattice negotiation enabled')
+             
+             if 'learning_lattice' in Learners:
+                 
+                 self.Learners['learning_lattice'] = Learners['learning_lattice']
+                 print('Q-Learning based lattice optimization enabled')
+        else:
+            
+            print('Note: controller has no learning agents')
+        
+   
+    
     # define commands
     # ---------------
     #def commands(self, Agents, Obstacles, Targets, Trajectory, History):   
