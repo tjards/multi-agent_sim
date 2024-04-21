@@ -84,13 +84,13 @@ if directional == 1:
 # -----------------
 
 # key ranges 
-d                   = 20            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
+d                   = 15            # lattice scale, > 5 (desired distance between agents) note: gets overridden by RL.
 r                   = 1.3*d         # range at which neighbours can be sensed 
 d_prime             = 1             # desired separation from obstacles  
 r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
 d_min               = 5             # floor on lattice scale (always 5)
 rg                  = d + 0.5       # range for graph analysis (nominally, d + small number), this will auto adjust later
-sensor_aperature    = 180           # used if directional == 1, wide angle = 100
+sensor_aperature    = 120           # used if directional == 1, wide angle = 100
 
 # other options
 #hetero_lattice = 0     # support heterogeneous lattice size? 0 = no, 1 = yes
