@@ -14,7 +14,7 @@ import random
 
 # agent dynamics
 # --------------
-dynamics = 'double integrator'
+dynamics = 'quadcopter'
 #dynamics = 'double integrator' 
     # 'double integrator' 
     # 'quadcopter'

@@ -57,7 +57,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(0)
 
 Ti      = 0       # initial time
-Tf      = 2000      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 20      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
@@ -87,22 +87,11 @@ Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(sys
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
 Controller.learning_agents(Agents.tactic_type, Learners)
 
-
 # pull out constants
 rVeh        = Agents.rVeh
 tactic_type = Agents.tactic_type
 dynamics    = Agents.config_agents['dynamics']
 
-# Controller.Learners = {}
-# # merge learning with controllers (add this to the orchestrator later)
-# if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
-    
-#      Controller.Learners['consensus_lattice'] = Learners['consensus_lattice']
-     
-#      if 'learning_lattice' in Learners:
-         
-#          Controller.Learners['learning_lattice'] = Learners['learning_lattice']
-     
      
 #%% initialize the data store
 # ---------------------------
@@ -149,8 +138,11 @@ while round(t,3) < Tf:
         print(round(t,1),' of ',Tf,' sec completed.')
     
     # Compute Trajectory
-    # --------------------    
+    # --------------------
+
+    # we'll need the record of lemni parameters  
     if tactic_type == 'lemni':
+        # only need to pass last timestep, so reduce this later 
         my_kwargs['lemni_all'] = Database.lemni_all
         
     Trajectory.update(tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)
@@ -159,12 +151,16 @@ while round(t,3) < Tf:
     # --------------------------------  
     if tactic_type == 'pinning' and dynamics == 'quadcopter':
         my_kwargs['quads_headings'] = Agents.quads_headings
-        
-    #if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
-    #    my_kwargs['Consensuser'] = Learners['consensus_lattice']
-        
+                
     Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
-      
+    
+    if t == 0.04:
+        checksumtest = np.sum(Controller.cmd)+14.975816569150751-0.015632334424179106
+        if checksumtest < 0.00001:
+            print("check-sum: PASS")
+        else:
+            print("check-sum: FAIL")
+    
 #%% Save data
 # -----------
 if verbose == 1:

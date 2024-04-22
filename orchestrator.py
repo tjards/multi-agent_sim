@@ -45,7 +45,13 @@ elif tactic_type == 'pinning':
     with open(os.path.join("config", "config_planner_pinning.json"), 'r') as planner_pinning_tests:
         planner_configs = json.load(planner_pinning_tests)
         lattice_consensus = planner_configs['hetero_lattice']
-            
+
+
+#%% Hyperparameters 
+# -----------------
+
+pin_update_rate = 100   # number of timesteps after which we update the pins
+
 #%% Build the system
 # ------------------
 def build_system(system, strategy):
@@ -121,7 +127,6 @@ def build_system(system, strategy):
 # -------------------
 class Controller:
     
-    #def __init__(self, Agents):
     def __init__(self,tactic_type, nAgents, state):
                 
         # commands
@@ -133,35 +138,43 @@ class Controller:
 
         # other Parameters
         # ----------------
-        self.counter = 0                                        # controller counter (signals when to select pins)
-        self.params = np.zeros((4,nAgents))                 # store dynamic parameters
+        
+        # general purpose counter (nominally, pin reset)
+        self.counter = 0                
+        
+        # [legacy] general purpose parameters variable (retire this)
+        self.params = np.zeros((4,nAgents))             # store dynamic parameters
+        
+        # lattice parameters (not always used, move into pinning) 
         self.lattice = np.zeros((nAgents,nAgents))      # stores lattice parameters
         
-        # initialize pin and components
+        # pins and components (not always used)
         self.pin_matrix = np.zeros((nAgents,nAgents))
         self.components = []
-        
-        if tactic_type == 'shep':
-            self.shepherdClass = shep.Shepherding(state)
-        
+                
         if tactic_type == 'pinning':
     
             #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
-            self.pin_matrix, self.components = np.ones((nAgents,nAgents)), list(range(0,nAgents))
+            self.pin_matrix, self.components = np.ones((nAgents,nAgents)), list(range(0,nAgents)) # make all pins
             d_init = pinning_tools.return_lattice_param()
             i = 0
             while (i < nAgents):
                 self.lattice[i,:] = d_init
                 i+=1
-            
-            #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) 
+        
+        # sheparding has its own class (differentiating shepherd and herd)
+        if tactic_type == 'shep':
+            self.shepherdClass = shep.Shepherding(state)            
    
     # integrate learninging agents
     # ----------------------------
     def learning_agents(self, tactic_type, Learners):
         
         self.Learners = {}
+        
         # merge learning with controllers (add this to the orchestrator later)
+        # note: may be better to just run through this list, rather than explicitly loading each
+        
         if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
             
              self.Learners['consensus_lattice'] = Learners['consensus_lattice']
@@ -175,14 +188,9 @@ class Controller:
             
             print('Note: controller has no learning agents')
         
-   
-    
     # define commands
-    # ---------------
-    #def commands(self, Agents, Obstacles, Targets, Trajectory, History):   
-    def commands(self, state, tactic_type, centroid, targets, obstacles_plus, walls, trajectory, dynamics_type, **mykwargs_cmd):  
- 
-        #Agents.state, Agents.tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory
+    # --------------- 
+    def commands(self, state, tactic_type, centroid, targets, obstacles_plus, walls, trajectory, dynamics_type, **kwargs_cmd):  
         
         # initialize 
         u_int = np.zeros((3,state[0:3,:].shape[1]))     # interactions
@@ -192,29 +200,26 @@ class Controller:
         cmd_i = np.zeros((3,state[0:3,:].shape[1]))     # store the commands
         self.params = np.zeros((state[0:3,:].shape[1],state[0:3,:].shape[1])) # store pins 
             
-        # if doing Reynolds, reorder the agents 
+        # reynolds requires a matrix of distances between agents
         if tactic_type == 'reynolds':
             distances = reynolds_tools.order(state[0:3,:])
             
-        # if doing pinning control, select pins (when it's time)
+        # update the pins at the desired interval
         if tactic_type == 'pinning':
-            
             # increment the counter 
             self.counter += 1
-            
-            # only update the pins at Ts/100 (tunable)
-            if self.counter == 100:
+            # only update the pins at Ts/(tunable parameter)
+            if self.counter == pin_update_rate:
                 self.counter = 0
+                # in pull parameters from consensus class
                 if 'consensus_lattice' in self.Learners:
-                    mykwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
+                    kwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
+                # or just pass the current lattice parameters
                 else:
-                    mykwargs_cmd['d_weighted'] = self.lattice # redundant below
+                    kwargs_cmd['d_weighted'] = self.lattice # redundant below
                     
-                    
-                self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **mykwargs_cmd)
-                    
-                # pass pin_matrix up to agent as well
-                #Agents.pin_matrix = copy.deepcopy(self.pin_matrix) # redundant 
+                # compute the pins and components    
+                self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **kwargs_cmd)
     
         # for each vehicle/node in the network
         for k_node in range(state[0:3,:].shape[1]): 
@@ -280,29 +285,28 @@ class Controller:
             # --------
             if tactic_type == 'pinning':
                 
-                # update some arguments 
-                my_kwargs = {}
-                my_kwargs['pin_matrix'] = self.pin_matrix
+                # initialize some custom arguments 
+                kwargs_pinning = {}
+                
+                # pin matrix
+                kwargs_pinning['pin_matrix'] = self.pin_matrix
+                
+                # headings (if applicable)
                 if dynamics_type == 'quadcopter':
-                    quads_headings = mykwargs_cmd['quads_headings']
-                    my_kwargs['headings'] = quads_headings
-
-                # if we are using consensus lattice
+                    kwargs_pinning['quads_headings'] = kwargs_cmd['quads_headings']
+                    
+                # learning stuff (if applicable)
                 if 'consensus_lattice' in self.Learners:
-                    my_kwargs['consensus_lattice'] = self.Learners['consensus_lattice']
-                    # and learning these?
+                    kwargs_pinning['consensus_lattice'] = self.Learners['consensus_lattice']
                     if 'learning_lattice' in self.Learners:
-                        my_kwargs['learning_lattice'] = self.Learners['learning_lattice']
+                        kwargs_pinning['learning_lattice'] = self.Learners['learning_lattice']
                                             
                 # compute command
-                cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **my_kwargs)
+                cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
                 
-                # update the lattice parameters (needed for plots)
+                # update the lattice parameters (note: plots relies on this)
                 if 'consensus_lattice' in self.Learners:
-                    #self.lattice = pinning_tools.get_lattices()
                     self.lattice = self.Learners['consensus_lattice'].d_weighted
-                
-                #print(self.lattice)
                 
             # Shepherding
             # ------------

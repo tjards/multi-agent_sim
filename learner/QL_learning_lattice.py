@@ -141,7 +141,7 @@ class q_learning_agent:
                             #self.Q["Agent " + str(i)]["Neighbour " + str(j)]["Option " + str(option_label)][tuple(self.state)] = 0 
                             
                             self.Q["Agent " + str(i)]["Neighbour " + str(j)][tuple(self.state)]["Option " + str(option_label)]= 0 
-                            
+
           
      # %% adjust explore/exploit rate
      # ------------------------------
