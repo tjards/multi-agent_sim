@@ -1,1 +1,1 @@
-{"hetero_lattice": 0, "learning": 0, "directional": 1, "d": 10, "d_min": 5}
+{"hetero_lattice": 1, "learning": 1, "directional": 1, "d": 20, "d_min": 5}

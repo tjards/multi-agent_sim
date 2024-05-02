@@ -142,7 +142,42 @@ class q_learning_agent:
                             
                             self.Q["Agent " + str(i)]["Neighbour " + str(j)][tuple(self.state)]["Option " + str(option_label)]= 0 
 
-          
+    # orchestration of update
+    # -----------------------
+    def update_step(self, landmarks, targets, states_q, states_p, k_node, consensus_agent, **kwargs):
+        
+        learning_grid_size = kwargs.get('learning_grid_size')
+        
+         # increment the counter(s)
+        self.time_count_i[k_node] += 1
+    
+         # if we are at the end of the horizon (and, optionally, not jumping all over the place)
+        if self.time_count_i[k_node] > self.time_horizon and np.max(abs(states_p[:,k_node])) < self.time_horizon_v:
+             
+            # this sets landmark to origin, if none avail
+            if landmarks.shape[1] == 0:
+                landmarks = np.append(landmarks,np.zeros((4,1))).reshape(4,-1)
+                print('no landmarks detected, using origin')
+                
+            # update the state (note, this is rounded to grid cubes)
+            # ------------------------------------------------------
+            self.state = np.around(states_q[0:3,k_node]-targets[0:3,k_node],learning_grid_size)
+            self.state_next = np.around(states_q[0:3,:]-targets[0:3,:],learning_grid_size)
+            #print("trial length for Agent ",k_node,": ", learning_agent.time_count_i[k_node])
+            
+            # learn the lattice parameters
+            # ----------------------------
+            self.compute_reward(np.reshape(states_q[:,k_node],(3,1)), landmarks)  # compute the reward
+            self.update_q_table_i(consensus_agent, k_node)                             # update the Q-table
+            self.select_action_i(k_node)                                          # select the next action
+            self.match_parameters_i(consensus_agent, k_node)                           # assign the selected action
+            self.time_count_i[k_node] = 0                                         # reset the counter
+            self.update_exploit_rate(k_node)                                      # update exploit rate
+            #print('REWARD, Agent', k_node, ": ", learning_agent.reward)
+            #print(learning_agent.explore_rate)
+         
+         
+     
      # %% adjust explore/exploit rate
      # ------------------------------
      

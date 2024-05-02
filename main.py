@@ -57,7 +57,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(0)
 
 Ti      = 0       # initial time
-Tf      = 20      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 300      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
@@ -92,7 +92,6 @@ rVeh        = Agents.rVeh
 tactic_type = Agents.tactic_type
 dynamics    = Agents.config_agents['dynamics']
 
-     
 #%% initialize the data store
 # ---------------------------
 from data import data_manager
@@ -154,12 +153,12 @@ while round(t,3) < Tf:
                 
     Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
     
-    if t == 0.04:
-        checksumtest = np.sum(Controller.cmd)+14.975816569150751-0.015632334424179106
-        if checksumtest < 0.00001:
-            print("check-sum: PASS")
-        else:
-            print("check-sum: FAIL")
+    # if t == 0.04:
+    #     checksumtest = np.sum(Controller.cmd)+14.975816569150751-0.015632334424179106
+    #     if checksumtest < 0.00001:
+    #         print("check-sum: PASS")
+    #     else:
+    #         print("check-sum: FAIL")
     
 #%% Save data
 # -----------

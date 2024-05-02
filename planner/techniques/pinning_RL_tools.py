@@ -71,8 +71,8 @@ from .utils import conic_tools as sensor
 # ------------------
 
 # learning parameters
-hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
-learning            = 0     # do we want to learn lattice size? 1 = yes (QL), 0 = no
+hetero_lattice      = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
+learning            = 1     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
 # other parameters
@@ -80,12 +80,17 @@ directional = 1         # do I care about direction for sensor range? 1 = yes, 0
     
 if directional == 1:
     from .utils import graph_tools_directional as grph_dir
+       
+# learning requires heterolattice
+if learning == 1 and hetero_lattice != 1:
+    print('Warning: learning lattice requires hetero lattice enabled to find local consensus. Enforcing.')
+    hetero_lattice = 1
     
 #%% Hyperparameters
 # -----------------
 
 # key ranges 
-d                   = 10            # lattice scale, > d_min > 5 (desired distance between agents) note: gets overridden by RL.
+d                   = 20            # lattice scale, > d_min > 5 (desired distance between agents) note: gets overridden by RL.
 r                   = 1.3*d         # range at which neighbours can be sensed 
 d_prime             = 1             # desired separation from obstacles  
 r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
@@ -188,7 +193,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
     # pull out the args (try .get() to ignore n/a cases)
     # -----------------
     headings            = kwargs.get('quads_headings')
-    paramClass          = kwargs.get('consensus_lattice') # rename this object 
+    consensus_agent     = kwargs.get('consensus_lattice') # rename this object 
     learning_agent      = kwargs.get('learning_lattice')
     
     # safety checks
@@ -199,11 +204,11 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
         #if headings is None:
         #    headings = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
         if 'consensus_lattice' in kwargs:
-            paramClass.headings = headings
+            consensus_agent.headings = headings
     
     # ensure the parameters match the agents
-    if paramClass is not None and paramClass.d_weighted.shape[1] != states_q.shape[1]:
-        raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', paramClass.d_weighted.shape[1], 'lattice parameters')
+    if consensus_agent is not None and consensus_agent.d_weighted.shape[1] != states_q.shape[1]:
+        raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', consensus_agent.d_weighted.shape[1], 'lattice parameters')
         
     # learning processs (if applicable)
     # ---------------------------------    
@@ -211,40 +216,45 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
     # execute the reinforcement learning, local case (if applicable)
     if learning == 1: 
         
-        # increment the counter(s)
-        learning_agent.time_count_i[k_node] += 1
+        kwargs['learning_grid_size'] = learning_grid_size # consider adapting this with time
         
-        # if we are at the end of the horizon (and, optionally, not jumping all over the place)
-        if learning_agent.time_count_i[k_node] > learning_agent.time_horizon and np.max(abs(states_p[:,k_node])) < learning_agent.time_horizon_v:
+        learning_agent.update_step(landmarks, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
+        
+        # # increment the counter(s)
+        # learning_agent.time_count_i[k_node] += 1
+        
+        # # if we are at the end of the horizon (and, optionally, not jumping all over the place)
+        # if learning_agent.time_count_i[k_node] > learning_agent.time_horizon and np.max(abs(states_p[:,k_node])) < learning_agent.time_horizon_v:
             
-            # this sets landmark to origin, if none avail
-            if landmarks.shape[1] == 0:
-                landmarks = np.append(landmarks,np.zeros((4,1))).reshape(4,-1)
-                print('no landmarks detected, using origin')
+        #     # this sets landmark to origin, if none avail
+        #     if landmarks.shape[1] == 0:
+        #         landmarks = np.append(landmarks,np.zeros((4,1))).reshape(4,-1)
+        #         print('no landmarks detected, using origin')
                 
-            # update the state (note, this is rounded to grid cubes)
-            # ------------------------------------------------------
-            learning_agent.state = np.around(states_q[0:3,k_node]-targets[0:3,k_node],learning_grid_size)
-            learning_agent.state_next = np.around(states_q[0:3,:]-targets[0:3,:],learning_grid_size)
-            #print("trial length for Agent ",k_node,": ", learning_agent.time_count_i[k_node])
+        #     # update the state (note, this is rounded to grid cubes)
+        #     # ------------------------------------------------------
+        #     learning_agent.state = np.around(states_q[0:3,k_node]-targets[0:3,k_node],learning_grid_size)
+        #     learning_agent.state_next = np.around(states_q[0:3,:]-targets[0:3,:],learning_grid_size)
+        #     #print("trial length for Agent ",k_node,": ", learning_agent.time_count_i[k_node])
             
-            # learn the lattice parameters
-            # ----------------------------
-            learning_agent.compute_reward(np.reshape(states_q[:,k_node],(3,1)), landmarks)  # compute the reward
-            learning_agent.update_q_table_i(paramClass, k_node)                             # update the Q-table
-            learning_agent.select_action_i(k_node)                                          # select the next action
-            learning_agent.match_parameters_i(paramClass, k_node)                           # assign the selected action
-            learning_agent.time_count_i[k_node] = 0                                         # reset the counter
-            learning_agent.update_exploit_rate(k_node)                                      # update exploit rate
-            #print('REWARD, Agent', k_node, ": ", learning_agent.reward)
-            #print(learning_agent.explore_rate)
+        #     # learn the lattice parameters
+        #     # ----------------------------
+        #     learning_agent.compute_reward(np.reshape(states_q[:,k_node],(3,1)), landmarks)  # compute the reward
+        #     learning_agent.update_q_table_i(consensus_agent, k_node)                             # update the Q-table
+        #     learning_agent.select_action_i(k_node)                                          # select the next action
+        #     learning_agent.match_parameters_i(consensus_agent, k_node)                           # assign the selected action
+        #     learning_agent.time_count_i[k_node] = 0                                         # reset the counter
+        #     learning_agent.update_exploit_rate(k_node)                                      # update exploit rate
+        #     #print('REWARD, Agent', k_node, ": ", learning_agent.reward)
+        #     #print(learning_agent.explore_rate)
          
     # initialize parameters
     # ----------------------
     if hetero_lattice == 1:
-        d = paramClass.d_weighted[k_node, k_node]
+        d = consensus_agent.d_weighted[k_node, k_node]
     else:
         d = d_init
+    
     d_a = sigma_norm(d)                         # lattice separation (goal)  
     r_a = sigma_norm(r)                         # lattice separation (sensor range)
     u_int = np.zeros((3,states_q.shape[1]))     # interactions
@@ -261,7 +271,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
             
             # pull the lattice parameter for this node/neighbour pair
             if hetero_lattice == 1:
-                d = paramClass.d_weighted[k_node, k_neigh]
+                d = consensus_agent.d_weighted[k_node, k_neigh]
                 d_a = sigma_norm(d)                        
             
             # check if the neighbour is in range
@@ -290,11 +300,11 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
                 u_int[:,k_node] += c1_a*phi_a(states_q[:,k_node],states_q[:,k_neigh],r_a, d_a)*n_ij(states_q[:,k_node],states_q[:,k_neigh]) + c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node]) 
                 # seek consensus
                 if hetero_lattice == 1:
-                    paramClass.update(k_node, k_neigh)          # update lattice via consensus
-                    paramClass.prox_i[k_node, k_neigh] = 1      # annotate as in range     
+                    consensus_agent.update(k_node, k_neigh)          # update lattice via consensus
+                    consensus_agent.prox_i[k_node, k_neigh] = 1      # annotate as in range     
             else:
                 if hetero_lattice == 1:
-                    paramClass.prox_i[k_node, k_neigh] = 0      # annotate as not in range
+                    consensus_agent.prox_i[k_node, k_neigh] = 0      # annotate as not in range
                 
     return u_int[:,k_node] 
 
@@ -366,18 +376,18 @@ def compute_cmd_g(states_q, states_p, targets, targets_v, k_node, pin_matrix):
 # consolidate control signals
 def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
         
-    my_kwargs = dict(kwargs)
+    #my_kwargs = dict(kwargs)
     
     # ensure there are heading available, if needed
-    if directional and my_kwargs.get('quads_headings') is None:
-        my_kwargs['quads_headings'] = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
+    if directional and kwargs.get('quads_headings') is None:
+        kwargs['quads_headings'] = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
         print('no headings avail, assuming 0')
     
     
     # initialize 
     cmd_i = np.zeros((3,states_q.shape[1]))
     
-    u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles, **my_kwargs)
+    u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles, **kwargs)
     u_obs = compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
     u_nav = compute_cmd_g(states_q, states_p, targets, targets_v, k_node, kwargs.get('pin_matrix'))
        
