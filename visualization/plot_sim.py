@@ -17,6 +17,13 @@ plt.style.use('default')
 #plt.style.use('Solarize_Light2')
 
 from data import data_manager
+import os
+
+# paths
+# -----
+data_directory = 'data'
+data_file_path = os.path.join(data_directory, "data.h5")
+
 
 # produce plots
 # -------------
