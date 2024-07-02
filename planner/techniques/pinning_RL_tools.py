@@ -71,12 +71,12 @@ from .utils import conic_tools as sensor
 # ------------------
 
 # learning parameters
-hetero_lattice      = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
-learning            = 1     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
+hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
+learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
 # other parameters
-directional = 1         # do I care about direction for sensor range? 1 = yes, 0 = no
+directional = 0         # do I care about direction for sensor range? 1 = yes, 0 = no
     
 if directional == 1:
     from .utils import graph_tools_directional as grph_dir

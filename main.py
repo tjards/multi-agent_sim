@@ -35,6 +35,8 @@ dev notes:
 
 # official packages 
 # ------------------
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 #plt.style.use('dark_background')
@@ -57,12 +59,12 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(0)
 
 Ti      = 0       # initial time
-Tf      = 90      # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 40      # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'lemni'
+strategy = 'pinning'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking

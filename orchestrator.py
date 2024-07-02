@@ -10,6 +10,10 @@ Created on Mon Jan  4 12:45:55 2021
 
 @author: tjards
 
+# dev! notes: I want to do the graphical methods in the orchestrator and pass in to planners
+this will be modular, also, there is some overlap in efforts. Ultimately, the graph
+will be used to drive interaction decisions (vice, for loops now in pinning, for example)
+
 """
 
 #%% Import stuff
@@ -18,6 +22,9 @@ import numpy as np
 import copy
 import os
 import json
+
+# dev!
+import utils.swarmgraph as graphical 
 
 # read the configs
 with open(os.path.join("config", "config_sim.json"), 'r') as tactic_tests:
@@ -120,7 +127,7 @@ def build_system(system, strategy):
                             
                         # LOAD    
                         Learners['learning_lattice'] = Learning_agent
-                
+    
     return Agents, Targets, Trajectory, Obstacles, Learners
 
 #%% Master controller
@@ -138,6 +145,7 @@ class Controller:
 
         # other Parameters
         # ----------------
+        self.Graphs = graphical.Swarmgraph(state, criteria_table = {'radius': 5}, headings = None)  
         
         # general purpose counter (nominally, pin reset)
         self.counter = 0                
@@ -199,7 +207,12 @@ class Controller:
         u_enc = np.zeros((3,state[0:3,:].shape[1]))     # encirclement 
         cmd_i = np.zeros((3,state[0:3,:].shape[1]))     # store the commands
         self.params = np.zeros((state[0:3,:].shape[1],state[0:3,:].shape[1])) # store pins 
+         
+        # note:
             
+            # ADD THE GRAPH COMPONENTS HERE, then the controller
+            # pass in components to help direct the search
+        
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'reynolds':
             distances = reynolds_tools.order(state[0:3,:])
