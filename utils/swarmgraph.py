@@ -24,145 +24,440 @@ import random
 from collections import defaultdict, Counter
 import heapq 
 
-# dev!
-from . import conic_tools as sensor
-
 # Parameters
 # ----------
 #r       = 5
 #nNodes  = 10
 #data = 10*np.random.rand(3,nNodes)
+slack = 0.5 # slack given to determine if in range 
 
 #%% define the Graph class
 # ------------------------
-
-criteria_table = {'radius': 5, 'aperature' : 120} # pass this in later
-# headings will be None if none
-
-#%%
-
 class Swarmgraph:
     
-    # initialize 
-    def __init__(self, data = np.zeros((6,2)), criteria_table = {'radius': 5} , headings = None):
+    # initialize
+    # ----------
+    #def __init__(self, data = np.zeros((6,2)), criteria_table = {'radius': 5} , **kwargs):
+    def __init__(self, data = np.zeros((6,2)), criteria_table = {'radius': True, 'aperature': False}):
         
-        nNodes  = data.shape[1]    # number of agents (nodes)
-        self.A  = np.zeros((nNodes,nNodes)) # initialize adjacency matrix as zeros
+        # pull out parameters
+        #headings    = kwargs.get('quads_headings')
+        #d_weighted  = kwargs.get('d_weighted')
         
-        # pull the criteria
-        if 'radius' in criteria_table:
-            # pull the radius
-            r = criteria_table.get('radius')
-            if 'aperature' in criteria_table:
-                # pull the aperature
-                sensor_aperature = criteria_table.get('aperature')
+        self.nNodes  = data.shape[1]    # number of agents (nodes)
+        self.A  = np.zeros((self.nNodes,self.nNodes)) # initialize adjacency matrix as zeros
+        self.D  = np.zeros((self.nNodes,self.nNodes)) # initialize adjacency matrix as zeros
+        self.criteria_table = criteria_table
+        if self.criteria_table['aperature']:
+            self.directional_graph = True
+        else:
+            self.directional_graph = False
+                
+        #self.update_A(self, data, **kwargs)
+        #self.update_pins(self.data, 'degree', **kwargs)
+
+    # update A
+    # --------
+    # note: must provide r_matrix at least, then can add others as **kwargs
+    
+    def update_A(self, data, r_matrix, **kwargs):
+        
+        # pull out parameters
+        
+        #sensor_aperature = kwargs.get('aperature')
+        #headings    = kwargs.get('quads_headings')
+        # note: if hetero, then r_matrix will be d_weighted 
+        
+        # # pull the criteria
+        # if 'radius' in self.criteria_table:
+        #     # pull the radius
+        #     r = self.criteria_table.get('radius') + slack
+        #     if 'aperature' in self.criteria_table:
+        #         # pull the aperature
+        #         sensor_aperature = self.criteria_table.get('aperature')
         
         # for each node
-        for i in range(0,nNodes):  
+        for i in range(0,self.nNodes):  
+            
             # search through neighbours
-            for j in range(0,nNodes):
-                # set default
-                connected = True  
+            for j in range(0,self.nNodes):
+                
+                # set defaults
+                connected = True
+                weight = 0
+                
                 # skip self
                 if i != j: 
                     
                     # if using radial criteria 
-                    if 'radius' in criteria_table:  
+                    #if 'radius' in self.criteria_table:
+                    if self.criteria_table['radius']:  
                         # compute distance
                         dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
+                        r = r_matrix[i,j] + slack
+                        
                         # if close enough
                         if dist < r:
                             connected_r = True
+                            weight      = 1     # this could be reflective of the distance later 
                         else:
                             connected_r = False 
                         # interection
                         connected = connected and connected_r
                         
-                     # if using directional criteria 
-                    if 'aperature' in criteria_table:
-                        # get vector for heading
-                        v_a = np.array((np.cos(headings[0,i]), np.sin(headings[0,i]), 0 )) # move outside later
-                        # check sensor range 
-                        if sensor.is_point_in_sensor_range(data[0:3,i], data[0:3,j], v_a, sensor_aperature, r):
-                            connected_a = True
-                        else:
-                            connected_a = False
-                        # interection
-                        connected = connected and connected_r
-                    
+                         # if using directional criteria 
+                        #if 'aperature' in self.criteria_table:
+                        if self.criteria_table['aperature']:
+                            sensor_aperature = kwargs.get('aperature')
+                            headings    = kwargs.get('quads_headings')
+                            # get vector for heading
+                            v_a = np.array((np.cos(headings[0,i]), np.sin(headings[0,i]), 0 )) # move outside later
+                            # check sensor range 
+                            if is_point_in_aperature_range(data[0:3,i], data[0:3,j], v_a, sensor_aperature, r):
+                                connected_a = True
+                            else:
+                                connected_a = False
+                            # interection
+                            connected = connected and connected_a
+                    # if connected 
                     if connected:
+    
+                        self.A[i,j] = weight*1
+                    
+                    else:
                         
-                        self.A[i,j] = 1
-                        
-# ==================== TO BE DELETED  below ====== #
+                        self.A[i,j] = 0
         
-def adj_matrix(data,r):
-    # initialize
-    nNodes  = data.shape[1]             # number of agents (nodes)
-    A       = np.zeros((nNodes,nNodes)) # initialize adjacency matrix as zeros
-    # for each node
-    for i in range(0,nNodes):  
-        # search through neighbours
-        for j in range(0,nNodes):
-            # skip self
-            if i != j:
-                # compute distance
-                dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
-                # if close enough
-                if dist < r:
-                    # mark as neighbour
-                    A[i,j] = 1
-    # ensure A = A^T
-    assert (A == A.transpose()).all()
+        # also update D
+        self.D = convert_A_to_D(self.A)
+     
+    # find connected components
+    # -------------------------
+    def find_connected_components(self):
+        
+        # if not using directionality
+        #if 'aperature' not in self.criteria_table:
+        if not self.directional_graph:
+        
+            all_components = []                                     # stores all connected components
+            visited = []                                            # stores all visisted nodes
+            for node in range(0,self.A.shape[1]):                        # search all nodes (breadth)
+                if node not in visited:                             # exclude nodes already visited
+                    component       = []                            # stores component nodes
+                    candidates = np.nonzero(self.A[node,:].ravel()==1)[0].tolist()    # create a set of candidates from neighbours 
+                    component.append(node)
+                    visited.append(node)
+                    candidates = list(set(candidates)-set(visited))
+                    while candidates:                               # now search depth
+                        candidate = candidates.pop(0)               # grab a candidate 
+                        visited.append(candidate)                   # it has how been visited 
+                        subcandidates = np.nonzero(self.A[:,candidate].ravel()==1)[0].tolist()
+                        component.append(candidate)
+                        #component.sort()
+                        candidates.extend(list(set(subcandidates)-set(candidates)-set(visited))) # add the unique nodes          
+                    all_components.append(component)
+            #return all_components
+            self.components = all_components 
+
+        else:
+
+            # starts search at greated out degree centrality
+            # this starts the dfs from node of max deg centrality
+            #def find_one_way_connected_components_deg(matrix):
+            def dfs(node, component):
+                visited.add(node)
+                component.append(node)
+                for neighbor, connected in enumerate(self.A[node]):
+                    if connected == 1 and neighbor not in visited:
+                        dfs(neighbor, component)
+        
+            components = []
+            visited = set()
+        
+            # Calculate out degree centrality for each node
+            out_degree_centrality = [sum(row) for row in self.A]
+        
+            # Sort nodes based on out degree centrality in descending order
+            nodes_sorted_by_centrality = sorted(range(len(out_degree_centrality)), key=lambda x: out_degree_centrality[x], reverse=True)
+        
+            for node in nodes_sorted_by_centrality:
+                if node not in visited:
+                    component = []
+                    dfs(node, component)
+                    components.append(component)
+        
+            self.components = components
+
+
+    def update_pins(self, data, r_matrix, method, **kwargs):
+        
+        # pull out parameters
+        headings    = kwargs.get('quads_headings')
+        d_weighted  = kwargs.get('d_weighted')
+        
+        # update graph info
+        self.update_A(data, r_matrix, **kwargs)
+        self.find_connected_components()
+        
+        # initialize the pins
+        self.pin_matrix = np.zeros((data.shape[1],data.shape[1]))
+        
+        if method == 'degree':
+        
+            D_elements = np.diag(self.D)
+            D_dict = {i: D_elements[i] for i in range(len(D_elements))}
+            
+            # search each component 
+            for i in range(0,len(self.components)):
+                
+                # start an index
+                index_i = self.components[i][0]
+                
+                # if this is a lone agent
+                if len(self.components[i])==1:
+                    # pin it
+                    self.pin_matrix[index_i,index_i]=1
+                    
+                else: 
+                    
+                    # make a subset dict
+                    subset_dict = {key: D_dict[key] for key in self.components[i] if key in D_dict}
+                    # get max
+                    index_i = max(subset_dict, key=subset_dict.get)
+                    
+                    # find index of highest element of Degree matrix
+                    #index_i = components[i][np.argmax(np.diag(D))]
+                    # set as default pin
+                    self.pin_matrix[index_i,index_i]=1
+                    
+        else:
+            
+            print('unsupported pin selection method. no pins for you.')
+            
+            # add other methods (betweenness... etc) later
+            
+         
+# check if a point is within aperature range
+# ---------------------------------------
+def is_point_in_aperature_range(a, b, v_a, theta, r):
+    
+    # a         is location of the sensor
+    # v_a       is direction the sensor is pointed
+    # r         is sensor range
+    # theta     is aperature of the sensor (deg, measured from centerline)
+    # b         is location of object being sensed
+
+    # normalize sensor direction vector
+    if sum(v_a) == 0:
+        v_a[0] = 0.1 # this is a dirty fix, do better later
+    
+    v_a_unit = v_a / np.linalg.norm(v_a)
+
+    # normalize vector from a to b
+    v_ab = b - a
+    v_ab_unit = v_ab / np.linalg.norm(v_ab)
+
+    # calculate the projection of v_a onto v_ab
+    projection = np.dot(v_ab_unit, v_a_unit)
+
+    # calculate angle between
+    angle = np.arccos(projection)
+
+    # convert aperature to radians
+    theta_rad = np.radians(theta)
+
+    # check if within aperature
+    if angle <= theta_rad / 2:
+        return True
+    
+    return False
+
+# converts adjacency matrix to a dictionary
+def convert_A_to_dict(A):
+    G = {}
+    nNodes = A.shape[0]
+    for i in range(nNodes):
+        neighbors = set(j for j in range(nNodes) if A[i][j] == 1)
+        G[i] = neighbors
+    return G
+
+# converts adjacency matrix to degree matrix
+def convert_A_to_D(A, direction = 'out'):
+    if direction == 'in':
+        axis_dir = 0
+    else:
+        axis_dir = 1 # defaults to out degree matrix
+    degrees = np.sum(A, axis=axis_dir) 
+    D = np.diag(degrees)
+    return D
+
+# computes the graph Laplacian
+def lap_matrix(A, D):
+    L = D-A
+    eigs = np.linalg.eigvals(L)         # eigen values 
+    # ensure L = L^T
+    assert (L == L.transpose()).all()
+    # ensure has zero row sum
+    assert L.sum() == 0
+    # ensure Positive Semi-Definite (all eigen values are >= 0)
+    assert (eigs >= 0).all()
     # return the matrix
-    return A
+    return L
+                        
+        
+## TEMPLATES FOR OTHER METHODS
+# ----------------------------
+        
+        
+        # # compute adjacency matrix
+        # if directional != 1:
+        #     A = grph.adj_matrix(states_q, rg)
+        #     components = grph.find_connected_components_A(A)
+            
+        # else:
+        #     # if no heading avail, set to zero
+        #     if headings is None:
+        #        headings = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
+            
+        #     #d_weighted  = kwargs['d_weighted']
+        #     #if 'quads_headings' in kwargs:
+        #     #    headings    = kwargs['quads_headings']
+        #     #else:
+        #     #    headings    = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
+        #     #A = grph_dir.adj_matrix_bearing(states_q,states_p,paramClass.d_weighted, sensor_aperature, paramClass.headings)
+            
+        #     A = grph_dir.adj_matrix_bearing(states_q,states_p,d_weighted, sensor_aperature, headings)
+        #     components = grph_dir.find_one_way_connected_components_deg(A)
+        
+        # # Gramian method
+        # # --------------
+        # if method == 'gramian':
+            
+        #     # for each component
+        #     for i in range(0,len(components)):
+                
+        #         # find the adjacency and degree matrix of this component 
+        #         states_i = states_q[:,components[i]]
+        #         A = grph.adj_matrix(states_i, rg)  # move these outside (efficiency)
+        #         D = grph.deg_matrix(states_i, rg)
+                
+        #         index_i = components[i][0]
+                
+        #         # if this is a lone agent
+        #         if len(components[i])==1:
+        #             # pin it
+        #             pin_matrix[index_i,index_i]=1
+                    
+        #         else: 
+        #             # find gramian trace (i.e. energy demand) of first component
+        #             ctrlable, trace_i = grph.compute_gram_trace(A,D,0,A.shape[1])
+        #             # set a default pin
+        #             pin_matrix[index_i,index_i]=1
+        #             # note: add a test for controlability here
+        
+        #             # cycle through the remaining agents in the component
+        #             for j in range(1,len(components[i])): 
+                        
+        #                 ctrlable, trace = grph.compute_gram_trace(A,D,j,A.shape[1])
+                        
+        #                 # take the smallest energy value
+        #                 if trace < trace_i:
+        #                     # make this the new benchmark
+        #                     trace_i = trace
+        #                     # de-pin the previous
+        #                     pin_matrix[index_i,index_i]=0
+        #                     index_i = components[i][j]
+        #                     # pin this one
+        #                     pin_matrix[index_i,index_i]=1
+        
+        # # Degree method
+        # # -------------
+        # elif method == 'degree':
+            
+        #     # if using direcational mode
+        #     if directional:
+        #         centralities = {}
+        #         # find the degree centrality within each component 
+        #         for i, component in enumerate(components):
+        #             # store the degree centralities 
+        #             centrality      = grph_dir.out_degree_centrality(A.tolist(), component)
+        #             #centrality[i]   = centrality 
+        #             centralities[i]   = np.diag(list(centrality.values()))
+
+        #     # for each component
+        #     for i in range(0,len(components)):
+                
+        #         # find the adjacency and degree matrix of this component 
+        #         states_i = states_q[:,components[i]]
+
+        #         if directional:
+                    
+        #             D = centralities[i]
+
+        #         else:
+                    
+        #             D = grph.deg_matrix(states_i, rg)
+                     
+        #         index_i = components[i][0]
+                
+        #         # if this is a lone agent
+        #         if len(components[i])==1:
+        #             # pin it
+        #             pin_matrix[index_i,index_i]=1
+                    
+        #         else: 
+                    
+        #             # find index of highest element of Degree matrix
+        #             index_i = components[i][np.argmax(np.diag(D))]
+        #             # set as default pin
+        #             pin_matrix[index_i,index_i]=1
+                           
+        # # Betweenness
+        # # -----------
+        
+        # # note: for betweenness, we need > 3 agents (source+destination+node)  
+        
+        # elif method == 'between':
+            
+        #     # for each component
+        #     for i in range(0,len(components)):
+                
+        #         # default to first node
+        #         index_i = components[i][0]
+                
+        #         # if fewer than 4 agents in this component
+        #         if len(components[i])<=3:
+        #             # pin the first one
+        #             pin_matrix[index_i,index_i]=1
+                
+        #         # else, we have enough to do betweenness
+        #         else:         
+        #             # pull out the states for this component 
+        #             states_i = states_q[:,components[i]]
+        #             # build a graph within this component (look slighly outside lattice range)
+        #             G = grph.build_graph(states_i,rg+0.1) 
+        #             # find the max influencer
+        #             B = grph.betweenness(G)
+        #             index_ii = max(B, key=B.get)
+        #             #index_ii = min(B, key=B.get)
+        #             index_i = components[i][index_ii]
+        #             # pin the max influencers
+        #             pin_matrix[index_i,index_i] = 1
+
+        # else:
+            
+        #     for i in range(0,len(components)):
+        #         # just take the first in the component for now
+        #         index = components[i][0]
+        #         # note: later, optimize this selection (i.e. instead of [0], use Grammian)
+        #         pin_matrix[index,index]=1
+
+        # return pin_matrix, components    
         
 
 
-
-#%% Build Graph (as dictionary)
-# ----------------------------
-def build_graph(data, r):
-    G = {}
-    nNodes  = data.shape[1]     # number of agents (nodes)
-    # for each node
-    for i in range(0,nNodes):
-        # create a set of edges
-        set_i = set()
-        # search through neighbours (will add itself)
-        for j in range(0,nNodes):
-            # compute distance
-            dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
-            # if close enough
-            if dist < r:
-                # add to set_i
-                set_i.add(j)
-            #else:
-            #    print("debug: ", i," is ", dist, "from ", j)
-        G[i] = set_i
-    return G
-
-# count all
-def build_graph_all(data):
-    G = {}
-    nNodes  = data.shape[1]     # number of agents (nodes)
-    # for each node
-    for i in range(0,nNodes):
-        # create a set of edges
-        set_i = set()
-        # search through neighbours (will add itself)
-        for j in range(0,nNodes):
-            # compute distance
-            dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
-            # if close enough
-            #if dist < r:
-                # add to set_i
-            set_i.add(j)
-            #else:
-            #    print("debug: ", i," is ", dist, "from ", j)
-        G[i] = set_i
-    return G
-
+'''
+# MORE TEMPLATES
 
 
 #%% Djikstra's shortest path
@@ -214,97 +509,8 @@ def search_djikstra(G, source):
     
 
 
-#%% Adjacency Matrix
-# ------------------------------
-
-# A = {a_ij} s.t. 1 if i,j are neighbours, 0 if not
-def adj_matrix(data,r):
-    # initialize
-    nNodes  = data.shape[1]             # number of agents (nodes)
-    A       = np.zeros((nNodes,nNodes)) # initialize adjacency matrix as zeros
-    # for each node
-    for i in range(0,nNodes):  
-        # search through neighbours
-        for j in range(0,nNodes):
-            # skip self
-            if i != j:
-                # compute distance
-                dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
-                # if close enough
-                if dist < r:
-                    # mark as neighbour
-                    A[i,j] = 1
-    # ensure A = A^T
-    assert (A == A.transpose()).all()
-    # return the matrix
-    return A
 
 
-
-#%% Compute the Degree Matrix
-# ------------------------------
-# D = diag{d1,d2,...dN}
-def deg_matrix(data,r):
-    # initialize
-    nNodes  = data.shape[1]             # number of agents (nodes)
-    D       = np.zeros((nNodes,nNodes)) # initialize degree matrix as zeros
-    # for each node
-    for i in range(0,nNodes):
-        # search through neighbours
-        for j in range(0,nNodes):
-            # skip self
-            if i != j:
-                # compute distance
-                dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
-                # if close enough
-                if dist < r:
-                    # mark as neighbour
-                    D[i,i] += 1
-    # return the matrix
-    return D
-
-#%% Compute the graph Laplacian
-# -----------------------------
-def lap_matrix(A,D):
-    L = D-A
-    eigs = np.linalg.eigvals(L)         # eigen values 
-    # ensure L = L^T
-    assert (L == L.transpose()).all()
-    # ensure has zero row sum
-    assert L.sum() == 0
-    # ensure Positive Semi-Definite (all eigen values are >= 0)
-    assert (eigs >= 0).all()
-    # return the matrix
-    return L
-
-#%% Compute components
-# --------------------
-def compute_comp(L):
-    eigs = np.linalg.eigvals(L)         # eigen values 
-    # how many components (how many zero eig values)
-    nComp = np.count_nonzero(eigs==0)
-    #print('the graph has ', nComp, ' component(s)')
-    return nComp
-
-
-#%% Compute Augmented Laplacian: The number of null eigen values is 
-#   the number of components in the graph that do not contain pins.
-#   generally, the larger the aug connectivity, the better.
-# ----------------------------------------------------------------- 
-def compute_aug_lap_matrix(L,P,gamma,rho):
-    L_aug = np.multiply(gamma, L) + np.multiply(rho, P)
-    eigs = np.linalg.eigvals(L_aug)         # eigen values
-    # ensure Positive Semi-Definite (all eigen values are >= 0)
-    assert (eigs >= 0).all()
-    # tell me if not fully pinned (i.e. there are null eigen values)
-    if np.count_nonzero(eigs==0) > 0:
-        print('note: graph is not fully pinned')
-    # compute the augmented connectivity (smallest eig value)
-    aug_connectivity = np.amin(eigs)
-    # and the index
-    aug_connectivity_i = np.argmin(eigs)
-    # return the matrix, augmented connectivity, and index
-    return L_aug, aug_connectivity, aug_connectivity_i
 
 
 #%% compute the controlability matrix
@@ -356,8 +562,6 @@ def compute_gram_trace(A,D,node,horizon):
     trace = np.matrix.trace(W)
     
     return ctrlable, trace
-
-
 
 
 #%% compute Betweenness Centrality
@@ -430,46 +634,8 @@ def count_influencers(G,all_paths):
         
     return influencers 
 
+'''
 
-# find connected components
-# -------------------------
-def find_connected_components_A(A):
-    all_components = []                                     # stores all connected components
-    visited = []                                            # stores all visisted nodes
-    for node in range(0,A.shape[1]):                        # search all nodes (breadth)
-        if node not in visited:                             # exclude nodes already visited
-            component       = []                            # stores component nodes
-            candidates = np.nonzero(A[node,:].ravel()==1)[0].tolist()    # create a set of candidates from neighbours 
-            component.append(node)
-            visited.append(node)
-            candidates = list(set(candidates)-set(visited))
-            while candidates:                               # now search depth
-                candidate = candidates.pop(0)               # grab a candidate 
-                visited.append(candidate)                   # it has how been visited 
-                subcandidates = np.nonzero(A[:,candidate].ravel()==1)[0].tolist()
-                component.append(candidate)
-                #component.sort()
-                candidates.extend(list(set(subcandidates)-set(candidates)-set(visited))) # add the unique nodes          
-            all_components.append(component)
-    return all_components
-
-
-#%% testing
-# --------
-
-# G               = build_graph(data)
-# parents, costs  = search_djikstra(G, 0)
-# adjacency       = adj_matrix(data)
-# degree          = deg_matrix(data)
-# laplacian       = lap_matrix(adjacency, degree)
-# betweennesses   = betweenness(G)
-
-
-    
-    
-
-    
-    
     
     
 

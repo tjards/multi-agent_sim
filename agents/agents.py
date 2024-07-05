@@ -21,7 +21,7 @@ dynamics = 'double integrator'
 
 nAgents = 5    # number of agents
 rAgents = 0.5   # physics radius of agents 
-iSpread = 3    # initial spread of agents
+iSpread = 20    # initial spread of agents
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 

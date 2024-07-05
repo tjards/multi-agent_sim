@@ -14,7 +14,8 @@ import random
 
 class Consensuser:
     
-    def __init__(self, params_n, hetero_lattice, directional, d_min, d):
+    #def __init__(self, params_n, hetero_lattice, directional, d_min, d):
+    def __init__(self, params_n, hetero_lattice, d_min, d):
         
         # select parameter ranges
         if hetero_lattice == 1:
@@ -39,8 +40,8 @@ class Consensuser:
         # store whether agents are in proximity to eachother (1 =  yes, 0 = no)
         self.prox_i = np.zeros((len(self.params),len(self.params)))
         
-        if directional:
-            self.headings = np.zeros((1,self.params_n))
+        #if directional:
+        #    self.headings = np.zeros((1,self.params_n))
     
     
     def update(self, k_node, k_neigh):

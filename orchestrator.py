@@ -58,6 +58,12 @@ elif tactic_type == 'pinning':
 # -----------------
 
 pin_update_rate = 100   # number of timesteps after which we update the pins
+pin_selection_method = 'degree'
+    # gramian   = based on controllability gramian
+    # degree    = based on degree centrality 
+    # between   = based on betweenness centrality (buggy at nAgents < 3)
+criteria_table = {'radius': True, 'aperature': False} # for graph construction 
+sensor_aperature    = 180
 
 #%% Build the system
 # ------------------
@@ -104,7 +110,8 @@ def build_system(system, strategy):
                 lattice_consensus = planner_configs['hetero_lattice']
                 if lattice_consensus == 1:
                     import learner.consensus_lattice as consensus_lattice
-                    Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['directional'], planner_configs['d_min'], planner_configs['d'])
+                    #Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['directional'], planner_configs['d_min'], planner_configs['d'])
+                    Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['d_min'], planner_configs['d'])
                     
                     #LOAD
                     Learners['consensus_lattice'] = Consensuser
@@ -145,7 +152,10 @@ class Controller:
 
         # other Parameters
         # ----------------
-        self.Graphs = graphical.Swarmgraph(state, criteria_table = {'radius': 5}, headings = None)  
+        #self.Graphs = graphical.Swarmgraph(state, criteria_table = {'radius': 5}, headings = None)
+        #self.Graphs = graphical.Swarmgraph(state, criteria_table = {'radius': 5, 'aperature': 120}, **kwargs)  
+        #criteria_table = {'radius': True, 'aperature': False}
+        self.Graphs = graphical.Swarmgraph(state, criteria_table) # initialize 
         
         # general purpose counter (nominally, pin reset)
         self.counter = 0                
@@ -158,13 +168,15 @@ class Controller:
         
         # pins and components (not always used)
         self.pin_matrix = np.zeros((nAgents,nAgents))
-        self.components = []
+        #self.components = []
                 
         if tactic_type == 'pinning':
     
             #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
-            self.pin_matrix, self.components = np.ones((nAgents,nAgents)), list(range(0,nAgents)) # make all pins
+            #self.pin_matrix, self.components = np.ones((nAgents,nAgents)), list(range(0,nAgents)) # make all pins
+            self.pin_matrix = np.ones((nAgents,nAgents))# make all pins
             d_init = pinning_tools.return_lattice_param()
+            self.d_init= d_init
             i = 0
             while (i < nAgents):
                 self.lattice[i,:] = d_init
@@ -224,6 +236,7 @@ class Controller:
             # only update the pins at Ts/(tunable parameter)
             if self.counter == pin_update_rate:
                 self.counter = 0
+                
                 # in pull parameters from consensus class
                 if 'consensus_lattice' in self.Learners:
                     kwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
@@ -231,9 +244,19 @@ class Controller:
                 else:
                     kwargs_cmd['d_weighted'] = self.lattice # redundant below
                     
-                # compute the pins and components    
-                self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **kwargs_cmd)
-    
+                # compute the pins and components   (old way)  
+                #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **kwargs_cmd)
+                
+                # dev! (new way)
+                #r_matrix = 5*np.ones((state.shape[1],state.shape[1])) # test
+                r_matrix = kwargs_cmd['d_weighted']                             # if we want the graph based on lattice parameters
+                #r_matrix= self.d_init*np.ones((state.shape[1],state.shape[1]))  # if we want based on actual sensor radius
+                kwargs_cmd['aperature'] = sensor_aperature
+                self.Graphs.update_A(state[0:3,:], r_matrix, **kwargs_cmd)
+                self.Graphs.find_connected_components()
+                self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
+                self.pin_matrix = self.Graphs.pin_matrix
+                
         # for each vehicle/node in the network
         for k_node in range(state[0:3,:].shape[1]): 
                      
@@ -262,6 +285,11 @@ class Controller:
                 # Obstacle Avoidance term (phi_beta)
                 # ---------------------------------   
                 u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                
+                # update connectivity
+                # -------------------
+                r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                self.Graphs.update_A(state[0:3,:], r_matrix)
     
             # Encirclement term (phi_delta)
             # ---------------------------- 
@@ -313,7 +341,12 @@ class Controller:
                     kwargs_pinning['consensus_lattice'] = self.Learners['consensus_lattice']
                     if 'learning_lattice' in self.Learners:
                         kwargs_pinning['learning_lattice'] = self.Learners['learning_lattice']
-                                            
+                
+                # info about graph
+                kwargs_pinning['directional_graph'] = self.Graphs.directional_graph
+                kwargs_pinning['A']      = self.Graphs.A
+                kwargs_pinning['D']      = self.Graphs.D 
+                            
                 # compute command
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
                 

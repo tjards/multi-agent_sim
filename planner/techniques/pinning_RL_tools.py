@@ -55,6 +55,8 @@ Dev notes:
     04 Mar 2024 - rg now updating in graph_tools_direction. Consider renaming '_variable'.
                 - need to assess how the Qlearning is affected by the bearing-based RL. consider using paramClass.prox_i[i,j] in update_Q_table * this was already done
     05 Mar 2024 - ok, I think this works with RL. produced some initial results.  
+    03 Jul 2024 - cleaning up the graphical representation. Moved graph up a level, feed into pinning. Should pin selection be part of the graph module or in here?
+    
     
 """
 
@@ -76,10 +78,10 @@ learning            = 0     # requires heterolattice, do we want to learn lattic
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
 # other parameters
-directional = 0         # do I care about direction for sensor range? 1 = yes, 0 = no
+#directional = 0         # do I care about direction for sensor range? 1 = yes, 0 = no
     
-if directional == 1:
-    from .utils import graph_tools_directional as grph_dir
+#if directional == 1:
+#    from .utils import graph_tools_directional as grph_dir
        
 # learning requires heterolattice
 if learning == 1 and hetero_lattice != 1:
@@ -90,13 +92,13 @@ if learning == 1 and hetero_lattice != 1:
 # -----------------
 
 # key ranges 
-d                   = 20            # lattice scale, > d_min > 5 (desired distance between agents) note: gets overridden by RL.
+d                   = 5            # lattice scale, > d_min > 5 (desired distance between agents) note: gets overridden by RL.
 r                   = 1.3*d         # range at which neighbours can be sensed 
 d_prime             = 1             # desired separation from obstacles  
 r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
 d_min               = 5             # floor on lattice scale (always 5)
 rg                  = d + 0.5       # range for graph analysis (nominally, d + small number), this will auto adjust later
-sensor_aperature    = 120           # used if directional == 1, wide angle = 100
+#sensor_aperature    = 120           # used if directional == 1, wide angle = 100
 
 # gains
 c1_a = 1               # cohesion
@@ -107,7 +109,7 @@ c1_g = 2               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
 
 # pinning method
-method = 'degree'
+#method = 'degree'
 
     # gramian   = based on controllability gramian
     # degree    = based on degree centrality 
@@ -127,7 +129,7 @@ config = {}
 with open(os.path.join("config", "config_planner_pinning.json"), 'w') as configs:
     config['hetero_lattice']      = hetero_lattice
     config['learning']            = learning
-    config['directional']         = directional
+    #config['directional']         = directional
     config['d']                   = d
     config['d_min']               = d_min
     json.dump(config, configs)
@@ -195,6 +197,8 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
     headings            = kwargs.get('quads_headings')
     consensus_agent     = kwargs.get('consensus_lattice') # rename this object 
     learning_agent      = kwargs.get('learning_lattice')
+    directional         = kwargs.get('directional_graph')
+    A                   = kwargs.get('A')
     
     # safety checks
     # -------------
@@ -267,7 +271,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
         if k_node != k_neigh:
             
             # compute the euc distance between them
-            dist = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
+            #dist = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
             
             # pull the lattice parameter for this node/neighbour pair
             if hetero_lattice == 1:
@@ -276,6 +280,14 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
             
             # check if the neighbour is in range
             # ---------------------------------
+            
+            # use adjacency matrix (new)
+            if A[k_node,k_neigh] == 0:
+                in_range = False
+            else:
+                in_range = True
+            
+            '''
             
             # default, not in range
             in_range = False
@@ -292,7 +304,9 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
                 # just rely on distance 
                 if dist < r:
                     in_range = True 
-                
+            
+            '''    
+            
             # if within range
             # ---------------
             if in_range:
@@ -376,7 +390,7 @@ def compute_cmd_g(states_q, states_p, targets, targets_v, k_node, pin_matrix):
 # consolidate control signals
 def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
         
-    #my_kwargs = dict(kwargs)
+    directional         = kwargs.get('directional_graph')
     
     # ensure there are heading available, if needed
     if directional and kwargs.get('quads_headings') is None:
@@ -394,6 +408,12 @@ def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets
     cmd_i[:,k_node] = u_int + u_obs + u_nav
     
     return cmd_i[:,k_node]
+
+
+
+# old methods
+"""
+
 
 #%% Select pins for each component 
 # --------------------------------
@@ -425,6 +445,7 @@ def select_pins_components(states_q, states_p, **kwargs):
     if directional != 1:
         A = grph.adj_matrix(states_q, rg)
         components = grph.find_connected_components_A(A)
+        
     else:
         # if no heading avail, set to zero
         if headings is None:
@@ -566,7 +587,7 @@ def select_pins_components(states_q, states_p, **kwargs):
     return pin_matrix, components
     
 
- 
+"""
 
 
 
