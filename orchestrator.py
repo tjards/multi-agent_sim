@@ -10,9 +10,6 @@ Created on Mon Jan  4 12:45:55 2021
 
 @author: tjards
 
-# dev! notes: I want to do the graphical methods in the orchestrator and pass in to planners
-this will be modular, also, there is some overlap in efforts. Ultimately, the graph
-will be used to drive interaction decisions (vice, for loops now in pinning, for example)
 
 """
 
@@ -62,8 +59,8 @@ pin_selection_method = 'degree'
     # gramian   = based on controllability gramian
     # degree    = based on degree centrality 
     # between   = based on betweenness centrality (buggy at nAgents < 3)
-criteria_table = {'radius': True, 'aperature': False} # for graph construction 
-sensor_aperature    = 180
+criteria_table = {'radius': True, 'aperature': True} # for graph construction 
+sensor_aperature    = 140
 
 #%% Build the system
 # ------------------

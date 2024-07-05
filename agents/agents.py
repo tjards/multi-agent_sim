@@ -14,12 +14,12 @@ import random
 
 # agent dynamics
 # --------------
-#dynamics = 'quadcopter'
-dynamics = 'double integrator' 
+dynamics = 'quadcopter'
+#dynamics = 'double integrator' 
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 5    # number of agents
+nAgents = 7    # number of agents
 rAgents = 0.5   # physics radius of agents 
 iSpread = 20    # initial spread of agents
 

@@ -20,15 +20,12 @@ Preliminaries:
 # Import stuff
 # ------------
 import numpy as np
-import random
-from collections import defaultdict, Counter
-import heapq 
+#import random
+#from collections import defaultdict, Counter
+#import heapq 
 
 # Parameters
 # ----------
-#r       = 5
-#nNodes  = 10
-#data = 10*np.random.rand(3,nNodes)
 slack = 0.5 # slack given to determine if in range 
 
 #%% define the Graph class
@@ -37,45 +34,21 @@ class Swarmgraph:
     
     # initialize
     # ----------
-    #def __init__(self, data = np.zeros((6,2)), criteria_table = {'radius': 5} , **kwargs):
     def __init__(self, data = np.zeros((6,2)), criteria_table = {'radius': True, 'aperature': False}):
-        
-        # pull out parameters
-        #headings    = kwargs.get('quads_headings')
-        #d_weighted  = kwargs.get('d_weighted')
-        
-        self.nNodes  = data.shape[1]    # number of agents (nodes)
-        self.A  = np.zeros((self.nNodes,self.nNodes)) # initialize adjacency matrix as zeros
-        self.D  = np.zeros((self.nNodes,self.nNodes)) # initialize adjacency matrix as zeros
+                
+        self.nNodes  = data.shape[1]                    # number of agents (nodes)
+        self.A  = np.zeros((self.nNodes,self.nNodes))   # initialize adjacency matrix as zeros
+        self.D  = np.zeros((self.nNodes,self.nNodes))   # initialize degree matrix as zeros
         self.criteria_table = criteria_table
         if self.criteria_table['aperature']:
             self.directional_graph = True
         else:
             self.directional_graph = False
-                
-        #self.update_A(self, data, **kwargs)
-        #self.update_pins(self.data, 'degree', **kwargs)
 
     # update A
     # --------
-    # note: must provide r_matrix at least, then can add others as **kwargs
-    
     def update_A(self, data, r_matrix, **kwargs):
-        
-        # pull out parameters
-        
-        #sensor_aperature = kwargs.get('aperature')
-        #headings    = kwargs.get('quads_headings')
-        # note: if hetero, then r_matrix will be d_weighted 
-        
-        # # pull the criteria
-        # if 'radius' in self.criteria_table:
-        #     # pull the radius
-        #     r = self.criteria_table.get('radius') + slack
-        #     if 'aperature' in self.criteria_table:
-        #         # pull the aperature
-        #         sensor_aperature = self.criteria_table.get('aperature')
-        
+    
         # for each node
         for i in range(0,self.nNodes):  
             
@@ -90,7 +63,6 @@ class Swarmgraph:
                 if i != j: 
                     
                     # if using radial criteria 
-                    #if 'radius' in self.criteria_table:
                     if self.criteria_table['radius']:  
                         # compute distance
                         dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
@@ -106,7 +78,6 @@ class Swarmgraph:
                         connected = connected and connected_r
                         
                          # if using directional criteria 
-                        #if 'aperature' in self.criteria_table:
                         if self.criteria_table['aperature']:
                             sensor_aperature = kwargs.get('aperature')
                             headings    = kwargs.get('quads_headings')
@@ -136,7 +107,6 @@ class Swarmgraph:
     def find_connected_components(self):
         
         # if not using directionality
-        #if 'aperature' not in self.criteria_table:
         if not self.directional_graph:
         
             all_components = []                                     # stores all connected components
@@ -163,7 +133,6 @@ class Swarmgraph:
 
             # starts search at greated out degree centrality
             # this starts the dfs from node of max deg centrality
-            #def find_one_way_connected_components_deg(matrix):
             def dfs(node, component):
                 visited.add(node)
                 component.append(node)
@@ -190,10 +159,6 @@ class Swarmgraph:
 
 
     def update_pins(self, data, r_matrix, method, **kwargs):
-        
-        # pull out parameters
-        headings    = kwargs.get('quads_headings')
-        d_weighted  = kwargs.get('d_weighted')
         
         # update graph info
         self.update_A(data, r_matrix, **kwargs)
@@ -222,11 +187,8 @@ class Swarmgraph:
                     
                     # make a subset dict
                     subset_dict = {key: D_dict[key] for key in self.components[i] if key in D_dict}
-                    # get max
+                    # get max degree centrality
                     index_i = max(subset_dict, key=subset_dict.get)
-                    
-                    # find index of highest element of Degree matrix
-                    #index_i = components[i][np.argmax(np.diag(D))]
                     # set as default pin
                     self.pin_matrix[index_i,index_i]=1
                     
@@ -507,11 +469,6 @@ def search_djikstra(G, source):
 
     return parents, costs
     
-
-
-
-
-
 
 #%% compute the controlability matrix
 # ---------------------------------

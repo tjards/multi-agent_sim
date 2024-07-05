@@ -66,8 +66,6 @@ import numpy as np
 import random
 import os
 import json
-from .utils import graph_tools as grph
-from .utils import conic_tools as sensor
 
 #%% simulation setup
 # ------------------
@@ -76,12 +74,6 @@ from .utils import conic_tools as sensor
 hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
 learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
-
-# other parameters
-#directional = 0         # do I care about direction for sensor range? 1 = yes, 0 = no
-    
-#if directional == 1:
-#    from .utils import graph_tools_directional as grph_dir
        
 # learning requires heterolattice
 if learning == 1 and hetero_lattice != 1:
@@ -97,8 +89,7 @@ r                   = 1.3*d         # range at which neighbours can be sensed
 d_prime             = 1             # desired separation from obstacles  
 r_prime             = 1.3*d_prime   # range at which obstacles can be sensed
 d_min               = 5             # floor on lattice scale (always 5)
-rg                  = d + 0.5       # range for graph analysis (nominally, d + small number), this will auto adjust later
-#sensor_aperature    = 120           # used if directional == 1, wide angle = 100
+#rg                  = d + 0.5       # [legacy] range for graph analysis (nominally, d + small number), this will auto adjust later
 
 # gains
 c1_a = 1               # cohesion
@@ -107,13 +98,6 @@ c1_b = 1             # obstacles
 c2_b = 2*np.sqrt(1)
 c1_g = 2               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
-
-# pinning method
-#method = 'degree'
-
-    # gramian   = based on controllability gramian
-    # degree    = based on degree centrality 
-    # between   = based on betweenness centrality (buggy at nAgents < 3)
 
 # constants for useful functions
 a   = 5
@@ -221,37 +205,8 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
     if learning == 1: 
         
         kwargs['learning_grid_size'] = learning_grid_size # consider adapting this with time
-        
         learning_agent.update_step(landmarks, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
         
-        # # increment the counter(s)
-        # learning_agent.time_count_i[k_node] += 1
-        
-        # # if we are at the end of the horizon (and, optionally, not jumping all over the place)
-        # if learning_agent.time_count_i[k_node] > learning_agent.time_horizon and np.max(abs(states_p[:,k_node])) < learning_agent.time_horizon_v:
-            
-        #     # this sets landmark to origin, if none avail
-        #     if landmarks.shape[1] == 0:
-        #         landmarks = np.append(landmarks,np.zeros((4,1))).reshape(4,-1)
-        #         print('no landmarks detected, using origin')
-                
-        #     # update the state (note, this is rounded to grid cubes)
-        #     # ------------------------------------------------------
-        #     learning_agent.state = np.around(states_q[0:3,k_node]-targets[0:3,k_node],learning_grid_size)
-        #     learning_agent.state_next = np.around(states_q[0:3,:]-targets[0:3,:],learning_grid_size)
-        #     #print("trial length for Agent ",k_node,": ", learning_agent.time_count_i[k_node])
-            
-        #     # learn the lattice parameters
-        #     # ----------------------------
-        #     learning_agent.compute_reward(np.reshape(states_q[:,k_node],(3,1)), landmarks)  # compute the reward
-        #     learning_agent.update_q_table_i(consensus_agent, k_node)                             # update the Q-table
-        #     learning_agent.select_action_i(k_node)                                          # select the next action
-        #     learning_agent.match_parameters_i(consensus_agent, k_node)                           # assign the selected action
-        #     learning_agent.time_count_i[k_node] = 0                                         # reset the counter
-        #     learning_agent.update_exploit_rate(k_node)                                      # update exploit rate
-        #     #print('REWARD, Agent', k_node, ": ", learning_agent.reward)
-        #     #print(learning_agent.explore_rate)
-         
     # initialize parameters
     # ----------------------
     if hetero_lattice == 1:
@@ -269,10 +224,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
         
         # except for itself:
         if k_node != k_neigh:
-            
-            # compute the euc distance between them
-            #dist = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
-            
+                        
             # pull the lattice parameter for this node/neighbour pair
             if hetero_lattice == 1:
                 d = consensus_agent.d_weighted[k_node, k_neigh]
@@ -285,27 +237,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
             if A[k_node,k_neigh] == 0:
                 in_range = False
             else:
-                in_range = True
-            
-            '''
-            
-            # default, not in range
-            in_range = False
-            
-            # if using directioal mode and heading available
-            if directional == 1 and headings is not None:
-                # get vector for heading
-                v_a         = np.array((np.cos(headings[0,k_node]), np.sin(headings[0,k_node]), 0 ))
-                # check sensor range 
-                if sensor.is_point_in_sensor_range(states_q[:,k_node], states_q[:,k_neigh], v_a, sensor_aperature, r):
-                    in_range = True
-            # or, if not using directional
-            else:
-                # just rely on distance 
-                if dist < r:
-                    in_range = True 
-            
-            '''    
+                in_range = True 
             
             # if within range
             # ---------------
@@ -413,7 +345,6 @@ def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets
 
 # old methods
 """
-
 
 #%% Select pins for each component 
 # --------------------------------
