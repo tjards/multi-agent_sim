@@ -26,7 +26,7 @@ class Obstacles:
         # initiate attributes
         # -------------------
         self.nObs    = nObs     # number of obstacles 
-        self.vehObs  = 1     # include other vehicles as obstacles [0 = no, 1 = yes] 
+        self.vehObs  = 0     # include other vehicles as obstacles [0 = no, 1 = yes] 
 
         # if using reynolds, need make target an obstacle 
         if tactic_type == 'reynolds':

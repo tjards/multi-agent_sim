@@ -59,7 +59,7 @@ pin_selection_method = 'degree'
     # gramian   = based on controllability gramian
     # degree    = based on degree centrality 
     # between   = based on betweenness centrality (buggy at nAgents < 3)
-criteria_table = {'radius': True, 'aperature': True} # for graph construction 
+criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
 
 #%% Build the system
