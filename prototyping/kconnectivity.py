@@ -6,6 +6,11 @@ Created on Sat Jul  6 18:40:58 2024
 This program manually computes the local k-connectivity of a nodes in a graph
 based on the adjacency matrix. The graph can be directed or undirected.
 
+Local k-connectivity represents the minimum number of nodes that need to be 
+removed in order to disconnect that subject node from the rest of the graph.
+(maximum number of vertex-disjoint paths between each 
+ node and any other node in the graph)
+
 Given  vertices (u,v), a 'path' between these vertices is a sequences of edges
 that connect them with revisiting any vertex. 'Vertex-disjoint paths' refer
 to paths between two vertices that do not share any vertices other than 
@@ -51,10 +56,12 @@ def find_k_disjoint_paths(A, source, target, k):
     dfs(source, [source])
     
     # filter out paths !=  k
-    k_paths = [p for p in paths if len(p) == k + 1]
+    #k_paths = [p for p in paths if len(p) == k + 1]
     
     # alternatively, filter out paths <  k
     #k_paths = [p for p in paths if len(p) >= k + 1]
+    
+    k_paths= paths
 
     return len(k_paths) >= k
 
@@ -105,8 +112,8 @@ A = np.array(
     )
 
 # Compute local k-connectivity for each node
-k = len(A)+1 #np.inf #
+k = len(A) #np.inf #
 local_k_values = local_k_connectivity(A, k, -1)
-print("Local k-connectivity values:")
+print("Local k-connecticity path values:")
 for key in local_k_values:
-    print(f"node {key}: k-connectivity = {local_k_values[key]}")
+    print(f"node {key}: {local_k_values[key]}")

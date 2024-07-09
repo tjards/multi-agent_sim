@@ -39,6 +39,7 @@ class Swarmgraph:
         self.nNodes  = data.shape[1]                    # number of agents (nodes)
         self.A  = np.zeros((self.nNodes,self.nNodes))   # initialize adjacency matrix as zeros
         self.D  = np.zeros((self.nNodes,self.nNodes))   # initialize degree matrix as zeros
+        self.local_k_connecivity = local_k_connectivity(self.A, len(self.A), -1)
         self.criteria_table = criteria_table
         if self.criteria_table['aperature']:
             self.directional_graph = True
@@ -102,6 +103,14 @@ class Swarmgraph:
         # also update D
         self.D = convert_A_to_D(self.A)
      
+    
+    # update k-connectivity
+    # ---------------------
+    def update_local_k_connectivity(self):
+        
+        self.local_k_connecivity = local_k_connectivity(self.A, len(self.A), -1)
+    
+    
     # find connected components
     # -------------------------
     def find_connected_components(self):
@@ -163,6 +172,7 @@ class Swarmgraph:
         # update graph info
         self.update_A(data, r_matrix, **kwargs)
         self.find_connected_components()
+        self.local_k_connecivity = local_k_connectivity(self.A, len(self.A), -1)
         
         # initialize the pins
         self.pin_matrix = np.zeros((data.shape[1],data.shape[1]))
@@ -266,6 +276,72 @@ def lap_matrix(A, D):
     # return the matrix
     return L
                         
+
+# find the disjoint path between source and target
+# ------------------------------------------------
+def find_k_disjoint_paths(A, source, target, k):
+    
+    n = len(A)             # number of nodes
+    visited = [False] * n  # initialize a list to store visited nodes
+    paths = []             # count paths
+
+    # we'll do a depth first search
+    def dfs(node, path):
+        visited[node] = True 
+        if node == target:
+            paths.append(path[:]) # store path, if target found
+        else:
+            for neighbor in range(n):
+                if A[node][neighbor] > 0 and not visited[neighbor]:
+                    dfs(neighbor, path + [neighbor]) # search for paths (recursively)
+        visited[node] = False
+
+    # initiate search from source node
+    dfs(source, [source])
+    
+    # filter out paths !=  k
+    #k_paths = [p for p in paths if len(p) == k + 1]
+    
+    # alternatively, filter out paths <  k
+    #k_paths = [p for p in paths if len(p) >= k + 1]
+    
+    k_paths= paths
+
+    return len(k_paths) >= k
+
+# find the local connectivity 
+# ---------------------------
+def local_k_connectivity(A, k, pick = -1):
+    
+    n = len(A)          # number of nodes 
+    
+    if pick == -1:      # -1 denoes searching all nodes
+        node_list = list(range(0,n))
+    else:
+        node_list = [pick] # else, specifies a specific node
+    
+    local_k = {}
+
+    # for each node
+    for node in node_list:
+        local_k[node] = 0
+        # search through connected neighbours
+        neighbors = [i for i in range(n) if A[node][i] > 0]
+        # if number of neighbours is less than k
+        if len(neighbors) < k:
+            # just store the number of neighbours (will be filtered out)
+            local_k[node] = len(neighbors)
+        else:
+            # else, if there are at least k neighbours 
+            for neighbor in neighbors:
+                # count and store the disjointed paths 
+                if find_k_disjoint_paths(A, node, neighbor, k):
+                    local_k[node] = k
+                    break
+        
+    return local_k
+
+
         
 ## TEMPLATES FOR OTHER METHODS
 # ----------------------------
