@@ -16,6 +16,7 @@ Dev notes:
     01 Jan 2024: consider removing the global case (code simplify), call local case multiple times if necessary 
     01 Jan 2024: other simplification: no state-grid option, just default a (0,0,0) state
     01 Jan 2024: Q table should be Agent, State, Neighbour, Action. State and Neighbour are swapped (oops). I dont think this matters much.
+    08 Jul 2024: allow for more diverse reward calculations (i.e. k-connectivity)
 
 """
 

@@ -19,7 +19,7 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 50    # number of agents
+nAgents = 30    # number of agents
 rAgents = 0.5   # physics radius of agents 
 iSpread = 20    # initial spread of agents
 
