@@ -31,11 +31,16 @@ from scipy.spatial import distance
 
 #%% hyper parameters
 # ----------------
-options_range   = [4, 15]    # range of action options [min, max]
+options_range   = [4, 8]    # range of action options [min, max]
 nOptions        = 2         # number of action options (evenly spaced between [min, max])
-time_horizon    = 120       # how long to apply action and await reward (eg., 1 sec/0.02 sample per sec = 50)
+time_horizon    = 50       # how long to apply action and await reward (eg., 1 sec/0.02 sample per sec = 50)
 time_horizon_v  = 0.1       # optional, max speed constraint to permit new action (higher makes more stable)
 states_grid     = 1         # represent states in Q-table as a grid? 1 = yes, 0 = no
+reward_method   = 'connectivity'
+
+    # methods:
+    #   'landmarks'     - minimizes distance between landmarks
+    #   'connectivity'  - maximizes local k-connectivity
 
 #%% data saving
 # -------------
@@ -62,16 +67,17 @@ class q_learning_agent:
     def __init__(self, nAgents):
         
         # learning hyperparameters
-        self.nAgents        = nAgents
-        self.nOptions       = nOptions # defined above
-        self.action_options = {state: np.linspace(options_range[0], options_range[1], self.nOptions) for state in range(self.nAgents)}
-        #self.explore_rate   = 1     # [0,1], 1 = always learn, 0 = always exploit best option
-        self.explore_rate = 1*np.ones((nAgents)) # now each agent has its own
-        self.learn_rate     = 0.3   # [0,1]
-        self.discount       = 0.2 #0.8   # balance immediate/future rewards, (gamma): 0.8 to 0.99
-        self.time_horizon   = time_horizon
-        self.time_horizon_v = time_horizon_v
-        self.explore_exp_decay = 0.05 #0.03 # [0.01 (slower decay), 0.1 (faster decay)]: a, where et = e0 * e^{-at}
+        self.nAgents            = nAgents
+        self.nOptions           = nOptions # defined above
+        self.action_options     = {state: np.linspace(options_range[0], options_range[1], self.nOptions) for state in range(self.nAgents)}
+        #self.explore_rate       = 1     # [0,1], 1 = always learn, 0 = always exploit best option
+        self.explore_rate       = 1*np.ones((nAgents)) # now each agent has its own
+        self.learn_rate         = 0.5   # [0,1]
+        self.discount           = 0.1 #0.8   # balance immediate/future rewards, (gamma): 0.8 to 0.99
+        self.time_horizon       = time_horizon
+        self.time_horizon_v     = time_horizon_v
+        self.explore_exp_decay  = 0.1 #0.03 # [0.01 (slower decay), 0.1 (faster decay)]: a, where et = e0 * e^{-at}
+        self.reward_method      = reward_method
         
         # initialize timers (global)
         self.time_count     = 0     # initialize 
@@ -145,7 +151,8 @@ class q_learning_agent:
 
     # orchestration of update
     # -----------------------
-    def update_step(self, landmarks, targets, states_q, states_p, k_node, consensus_agent, **kwargs):
+    #def update_step(self, landmarks, targets, states_q, states_p, k_node, consensus_agent, **kwargs):
+    def update_step(self, reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs):
         
         learning_grid_size = kwargs.get('learning_grid_size')
         
@@ -156,9 +163,11 @@ class q_learning_agent:
         if self.time_count_i[k_node] > self.time_horizon and np.max(abs(states_p[:,k_node])) < self.time_horizon_v:
              
             # this sets landmark to origin, if none avail
-            if landmarks.shape[1] == 0:
-                landmarks = np.append(landmarks,np.zeros((4,1))).reshape(4,-1)
-                print('no landmarks detected, using origin')
+            if reward_method == 'landmarks':
+                landmarks = reward_values
+                if landmarks.shape[1] == 0:
+                    landmarks = np.append(landmarks,np.zeros((4,1))).reshape(4,-1)
+                    print('no landmarks detected, using origin')
                 
             # update the state (note, this is rounded to grid cubes)
             # ------------------------------------------------------
@@ -168,7 +177,8 @@ class q_learning_agent:
             
             # learn the lattice parameters
             # ----------------------------
-            self.compute_reward(np.reshape(states_q[:,k_node],(3,1)), landmarks)  # compute the reward
+            #self.compute_reward(np.reshape(states_q[:,k_node],(3,1)), landmarks)  # compute the reward
+            self.compute_reward(np.reshape(states_q[:,k_node],(3,1)), reward_values)  # compute the reward
             self.update_q_table_i(consensus_agent, k_node)                             # update the Q-table
             self.select_action_i(k_node)                                          # select the next action
             self.match_parameters_i(consensus_agent, k_node)                           # assign the selected action
@@ -258,26 +268,30 @@ class q_learning_agent:
     # ---------------                    
     # this can be called for 1 or multiple agents. Just ensure to pass in the state for 1 x agent if the former.
     
-    def compute_reward(self, states_q, landmarks):
+    #def compute_reward(self, states_q, landmarks):
+    def compute_reward(self, states_q, values):
         
         # initialize reward signal and temp helpers
         self.reward = 0
-        summerizer = 0.0001
         
-        # for each agent 
-        for i in range(states_q.shape[1]):
+        if reward_method == 'landmarks':
+    
+            landmarks = values
+            summerizer = 0.0001
+            # for each agent 
+            for i in range(states_q.shape[1]):
+                normalizer = 0.0001
+                # cycle through landmarks
+                for j in range(landmarks.shape[1]):
+                    # accumulate distances between agents and landmarks
+                    summerizer += np.linalg.norm(states_q[0:3,i]-landmarks[0:3,j])
+                    normalizer += 1
+            # compute reward signal
+            self.reward = states_q.shape[1]/np.divide(summerizer,normalizer)
             
-            normalizer = 0.0001
+        elif reward_method == 'connectivity':
             
-            # cycle through landmarks
-            for j in range(landmarks.shape[1]):
-                
-                # accumulate distances between agents and landmarks
-                summerizer += np.linalg.norm(states_q[0:3,i]-landmarks[0:3,j])
-                normalizer += 1
-        
-        # compute reward signal
-        self.reward = states_q.shape[1]/np.divide(summerizer,normalizer) 
+            self.reward = values
  
     #%% link to parameters used by controller
     # ---------------------------------------

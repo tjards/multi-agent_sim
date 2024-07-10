@@ -56,7 +56,7 @@ Dev notes:
                 - need to assess how the Qlearning is affected by the bearing-based RL. consider using paramClass.prox_i[i,j] in update_Q_table * this was already done
     05 Mar 2024 - ok, I think this works with RL. produced some initial results.  
     03 Jul 2024 - cleaning up the graphical representation. Moved graph up a level, feed into pinning. Should pin selection be part of the graph module or in here?
-    
+    08 Jul 2024 - add a RL feature to maximize k-connectivity: resilient self-assembly in contested swarms via learned k-connectivity 
     
 """
 
@@ -71,8 +71,8 @@ import json
 # ------------------
 
 # learning parameters
-hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
-learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
+hetero_lattice      = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
+learning            = 1     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
        
 # learning requires heterolattice
@@ -174,15 +174,17 @@ def return_lattice_param():
     return d_init
 
 # form the lattice
-def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **kwargs):
+#def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **kwargs):
+def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values, **kwargs):   
     
     # pull out the args (try .get() to ignore n/a cases)
     # -----------------
-    headings            = kwargs.get('quads_headings')
-    consensus_agent     = kwargs.get('consensus_lattice') # rename this object 
-    learning_agent      = kwargs.get('learning_lattice')
-    directional         = kwargs.get('directional_graph')
-    A                   = kwargs.get('A')
+    headings                = kwargs.get('quads_headings')
+    consensus_agent         = kwargs.get('consensus_lattice') # rename this object 
+    learning_agent          = kwargs.get('learning_lattice')
+    directional             = kwargs.get('directional_graph')
+    A                       = kwargs.get('A')
+    local_k_connectivity    = kwargs.get('local_k_connectivity')
     
     # safety checks
     # -------------
@@ -205,7 +207,8 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **k
     if learning == 1: 
         
         kwargs['learning_grid_size'] = learning_grid_size # consider adapting this with time
-        learning_agent.update_step(landmarks, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
+        #learning_agent.update_step(landmarks, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
+        learning_agent.update_step(reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
         
     # initialize parameters
     # ----------------------
@@ -330,10 +333,21 @@ def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets
         print('no headings avail, assuming 0')
     
     
+    if 'learning_lattice' in kwargs:
+        learning_agent  = kwargs.get('learning_lattice')
+        if learning_agent.reward_method == 'landmarks':
+            reward_values = obstacles
+        elif learning_agent.reward_method == 'connectivity':
+            reward_values_full  = kwargs.get('local_k_connectivity')
+            reward_values       = reward_values_full[k_node]
+    else:
+        reward_values = 0
+    
     # initialize 
     cmd_i = np.zeros((3,states_q.shape[1]))
     
-    u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles, **kwargs)
+    #u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, obstacles, **kwargs)
+    u_int = compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values, **kwargs)
     u_obs = compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
     u_nav = compute_cmd_g(states_q, states_p, targets, targets_v, k_node, kwargs.get('pin_matrix'))
        

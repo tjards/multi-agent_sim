@@ -1,1 +1,1 @@
-{"Ti": 0, "Tf": 40, "Ts": 0.02, "verbose": 1, "system": "swarm", "strategy": "pinning"}
+{"Ti": 0, "Tf": 500, "Ts": 0.02, "verbose": 1, "system": "swarm", "strategy": "pinning"}

@@ -55,10 +55,11 @@ elif tactic_type == 'pinning':
 # -----------------
 
 pin_update_rate = 100   # number of timesteps after which we update the pins
-pin_selection_method = 'degree'
-    # gramian   = based on controllability gramian
-    # degree    = based on degree centrality 
-    # between   = based on betweenness centrality (buggy at nAgents < 3)
+pin_selection_method = 'degree_leafs'
+    # gramian   = [future] // based on controllability gramian
+    # degree    = based on degree centrality  
+    # between   = [future] // based on betweenness centrality (buggy at nAgents < 3)
+    # degree_leafs = degree and also leaves (only one connection)
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
 
@@ -340,9 +341,10 @@ class Controller:
                         kwargs_pinning['learning_lattice'] = self.Learners['learning_lattice']
                 
                 # info about graph
-                kwargs_pinning['directional_graph'] = self.Graphs.directional_graph
-                kwargs_pinning['A']      = self.Graphs.A
-                kwargs_pinning['D']      = self.Graphs.D 
+                kwargs_pinning['directional_graph']         = self.Graphs.directional_graph
+                kwargs_pinning['A']                         = self.Graphs.A
+                kwargs_pinning['D']                         = self.Graphs.D
+                kwargs_pinning['local_k_connectivity']       = self.Graphs.local_k_connectivity
                             
                 # compute command
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)

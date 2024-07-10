@@ -39,7 +39,7 @@ class Swarmgraph:
         self.nNodes  = data.shape[1]                    # number of agents (nodes)
         self.A  = np.zeros((self.nNodes,self.nNodes))   # initialize adjacency matrix as zeros
         self.D  = np.zeros((self.nNodes,self.nNodes))   # initialize degree matrix as zeros
-        self.local_k_connecivity = local_k_connectivity(self.A, len(self.A), -1)
+        self.local_k_connectivity = local_k_connectivity(self.A, len(self.A), -1)
         self.criteria_table = criteria_table
         if self.criteria_table['aperature']:
             self.directional_graph = True
@@ -49,6 +49,9 @@ class Swarmgraph:
     # update A
     # --------
     def update_A(self, data, r_matrix, **kwargs):
+        
+        # reset
+        self.A[:,:] = 0    
     
         # for each node
         for i in range(0,self.nNodes):  
@@ -90,7 +93,8 @@ class Swarmgraph:
                             else:
                                 connected_a = False
                             # interection
-                            connected = connected and connected_a
+                            connected = connected and connected_a                            
+                        
                     # if connected 
                     if connected:
     
@@ -100,6 +104,9 @@ class Swarmgraph:
                         
                         self.A[i,j] = 0
         
+        #if np.all(self.A == 1):
+        #    print("All elements are equal to 1")
+        
         # also update D
         self.D = convert_A_to_D(self.A)
      
@@ -108,7 +115,7 @@ class Swarmgraph:
     # ---------------------
     def update_local_k_connectivity(self):
         
-        self.local_k_connecivity = local_k_connectivity(self.A, len(self.A), -1)
+        self.local_k_connectivity = local_k_connectivity(self.A, len(self.A), -1)
     
     
     # find connected components
@@ -172,12 +179,12 @@ class Swarmgraph:
         # update graph info
         self.update_A(data, r_matrix, **kwargs)
         self.find_connected_components()
-        self.local_k_connecivity = local_k_connectivity(self.A, len(self.A), -1)
+        self.local_k_connectivity = local_k_connectivity(self.A, len(self.A), -1)
         
         # initialize the pins
         self.pin_matrix = np.zeros((data.shape[1],data.shape[1]))
         
-        if method == 'degree':
+        if method == 'degree' or 'degree_leafs':
         
             D_elements = np.diag(self.D)
             D_dict = {i: D_elements[i] for i in range(len(D_elements))}
@@ -201,7 +208,16 @@ class Swarmgraph:
                     index_i = max(subset_dict, key=subset_dict.get)
                     # set as default pin
                     self.pin_matrix[index_i,index_i]=1
+            
+            # also add leafs
+            if method == 'degree_leafs':
                     
+                leaf_nodes = np.where(D_elements == 1)[0]
+                
+                for leaf in leaf_nodes:
+                    
+                    self.pin_matrix[leaf,leaf]=1
+                  
         else:
             
             print('unsupported pin selection method. no pins for you.')
