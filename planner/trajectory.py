@@ -76,3 +76,11 @@ class Trajectory:
             #Agents = kwargs.get('lemni')
             
             self.trajectory, self.lemni = lemni_tools.lemni_target(lemni_all,state,targets,i,t)
+            
+        elif tactic_type == 'cao':
+            
+            self.trajectory = targets.copy()
+            
+            
+            
+            

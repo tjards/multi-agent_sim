@@ -21,7 +21,7 @@ dynamics = 'double integrator'
 
 nAgents = 7    # number of agents
 rAgents = 0.5   # physics radius of agents 
-iSpread = 30    # initial spread of agents
+iSpread = 5    # initial spread of agents
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
@@ -73,9 +73,9 @@ class Agents:
         self.state[0,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (x)
         self.state[1,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (y)
         self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nAgents)-0.5),2)+8  # position (z)
-        self.state[3,:] = 0*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
-        self.state[4,:] = 0*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
-        self.state[5,:] = 0*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
+        self.state[3,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
+        self.state[4,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
+        self.state[5,:] = 0.1*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
         self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
         self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         

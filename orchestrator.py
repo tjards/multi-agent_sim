@@ -4,7 +4,9 @@
 
 This module computes the commands for various swarming strategies 
 
-Note: we have created this separate module to permit mixing and/or sharing between tactic types
+Dev notes: 
+    - we have created this separate module to permit mixing and/or sharing between tactic types
+    - bring the graphing and pinning stuff out as an outer loop common to all planning/control 
 
 Created on Mon Jan  4 12:45:55 2021
 
@@ -49,6 +51,8 @@ elif tactic_type == 'pinning':
     with open(os.path.join("config", "config_planner_pinning.json"), 'r') as planner_pinning_tests:
         planner_configs = json.load(planner_pinning_tests)
         lattice_consensus = planner_configs['hetero_lattice']
+elif tactic_type == 'cao':
+    from planner.techniques import cao_tools
 
 
 #%% Hyperparameters 
@@ -367,6 +371,21 @@ class Controller:
                 cmd_i[:,k_node]                 = self.shepherdClass.cmd
                 self.pin_matrix[k_node, k_node] = self.shepherdClass.index[self.shepherdClass.i]
   
+            
+            # Cao flocking 
+            # ------------
+            if tactic_type == 'cao':
+                
+                # update connectivity
+                # -------------------
+                r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                self.Graphs.update_A(state[0:3,:], r_matrix)
+                kwargs_cao = {}
+                kwargs_cao['A'] = self.Graphs.A
+                cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
+            
+            
+    
             # Mixer
             # -----         
             if tactic_type == 'saber':

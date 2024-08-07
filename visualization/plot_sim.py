@@ -24,7 +24,6 @@ import os
 data_directory = 'data'
 data_file_path = os.path.join(data_directory, "data.h5")
 
-
 # produce plots
 # -------------
 def plotMe(data_file_path):
@@ -92,28 +91,30 @@ def plotMe(data_file_path):
         
         
     #%% local k-connectivity
-    _, t_all = data_manager.load_data_HDF5('History', 't_all', data_file_path)
-    _, local_k_connectivity = data_manager.load_data_HDF5('History', 'local_k_connectivity', data_file_path)
+    # _, t_all = data_manager.load_data_HDF5('History', 't_all', data_file_path)
+    # _, local_k_connectivity = data_manager.load_data_HDF5('History', 'local_k_connectivity', data_file_path)
     
-    # Plotting the array
-    fig, ax = plt.subplots()
-    start = int(0/0.02)
-    #for i in range(0,len(local_k_connectivity[0,:])):
-    temp_means = 0*local_k_connectivity[:,0]   
-    temp_maxs = 0*local_k_connectivity[:,0]
-    temp_mins = 0*local_k_connectivity[:,0] 
-    for i in range(start,len(t_all)):
-        temp_means[i] = np.mean(local_k_connectivity[i,:].ravel())
-        temp_mins[i] = np.min(local_k_connectivity[i,:].ravel())
-        temp_maxs[i] = np.max(local_k_connectivity[i,:].ravel())
+    # # Plotting the array
+    # fig, ax = plt.subplots()
+    # start = int(0/0.02)
+    # #for i in range(0,len(local_k_connectivity[0,:])):
+    # temp_means = 0*local_k_connectivity[:,0]   
+    # temp_maxs = 0*local_k_connectivity[:,0]
+    # temp_mins = 0*local_k_connectivity[:,0] 
+    # for i in range(start,len(t_all)):
+    #     temp_means[i] = np.mean(local_k_connectivity[i,:].ravel())
+    #     temp_mins[i] = np.min(local_k_connectivity[i,:].ravel())
+    #     temp_maxs[i] = np.max(local_k_connectivity[i,:].ravel())
     
-    ax.plot(t_all[start::],temp_means[start::],'-b')
-    ax.fill_between(t_all[start::], temp_mins[start::], temp_maxs[start::], color = 'blue', alpha = 0.2)
+    # ax.plot(t_all[start::],temp_means[start::],'-b')
+    # ax.fill_between(t_all[start::], temp_mins[start::], temp_maxs[start::], color = 'blue', alpha = 0.2)
     
-    plt.title('k-connectivity')
-    plt.xlabel('time [s]')
-    plt.ylabel('local k-connectivity [mean +/- max/min]')
-    plt.show()
+    # plt.title('k-connectivity')
+    # plt.xlabel('time [s]')
+    # plt.ylabel('local k-connectivity [mean +/- max/min]')
+    # plt.show()
+    
+    #%%
 
     
     

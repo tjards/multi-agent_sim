@@ -27,7 +27,13 @@ Lasted updated on Fri Feb 02 16:23 2024
 
 dev notes:
     
-
+    to do: 
+        - standardize the planners (standard inputs, outputs, ...etc)
+        - too many conditional statements throughout
+        - use more kwargs vice if statements 
+        - standardize graph as common to all planners
+        - commands formatted ali+coh+sep
+        - 2D option
 """
 
 #%% Import stuff
@@ -59,12 +65,13 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42)
 
 Ti      = 0       # initial time
-Tf      = 500     # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 10     # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'pinning'
+#strategy = 'pinning'
+strategy = 'cao'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -73,6 +80,7 @@ strategy = 'pinning'
     # lemni     = dynamic lemniscates and other closed curves
     # pinning   = pinning control
     # shep      = shepherding
+    # cao       = [in development] 
 
 #exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
 
