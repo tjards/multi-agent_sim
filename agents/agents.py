@@ -19,9 +19,9 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 5    # number of agents
+nAgents = 7    # number of agents
 rAgents = 0.5   # physics radius of agents 
-iSpread = 20    # initial spread of agents
+iSpread = 10    # initial spread of agents
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 

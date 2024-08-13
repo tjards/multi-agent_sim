@@ -288,7 +288,7 @@ class Controller:
                 # ---------------------------------   
                 u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                 
-                # update connectivity
+                # update connectivity (do this outside loop, or use pin update rate)
                 # -------------------
                 r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
                 self.Graphs.update_A(state[0:3,:], r_matrix)
@@ -378,8 +378,13 @@ class Controller:
                 
                 # update connectivity
                 # -------------------
-                r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                self.Graphs.update_A(state[0:3,:], r_matrix)
+                self.counter += 1
+                # only update the pins at Ts/(tunable parameter)
+                if self.counter == pin_update_rate:
+                    self.counter = 0
+                    r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                    self.Graphs.update_A(state[0:3,:], r_matrix)
+                
                 kwargs_cao = {}
                 kwargs_cao['A'] = self.Graphs.A
                 cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)

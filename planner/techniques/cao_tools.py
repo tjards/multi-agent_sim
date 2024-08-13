@@ -112,12 +112,13 @@ def compute_navigation(states_q, states_p, targets, k_node):
     
     return u_i_navig
 
-# compute potential function bar (sed to compute E)
+# compute potential function bar ( to compute E)
 # ------------------------------
 def potential_function_bar(R, x):
     V = np.divide(R**2 - x**2, x**2) + np.divide(x**2, R**2 - x**2)
     return V
 
+# ref: Eqn (3) from [2]
 def compute_E(states_q, states_p, A):
     v_sum = 0
     V_max = 0
