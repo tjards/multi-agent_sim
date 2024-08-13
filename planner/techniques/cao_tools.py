@@ -27,9 +27,8 @@ import numpy as np
 d =  5
 r = np.divide(2*d, np.sqrt(2)) # sensor range (adjust this later, derived from desired separation now)
 
-# must be computed using Eqn (15) from [1]:
-Q = 0.01 
-
+# must be computed using Eqn (3) from [2]
+Q = 0.008 #0.01 
 
 gain_p = 0.01
 gain_v = 0.1
@@ -43,6 +42,8 @@ def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
     
     # extract adjacency matrix
     A = kwargs['A']
+    
+    #Q = compute_E(states_q, states_p, A)
         
     # initialize
     cmd_i = np.zeros((3))
@@ -67,9 +68,9 @@ def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
                 # compute alignment 
                 cmd_i -= compute_alignment(states_q, states_p, A, k_node, k_neigh)
                 # compute cohesion
-                cmd_i -= compute_cohesion(states_q, k_node, k_neigh)
+                cmd_i -= compute_cohesion(states_q, k_node, k_neigh, Q)
                 # compute repulsion
-                cmd_i -= compute_repulsion(states_q, k_node, k_neigh)
+                cmd_i -= compute_repulsion(states_q, k_node, k_neigh, Q)
     
   
     return cmd_i
@@ -85,7 +86,7 @@ def compute_alignment(states_q, states_p, A, k_node, k_neigh):
     
 # compute cohesion command
 # ------------------------
-def compute_cohesion(states_q, k_node, k_neigh):
+def compute_cohesion(states_q, k_node, k_neigh, Q):
  
     s = np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh])
     u_i_cohes = np.divide(2*s*(r**2 + (r**2)/Q), np.square(r**2 - s**2 + (r**2)/Q ))
@@ -94,7 +95,7 @@ def compute_cohesion(states_q, k_node, k_neigh):
     
 # compute repulsion command
 # ------------------------
-def compute_repulsion(states_q, k_node, k_neigh):
+def compute_repulsion(states_q, k_node, k_neigh, Q):
  
     s = np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh])
     u_i_repul = np.divide(-2*s*(r**2 + (r**2)/Q), np.square(s**2 + (r**2)/Q ))
@@ -110,3 +111,41 @@ def compute_navigation(states_q, states_p, targets, k_node):
     
     
     return u_i_navig
+
+# compute potential function bar (sed to compute E)
+# ------------------------------
+def potential_function_bar(R, x):
+    V = np.divide(R**2 - x**2, x**2) + np.divide(x**2, R**2 - x**2)
+    return V
+
+def compute_E(states_q, states_p, A):
+    v_sum = 0
+    V_max = 0
+    N = states_q.shape[1]
+    # for each agent
+    for k_node in range(states_q.shape[1]):
+        v_sum += np.dot(states_p[:,k_node].transpose(),states_p[:,k_node])
+        
+        # search through each neighbour
+        for k_neigh in range(states_q.shape[1]):
+            # except for itself:
+            if k_node != k_neigh:
+                V_new =  potential_function_bar(r, np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh]))
+                if V_new > V_max:
+                    V_max == V_new
+                # # check if the neighbour is in range
+                # if A[k_node,k_neigh] == 0:
+                #     in_range = False
+                # else:
+                #     in_range = True 
+                # # if within range
+                # if in_range:
+    E = 0.5*v_sum + np.divide((N*(N-1)),2)*V_max
+    
+    return E
+                    
+                    
+
+    
+    
+    
