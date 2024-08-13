@@ -5,12 +5,12 @@ Created on Tue Aug  6 18:58:14 2024
 
 this project implements the following:
 
-Yi Dong, Jie Huang,
+[1] Yi Dong, Jie Huang,
 Flocking with connectivity preservation of multiple double integrator systems \
 subject to external disturbances by a distributed control law, Automatica
 2015
 
-Zhang et al., Flocking Control Against Malicious Agent
+[2] Zhang et al., Flocking Control Against Malicious Agent
 IEEE TRANSACTIONS ON AUTOMATIC CONTROL, VOL. 69, NO. 5, MAY 2024
 
 
@@ -24,11 +24,15 @@ import numpy as np
 
 # parameters
 # ---------- 
-d =  8
+d =  5
 r = np.divide(2*d, np.sqrt(2)) # sensor range (adjust this later, derived from desired separation now)
-Q = 0.1 # i don't know what this is
-#gain_p = 1
-#gain_v = 0.2
+
+# must be computed using Eqn (15) from [1]:
+Q = 0.01 
+
+
+gain_p = 0.01
+gain_v = 0.1
 
 def return_ranges():
     return d
@@ -42,6 +46,8 @@ def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
         
     # initialize
     cmd_i = np.zeros((3))
+    # compute navigation
+    cmd_i -= compute_navigation(states_q, states_p, targets, k_node)
     
     # search through each neighbour
     for k_neigh in range(states_q.shape[1]):
@@ -64,9 +70,8 @@ def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
                 cmd_i -= compute_cohesion(states_q, k_node, k_neigh)
                 # compute repulsion
                 cmd_i -= compute_repulsion(states_q, k_node, k_neigh)
-                # compute navigation
-                #cmd_i -= compute_navigation(states_q, states_p, targets, k_node)
-                
+    
+  
     return cmd_i
 
 # compute alignment command
@@ -98,8 +103,10 @@ def compute_repulsion(states_q, k_node, k_neigh):
     
 # compute navigation command
 # ------------------------
-# def compute_navigation(states_q, states_p, targets, k_node):
+def compute_navigation(states_q, states_p, targets, k_node):
     
-#     u_i_navig = gain_p*(states_q[:,k_node]-targets[:,k_node]) + gain_v*(states_p[:,k_node])
+    u_i_navig = np.zeros((3))
+    u_i_navig = -gain_p*(targets[:,k_node] - states_q[:,k_node]) + gain_v*(states_p[:,k_node])
     
-#     return u_i_navig
+    
+    return u_i_navig
