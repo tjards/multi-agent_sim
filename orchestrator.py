@@ -64,6 +64,7 @@ pin_selection_method = 'degree_leafs'
     # degree    = based on degree centrality  
     # between   = [future] // based on betweenness centrality (buggy at nAgents < 3)
     # degree_leafs = degree and also leaves (only one connection)
+    # nopins      = no pins
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
 
@@ -152,11 +153,7 @@ class Controller:
         self.cmd[1] = 0.001*np.random.rand(1,nAgents)-0.5      # command (y)
         self.cmd[2] = 0.001*np.random.rand(1,nAgents)-0.5      # command (z)
 
-        # other Parameters
-        # ----------------
-        #self.Graphs = graphical.Swarmgraph(state, criteria_table = {'radius': 5}, headings = None)
-        #self.Graphs = graphical.Swarmgraph(state, criteria_table = {'radius': 5, 'aperature': 120}, **kwargs)  
-        #criteria_table = {'radius': True, 'aperature': False}
+        # graph
         self.Graphs = graphical.Swarmgraph(state, criteria_table) # initialize 
         
         # general purpose counter (nominally, pin reset)
@@ -221,43 +218,66 @@ class Controller:
         u_enc = np.zeros((3,state[0:3,:].shape[1]))     # encirclement 
         cmd_i = np.zeros((3,state[0:3,:].shape[1]))     # store the commands
         self.params = np.zeros((state[0:3,:].shape[1],state[0:3,:].shape[1])) # store pins 
-         
-        # note:
-            
-            # ADD THE GRAPH COMPONENTS HERE, then the controller
-            # pass in components to help direct the search
         
-        # reynolds requires a matrix of distances between agents
-        if tactic_type == 'reynolds':
-            distances = reynolds_tools.order(state[0:3,:])
+        # update connectivity
+        self.counter += 1                    # increment the counter 
+        if self.counter == pin_update_rate:  # only update the pins at Ts/(tunable parameter)
+            self.counter = 0                 # reset counter
             
-        # update the pins at the desired interval
-        if tactic_type == 'pinning':
-            # increment the counter 
-            self.counter += 1
-            # only update the pins at Ts/(tunable parameter)
-            if self.counter == pin_update_rate:
-                self.counter = 0
-                
+            # update connectivity parameters 
+            if tactic_type == 'saber':
+                r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+            elif tactic_type == 'cao':
+                r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+            elif tactic_type == 'pinning':
                 # in pull parameters from consensus class
                 if 'consensus_lattice' in self.Learners:
                     kwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
                 # or just pass the current lattice parameters
                 else:
                     kwargs_cmd['d_weighted'] = self.lattice # redundant below
-                    
-                # compute the pins and components   (old way)  
-                #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **kwargs_cmd)
-                
-                # dev! (new way)
-                #r_matrix = 5*np.ones((state.shape[1],state.shape[1])) # test
-                r_matrix = kwargs_cmd['d_weighted']                             # if we want the graph based on lattice parameters
-                #r_matrix= self.d_init*np.ones((state.shape[1],state.shape[1]))  # if we want based on actual sensor radius
                 kwargs_cmd['aperature'] = sensor_aperature
-                self.Graphs.update_A(state[0:3,:], r_matrix, **kwargs_cmd)
-                self.Graphs.find_connected_components()
-                self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
-                self.pin_matrix = self.Graphs.pin_matrix
+                r_matrix = kwargs_cmd['d_weighted']  # if we want the graph based on lattice parameters
+            else:
+                r_matrix = 0*np.ones((state.shape[1],state.shape[1]))
+
+            # update the graph
+            self.Graphs.update_A(state[0:3,:], r_matrix, **kwargs_cmd)
+            self.Graphs.find_connected_components()
+            self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
+            self.pin_matrix = self.Graphs.pin_matrix
+
+        # reynolds requires a matrix of distances between agents
+        if tactic_type == 'reynolds':
+            distances = reynolds_tools.order(state[0:3,:])
+            
+        # # update the pins at the desired interval
+        # if tactic_type == 'pinning':
+        #     # increment the counter 
+        #     self.counter += 1
+        #     # only update the pins at Ts/(tunable parameter)
+        #     if self.counter == pin_update_rate:
+        #         self.counter = 0
+                
+        #         # in pull parameters from consensus class
+        #         if 'consensus_lattice' in self.Learners:
+        #             kwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
+        #         # or just pass the current lattice parameters
+        #         else:
+        #             kwargs_cmd['d_weighted'] = self.lattice # redundant below
+                    
+        #         # compute the pins and components   (old way)  
+        #         #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **kwargs_cmd)
+                
+        #         # dev! (new way)
+        #         #r_matrix = 5*np.ones((state.shape[1],state.shape[1])) # test
+        #         r_matrix = kwargs_cmd['d_weighted']                             # if we want the graph based on lattice parameters
+        #         #r_matrix= self.d_init*np.ones((state.shape[1],state.shape[1]))  # if we want based on actual sensor radius
+        #         kwargs_cmd['aperature'] = sensor_aperature
+        #         self.Graphs.update_A(state[0:3,:], r_matrix, **kwargs_cmd)
+        #         self.Graphs.find_connected_components()
+        #         self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
+        #         self.pin_matrix = self.Graphs.pin_matrix
                 
         # for each vehicle/node in the network
         for k_node in range(state[0:3,:].shape[1]): 
@@ -290,8 +310,8 @@ class Controller:
                 
                 # update connectivity (do this outside loop, or use pin update rate)
                 # -------------------
-                r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                self.Graphs.update_A(state[0:3,:], r_matrix)
+                #r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                #self.Graphs.update_A(state[0:3,:], r_matrix)
     
             # Encirclement term (phi_delta)
             # ---------------------------- 
@@ -369,21 +389,21 @@ class Controller:
         
                 # pull out results
                 cmd_i[:,k_node]                 = self.shepherdClass.cmd
-                self.pin_matrix[k_node, k_node] = self.shepherdClass.index[self.shepherdClass.i]
+                self.pin_matrix[k_node, k_node] = self.shepherdClass.index[self.shepherdClass.i] # note: by moving pin selection to outer loop, i may have messed this up
   
             
             # Cao flocking 
             # ------------
             if tactic_type == 'cao':
                 
-                # update connectivity
-                # -------------------
-                self.counter += 1
-                # only update the pins at Ts/(tunable parameter)
-                if self.counter == pin_update_rate:
-                    self.counter = 0
-                    r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                    self.Graphs.update_A(state[0:3,:], r_matrix)
+                # # update connectivity
+                # # -------------------
+                # self.counter += 1
+                # # only update the pins at Ts/(tunable parameter)
+                # if self.counter == pin_update_rate:
+                #     self.counter = 0
+                #     r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                #     self.Graphs.update_A(state[0:3,:], r_matrix)
                 
                 kwargs_cao = {}
                 kwargs_cao['A'] = self.Graphs.A

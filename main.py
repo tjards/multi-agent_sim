@@ -70,7 +70,6 @@ Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-#strategy = 'pinning'
 strategy = 'cao'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
@@ -78,11 +77,9 @@ strategy = 'cao'
     # starling  = swarm like starlings 
     # circle    = encirclement
     # lemni     = dynamic lemniscates and other closed curves
-    # pinning   = pinning control
+    # pinning   = pinning control (with RL)
     # shep      = shepherding
-    # cao       = [in development] 
-
-#exclusion = []   # [LEGACY] initialization of what agents to exclude, default empty
+    # cao       = cao flocking
 
 # save to config file
 # -------------------
@@ -163,13 +160,6 @@ while round(t,3) < Tf:
                 
     Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
     
-    # if t == 0.04:
-    #     checksumtest = np.sum(Controller.cmd)+14.975816569150751-0.015632334424179106
-    #     if checksumtest < 0.00001:
-    #         print("check-sum: PASS")
-    #     else:
-    #         print("check-sum: FAIL")
-    
 #%% Save data
 # -----------
 if verbose == 1:
@@ -189,7 +179,6 @@ if verbose == 1:
     print('building plots.')
 
 plot_sim.plotMe(data_file_path)
-
 
 #%% Produce animation of simulation
 # --------------------------------- 

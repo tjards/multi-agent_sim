@@ -184,7 +184,7 @@ class Swarmgraph:
         # initialize the pins
         self.pin_matrix = np.zeros((data.shape[1],data.shape[1]))
         
-        if method == 'degree' or 'degree_leafs':
+        if method == 'degree' or method == 'degree_leafs':
         
             D_elements = np.diag(self.D)
             D_dict = {i: D_elements[i] for i in range(len(D_elements))}
@@ -218,6 +218,10 @@ class Swarmgraph:
                     
                     self.pin_matrix[leaf,leaf]=1
                   
+        elif method == 'nopins':
+            
+            self.pin_matrix = np.zeros((data.shape[1],data.shape[1]))
+        
         else:
             
             print('unsupported pin selection method. no pins for you.')
