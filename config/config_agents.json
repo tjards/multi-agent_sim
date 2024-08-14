@@ -1,1 +1,1 @@
-{"nAgents": 7, "rAgents": 0.5, "initial_spread": 10, "dynamics": "double integrator", "tactic_type": "cao"}
+{"nAgents": 12, "rAgents": 0.5, "initial_spread": 20, "dynamics": "double integrator", "tactic_type": "cao"}

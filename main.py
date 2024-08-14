@@ -3,13 +3,11 @@
 """
 This project implements an autonomous, decentralized swarming strategies including:
     
-    - Reynolds rules of flocking ("boids")
-    - Olfati-Saber flocking
-    - Starling flocking
-    - Dynamic Encirclement 
-    - Heterogeneous Lattice formation using Pinning Control 
-    - Autonomous Assembly of Closed Curves
-    - Shepherding
+- Flocking (Reynolds, Olfati-Saber, Starling, and Cao)
+- Dynamic Encirclement 
+- Heterogeneous Pinning Control with Reinforcement Learning 
+- Arbitrary Closed Curves (primarily lemniscates)
+- Shepherding
 
 The strategies requires no human invervention once the target is selected and all agents rely on local knowledge only. 
 Each vehicle makes its own decisions about where to go based on its relative position to other vehicles.
@@ -30,9 +28,6 @@ dev notes:
     to do: 
         - standardize the planners (standard inputs, outputs, ...etc)
         - too many conditional statements throughout
-        - use more kwargs vice if statements 
-        - standardize graph as common to all planners
-        - commands formatted ali+coh+sep
         - 2D option
 """
 
@@ -41,8 +36,6 @@ dev notes:
 
 # official packages 
 # ------------------
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 #plt.style.use('dark_background')

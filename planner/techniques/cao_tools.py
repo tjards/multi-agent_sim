@@ -13,7 +13,11 @@ subject to external disturbances by a distributed control law, Automatica
 [2] Zhang et al., Flocking Control Against Malicious Agent
 IEEE TRANSACTIONS ON AUTOMATIC CONTROL, VOL. 69, NO. 5, MAY 2024
 
-
+[3] Housheng Sua, Xiaofan Wanga, and Guanrong Chenb
+A connectivity-preserving flocking algorithm for multi-agent systems
+based only on position measurements
+International Journal of Control
+Vol. 82, No. 7, July 2009, 1334–1343
 
 @author: tjards
 """
@@ -24,19 +28,19 @@ import numpy as np
 
 # parameters
 # ---------- 
-d =  5
-r = np.divide(2*d, np.sqrt(2)) # sensor range (adjust this later, derived from desired separation now)
 
-# must be computed using Eqn (3) from [2]
-Q = 0.008 #0.01 
+d =  5                          # desired separation
+r = np.divide(2*d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
+Q = 10 #0.01                 # could be computed using Eqn (3) from [2]
 
-gain_p = 0.01
+# gains
+gain_p = 0.005
 gain_v = 0.1
 
 def return_ranges():
     return d
 
-# compute commands 
+# compute commands (Eqn (12) from [1] )
 # ----------------
 def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
     
@@ -47,6 +51,7 @@ def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
         
     # initialize
     cmd_i = np.zeros((3))
+    
     # compute navigation
     cmd_i -= compute_navigation(states_q, states_p, targets, k_node)
     
@@ -68,11 +73,10 @@ def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
                 # compute alignment 
                 cmd_i -= compute_alignment(states_q, states_p, A, k_node, k_neigh)
                 # compute cohesion
-                cmd_i -= compute_cohesion(states_q, k_node, k_neigh, Q)
+                cmd_i -= compute_cohesion(states_q, k_node, k_neigh, Q)*(states_q[:,k_node] - states_q[:,k_neigh])
                 # compute repulsion
-                cmd_i -= compute_repulsion(states_q, k_node, k_neigh, Q)
+                cmd_i -= compute_repulsion(states_q, k_node, k_neigh, Q)*(states_q[:,k_node] - states_q[:,k_neigh])
     
-  
     return cmd_i
 
 # compute alignment command
@@ -89,7 +93,8 @@ def compute_alignment(states_q, states_p, A, k_node, k_neigh):
 def compute_cohesion(states_q, k_node, k_neigh, Q):
  
     s = np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh])
-    u_i_cohes = np.divide(2*s*(r**2 + (r**2)/Q), np.square(r**2 - s**2 + (r**2)/Q ))
+    #u_i_cohes = np.divide(2*s*(r**2 + (r**2)/Q), np.square(r**2 - s**2 + (r**2)/Q ))
+    u_i_cohes = np.divide(2*(r**2 + (r**2)/Q), np.square(r**2 - s**2 + (r**2)/Q ))
     
     return u_i_cohes
     
@@ -98,7 +103,8 @@ def compute_cohesion(states_q, k_node, k_neigh, Q):
 def compute_repulsion(states_q, k_node, k_neigh, Q):
  
     s = np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh])
-    u_i_repul = np.divide(-2*s*(r**2 + (r**2)/Q), np.square(s**2 + (r**2)/Q ))
+    #u_i_repul = np.divide(-2*s*(r**2 + (r**2)/Q), np.square(s**2 + (r**2)/Q ))
+    u_i_repul = np.divide(-2*(r**2 + (r**2)/Q), np.square(s**2 + (r**2)/Q ))
     
     return u_i_repul
     
@@ -108,17 +114,17 @@ def compute_navigation(states_q, states_p, targets, k_node):
     
     u_i_navig = np.zeros((3))
     u_i_navig = -gain_p*(targets[:,k_node] - states_q[:,k_node]) + gain_v*(states_p[:,k_node])
-    
-    
+      
     return u_i_navig
 
-# compute potential function bar ( to compute E)
+# compute potential function bar 
 # ------------------------------
 def potential_function_bar(R, x):
     V = np.divide(R**2 - x**2, x**2) + np.divide(x**2, R**2 - x**2)
     return V
 
-# ref: Eqn (3) from [2]
+# compute Q (aka E) ref: Eqn (3) from [2]
+# ---------------------------------------
 def compute_E(states_q, states_p, A):
     v_sum = 0
     V_max = 0

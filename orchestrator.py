@@ -167,12 +167,9 @@ class Controller:
         
         # pins and components (not always used)
         self.pin_matrix = np.zeros((nAgents,nAgents))
-        #self.components = []
                 
         if tactic_type == 'pinning':
     
-            #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:])
-            #self.pin_matrix, self.components = np.ones((nAgents,nAgents)), list(range(0,nAgents)) # make all pins
             self.pin_matrix = np.ones((nAgents,nAgents))# make all pins
             d_init = pinning_tools.return_lattice_param()
             self.d_init= d_init
@@ -191,7 +188,6 @@ class Controller:
         
         self.Learners = {}
         
-        # merge learning with controllers (add this to the orchestrator later)
         # note: may be better to just run through this list, rather than explicitly loading each
         
         if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
@@ -218,6 +214,10 @@ class Controller:
         u_enc = np.zeros((3,state[0:3,:].shape[1]))     # encirclement 
         cmd_i = np.zeros((3,state[0:3,:].shape[1]))     # store the commands
         self.params = np.zeros((state[0:3,:].shape[1],state[0:3,:].shape[1])) # store pins 
+        
+        # ************* #
+        # GRAPH UPDATES #
+        # ************* #
         
         # update connectivity
         self.counter += 1                    # increment the counter 
@@ -247,39 +247,16 @@ class Controller:
             self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
             self.pin_matrix = self.Graphs.pin_matrix
 
+        # *************** #
+        # COMMAND UPDATES #
+        # *************** #
+
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'reynolds':
             distances = reynolds_tools.order(state[0:3,:])
             
-        # # update the pins at the desired interval
-        # if tactic_type == 'pinning':
-        #     # increment the counter 
-        #     self.counter += 1
-        #     # only update the pins at Ts/(tunable parameter)
-        #     if self.counter == pin_update_rate:
-        #         self.counter = 0
-                
-        #         # in pull parameters from consensus class
-        #         if 'consensus_lattice' in self.Learners:
-        #             kwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
-        #         # or just pass the current lattice parameters
-        #         else:
-        #             kwargs_cmd['d_weighted'] = self.lattice # redundant below
-                    
-        #         # compute the pins and components   (old way)  
-        #         #self.pin_matrix, self.components = pinning_tools.select_pins_components(state[0:3,:],state[3:6,:], **kwargs_cmd)
-                
-        #         # dev! (new way)
-        #         #r_matrix = 5*np.ones((state.shape[1],state.shape[1])) # test
-        #         r_matrix = kwargs_cmd['d_weighted']                             # if we want the graph based on lattice parameters
-        #         #r_matrix= self.d_init*np.ones((state.shape[1],state.shape[1]))  # if we want based on actual sensor radius
-        #         kwargs_cmd['aperature'] = sensor_aperature
-        #         self.Graphs.update_A(state[0:3,:], r_matrix, **kwargs_cmd)
-        #         self.Graphs.find_connected_components()
-        #         self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
-        #         self.pin_matrix = self.Graphs.pin_matrix
-                
-        # for each vehicle/node in the network
+        # for each vehicle/node/agent in the network
+        # ------------------------------------
         for k_node in range(state[0:3,:].shape[1]): 
                      
             # Reynolds Flocking
@@ -307,11 +284,6 @@ class Controller:
                 # Obstacle Avoidance term (phi_beta)
                 # ---------------------------------   
                 u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
-                
-                # update connectivity (do this outside loop, or use pin update rate)
-                # -------------------
-                #r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                #self.Graphs.update_A(state[0:3,:], r_matrix)
     
             # Encirclement term (phi_delta)
             # ---------------------------- 
@@ -368,7 +340,7 @@ class Controller:
                 kwargs_pinning['directional_graph']         = self.Graphs.directional_graph
                 kwargs_pinning['A']                         = self.Graphs.A
                 kwargs_pinning['D']                         = self.Graphs.D
-                kwargs_pinning['local_k_connectivity']       = self.Graphs.local_k_connectivity
+                kwargs_pinning['local_k_connectivity']      = self.Graphs.local_k_connectivity
                             
                 # compute command
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
@@ -391,28 +363,18 @@ class Controller:
                 cmd_i[:,k_node]                 = self.shepherdClass.cmd
                 self.pin_matrix[k_node, k_node] = self.shepherdClass.index[self.shepherdClass.i] # note: by moving pin selection to outer loop, i may have messed this up
   
-            
             # Cao flocking 
             # ------------
             if tactic_type == 'cao':
-                
-                # # update connectivity
-                # # -------------------
-                # self.counter += 1
-                # # only update the pins at Ts/(tunable parameter)
-                # if self.counter == pin_update_rate:
-                #     self.counter = 0
-                #     r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                #     self.Graphs.update_A(state[0:3,:], r_matrix)
-                
+                             
                 kwargs_cao = {}
                 kwargs_cao['A'] = self.Graphs.A
                 cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
+
+            # ******* #
+            #  Mixer  #
+            # ******* #   
             
-            
-    
-            # Mixer
-            # -----         
             if tactic_type == 'saber':
                 cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
             elif tactic_type == 'reynolds':
@@ -427,7 +389,9 @@ class Controller:
                 cmd_i[:,k_node] = cmd_i[:,k_node]
             elif tactic_type == 'shep':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
-
+            elif tactic_type == 'cao':
+                cmd_i[:,k_node] = cmd_i[:,k_node]
+                
         # update the commands
         self.cmd = copy.deepcopy(cmd_i) 
         
