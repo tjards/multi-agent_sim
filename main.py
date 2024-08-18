@@ -63,7 +63,7 @@ Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'cao'
+strategy = 'pinning'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking

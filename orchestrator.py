@@ -237,7 +237,8 @@ class Controller:
                 else:
                     kwargs_cmd['d_weighted'] = self.lattice # redundant below
                 kwargs_cmd['aperature'] = sensor_aperature
-                r_matrix = kwargs_cmd['d_weighted']  # if we want the graph based on lattice parameters
+                #r_matrix = kwargs_cmd['d_weighted']  # if we want the graph based on lattice parameters
+                r_matrix = pinning_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
             else:
                 r_matrix = 0*np.ones((state.shape[1],state.shape[1]))
 
@@ -370,6 +371,7 @@ class Controller:
                 kwargs_cao = {}
                 kwargs_cao['A'] = self.Graphs.A
                 cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
+                self.lattice = cao_tools.return_desired_sep()
 
             # ******* #
             #  Mixer  #

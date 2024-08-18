@@ -50,8 +50,8 @@ if plot_quadcopter == 1:
 # -------------------
 numFrames           = 50    # frame rate (bigger = slower)
 tail                = 200   # trailing trajectory length 
-zoom                = 1     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
-pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
+zoom                = 0     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
+pan                 = 1     # camera pan? 0 = no, 1 = yes (memory-heavy)
 connection          = 1     # show connections?
 connection_thresh   = 5.1     # [legacy] nominally 5.1. how close do agents need to be in order to connect?
 updated_connections = 1     # nominally 1 are these connections being updated? nominally, 0; some special cases use 1(RL)
@@ -387,6 +387,17 @@ def animateMe(data_file_path, Ts,  tactic_type):
                         #if dist <= connection_thresh_updated:
                         if connectivity[i*numFrames,j,k_neigh] > 0:    
                             
+                            # if in range (i.e. visiable, make gray)
+                            lattices[j].set_color('gray')
+                            lattices[j].set_linestyle('--')
+                            lattices[j].set_alpha(0.3)  
+
+                            
+                            # make blue, if within desired connection distance
+                            if dist <= connection_thresh_updated:
+                                lattices[j].set_color('b')
+                                lattices[j].set_linestyle('--')
+                                lattices[j].set_alpha(0.6)
                             
                             # first, itself
                             x_lat[2*k_neigh,j] = pos[0,j]

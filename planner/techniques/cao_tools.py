@@ -32,12 +32,17 @@ import numpy as np
 d =  5                          # desired separation
 r = np.divide(2*d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
 Q = 10 #0.01                 # could be computed using Eqn (3) from [2]
+cmd_min = -5
+cmd_max = 5
 
 # gains
 gain_p = 0.005
 gain_v = 0.1
 
 def return_ranges():
+    return r
+
+def return_desired_sep():
     return d
 
 # compute commands (Eqn (12) from [1] )
@@ -76,6 +81,8 @@ def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
                 cmd_i -= compute_cohesion(states_q, k_node, k_neigh, Q)*(states_q[:,k_node] - states_q[:,k_neigh])
                 # compute repulsion
                 cmd_i -= compute_repulsion(states_q, k_node, k_neigh, Q)*(states_q[:,k_node] - states_q[:,k_neigh])
+    
+    cmd_i = np.clip(cmd_i, cmd_min, cmd_max)
     
     return cmd_i
 

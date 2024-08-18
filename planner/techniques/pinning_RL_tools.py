@@ -71,8 +71,8 @@ import json
 # ------------------
 
 # learning parameters
-hetero_lattice      = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
-learning            = 1     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
+hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
+learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
        
 # learning requires heterolattice
@@ -172,6 +172,10 @@ d_init = d
 def return_lattice_param():
     
     return d_init
+
+def return_ranges():
+    
+    return r
 
 # form the lattice
 #def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, landmarks, **kwargs):
