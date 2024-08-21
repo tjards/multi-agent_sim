@@ -221,6 +221,10 @@ class Swarmgraph:
         elif method == 'nopins':
             
             self.pin_matrix = np.zeros((data.shape[1],data.shape[1]))
+            
+        elif method == 'allpins':
+                
+            self.pin_matrix = np.ones((data.shape[1],data.shape[1]))
         
         else:
             
