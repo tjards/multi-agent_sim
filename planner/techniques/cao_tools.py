@@ -25,11 +25,12 @@ dev notes:
     - create a custom class
     - 2 x subclasses (member, malicious), inherit most common things
     
-    - automatically select the agent with max degree centrality (i.e. the natural pin) as the malicious agent 
-    - compute E using Eqn (3) based on initial states (i.e., when the Class is initialized)
-    - regular agent implemented using Eqn (3)
-    - malicious agent implemented using Eqn (4, 5)
+    - * automatically select the agent with max degree centrality (i.e. the natural pin) as the malicious agent 
+    - * compute E using Eqn (3) based on initial states (i.e., when the Class is initialized)
+    - * regular agent implemented using Eqn (3)
+    - * malicious agent implemented using Eqn (4, 5)
     - HOW TO ID malicious agent?
+    - * identify layers
     - agents surrounding malicious agent use Eqn (15), which relies on (14)
     - outer layer use Eqn (17)
     - HOW to decide which later you’re in?
@@ -49,7 +50,7 @@ import numpy as np
 # parameters
 # ---------- 
 
-d =  5                          # desired separation
+d =  10                          # desired separation
 r = np.divide(2*d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
 #Q = 10 #0.01                 # could be computed using Eqn (3) from [2]
 cmd_min = -10
@@ -67,11 +68,10 @@ if mal_type == 'runaway':
     mal_ka = -0.01
     mal_kr = 0.1
 elif mal_type == 'collider':
-    mal_kv = -6
-    mal_ka = 15
-    mal_kr = -5 
+    mal_kv = -5
+    mal_ka = 75
+    mal_kr = -10 
     
-
 def return_ranges():
     return r
 
@@ -84,7 +84,9 @@ class Flock:
     
     def __init__(self, states_q, states_p):
         
-        self.status = ['friendly'] * states_q.shape[1] # stores status, assume all friendly initially
+        self.status = ['friendly'] * states_q.shape[1] # stores status, assume all friendly initially (use nested dicts, later, for multiple malicious agents)
+        #self.status = {i:'friendly' for i in range(0,states_q.shape[1]) }
+        self.layer = [0] * states_q.shape[1] # stores layer, relative to malicious agent
         self.cmd_i  = np.zeros((states_q.shape[1],3))
         self.d      = d
         self.r      = r
@@ -103,15 +105,34 @@ class Flock:
         A           = kwargs['A']
         pin_matrix  = kwargs['pin_matrix']
         
-        # if this is the first time assembled
+        # upon first assembly, induce a virtual agent
         if np.sum(pin_matrix) == 1 and self.assembled == 0:
             # mark as assembled
             self.assembled = 1
             # update Q
             self.Q      = 1.1*compute_E(states_q, states_p)
-            # chose a malicious agent
+            # chose a malicious agent (i.e., the pin)
             malicious = np.where(np.diag(pin_matrix) == 1)[0][0] 
-            self.status[k_node - 1] = 'malicious'    
+            self.status[malicious] = 'malicious'
+            # malicious agent is layer 1
+            self.layer[malicious] = 1
+            # immediate neighbours to malicious agent are layer 2
+            for neighbour in range(0,states_q.shape[1]):
+                if neighbour != malicious:
+                    # if connected to malicious agent
+                    if A[malicious,neighbour] > 0:
+                        # mark as inner layer
+                        self.layer[neighbour] = 2
+                        # neighbours of this immediate neighbours are layer 3
+                        remaining = [index for index, value in enumerate(self.layer) if value == 0]
+                        # for all unassigned agents
+                        for neighbour_outer_option in remaining:
+                            # if connected to this neighbour
+                            if A[neighbour,neighbour_outer_option] > 0:
+                                # mark as outer layer
+                                self.layer[neighbour_outer_option] = 3
+         
+            #print(self.layer)
             
         
         # set parameters for friendly or malicious agent
