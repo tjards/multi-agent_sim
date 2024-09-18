@@ -131,10 +131,7 @@ class Flock:
                             if A[neighbour,neighbour_outer_option] > 0:
                                 # mark as outer layer
                                 self.layer[neighbour_outer_option] = 3
-         
-            #print(self.layer)
-            
-        
+    
         # set parameters for friendly or malicious agent
         if self.status[k_node] == 'friendly':
             gains = [1,1,1]
@@ -174,49 +171,10 @@ class Flock:
         
         return cmd_i        
 
-      
-# # compute commands (Eqn (12) from [1] )
-# # ----------------
-# def compute_cmd(targets, states_q, states_p, k_node, **kwargs):
-    
-#     # extract adjacency matrix
-#     A           = kwargs['A']
-#     pin_matrix  = kwargs['pin_matrix']
-    
-#     #Q = compute_E(states_q, states_p, A)
-        
-#     # initialize
-#     cmd_i = np.zeros((3))
-    
-#     # compute navigation
-#     cmd_i -= pin_matrix[k_node,k_node]*compute_navigation(states_q, states_p, targets, k_node)
-    
-#     # search through each neighbour
-#     for k_neigh in range(states_q.shape[1]):
-        
-#         # except for itself:
-#         if k_node != k_neigh:
-            
-#             # check if the neighbour is in range
-#             if A[k_node,k_neigh] == 0:
-#                 in_range = False
-#             else:
-#                 in_range = True 
-            
-#             # if within range
-#             if in_range:
-                
-#                 # compute alignment 
-#                 cmd_i -= compute_alignment(states_q, states_p, A, k_node, k_neigh)
-#                 # compute cohesion
-#                 cmd_i -= compute_cohesion(states_q, k_node, k_neigh, Q)*(states_q[:,k_node] - states_q[:,k_neigh])
-#                 # compute repulsion
-#                 cmd_i -= compute_repulsion(states_q, k_node, k_neigh, Q)*(states_q[:,k_node] - states_q[:,k_neigh])
-    
-#     cmd_i = np.clip(cmd_i, cmd_min, cmd_max)
-    
-#     return cmd_i
-
+# ***************** #
+#  BASIC FLOCKING   #
+# ***************** #
+     
 # compute alignment command
 # -------------------------
 def compute_alignment(states_q, states_p, A, k_node, k_neigh):
@@ -289,7 +247,17 @@ def compute_E(states_q, states_p):
     
     return E
                     
-                    
+# ***************** #
+#  COUNTER MALIGN   #
+# ***************** #       
+
+#%%
+
+mal_kv_hat = -5.5
+mal_ka_hat = 75.5
+mal_kr_hat = -10.5
+
+Gamma = np.diag([mal_kv_hat,mal_ka_hat,mal_kr_hat])             
 
     
     
