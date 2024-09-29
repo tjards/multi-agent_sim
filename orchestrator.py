@@ -183,8 +183,11 @@ class Controller:
         if tactic_type == 'shep':
             self.shepherdClass = shep.Shepherding(state) 
             
+        # cao has it's own class and a separate graph for connected (in addition to in range)    
         if tactic_type == 'cao':
             self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
+            self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
+            self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
    
     # integrate learninging agents
     # ----------------------------
@@ -233,6 +236,10 @@ class Controller:
                 r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
             elif tactic_type == 'cao':
                 r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                # new, define a different graph for "connected", which is slightly different than "in range"
+                #separation_matrix = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
+                self.Graphs_connectivity.update_A(state[0:3,:], self.lattice+1, **kwargs_cmd)
+                
             elif tactic_type == 'pinning':
                 # in pull parameters from consensus class
                 if 'consensus_lattice' in self.Learners:
@@ -374,10 +381,13 @@ class Controller:
                              
                 kwargs_cao          = {}
                 kwargs_cao['A']     = self.Graphs.A
+                kwargs_cao['A_connectivity']     = self.Graphs_connectivity.A
                 kwargs_cao['pin_matrix']  = self.pin_matrix
                 #cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
                 cmd_i[:,k_node] = self.caoClass.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
-                self.lattice = cao_tools.return_desired_sep()
+                #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
+                #print(self.caoClass.status)
+                #print(self.caoClass.layer)
 
             # ******* #
             #  Mixer  #

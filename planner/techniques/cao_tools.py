@@ -50,7 +50,7 @@ import numpy as np
 # parameters
 # ---------- 
 
-d =  10                          # desired separation
+d =  5                          # desired separation
 r = np.divide(2*d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
 #Q = 10 #0.01                 # could be computed using Eqn (3) from [2]
 cmd_min = -10
@@ -80,6 +80,7 @@ def return_desired_sep():
 
 # define a custom class 
 # ---------------------
+
 class Flock:
     
     def __init__(self, states_q, states_p):
@@ -93,6 +94,29 @@ class Flock:
         self.Q      = 1.1*compute_E(states_q, states_p)
         self.assembled = 0 # keeps track of when the swarm is assembled (first time)
         
+    # checks if layer 2 has at least 2 agents (Assumption 3)
+    def check_assume_3(self):
+        count_layer_2 = self.layer.count(2)
+        if count_layer_2 > 2:  
+            return True
+        else:
+            return False 
+    
+    # checks if at least 2 agents in layer 2 are neighbours
+    def check_assume_4(self, A):
+        layer_2_indices = [index for index, value in enumerate(self.layer) if value == 2]
+        count = 0
+        for node in layer_2_indices:
+            for neighbour in layer_2_indices:
+                if node != neighbour:
+                    if A[node,neighbour] > 0:
+                        count += 1
+        if count > 2:
+            return True
+        else:
+            return False
+        
+    
     def update_Q(self,states_q, states_p):
         
         self.Q      = 1.1*compute_E(states_q, states_p)
@@ -102,11 +126,12 @@ class Flock:
     def compute_cmd(self, targets, states_q, states_p, k_node, **kwargs):
         
         # extract adjacency matrix
-        A           = kwargs['A']
-        pin_matrix  = kwargs['pin_matrix']
+        A               = kwargs['A']
+        A_connectivity  = kwargs['A_connectivity']
+        pin_matrix      = kwargs['pin_matrix']
         
         # upon first assembly, induce a virtual agent
-        if np.sum(pin_matrix) == 1 and self.assembled == 0:
+        if np.sum(pin_matrix) == 1 and self.assembled == 0:           
             # mark as assembled
             self.assembled = 1
             # update Q
@@ -116,11 +141,16 @@ class Flock:
             self.status[malicious] = 'malicious'
             # malicious agent is layer 1
             self.layer[malicious] = 1
+            
+            # *********************** #
+            # assign layers
+            
             # immediate neighbours to malicious agent are layer 2
             for neighbour in range(0,states_q.shape[1]):
                 if neighbour != malicious:
                     # if connected to malicious agent
                     if A[malicious,neighbour] > 0:
+                    #if A_connectivity[malicious,neighbour] > 0:
                         # mark as inner layer
                         self.layer[neighbour] = 2
                         # neighbours of this immediate neighbours are layer 3
@@ -129,8 +159,20 @@ class Flock:
                         for neighbour_outer_option in remaining:
                             # if connected to this neighbour
                             if A[neighbour,neighbour_outer_option] > 0:
+                            #if A_connectivity [neighbour,neighbour_outer_option] > 0:
                                 # mark as outer layer
                                 self.layer[neighbour_outer_option] = 3
+            
+            # check if valid conditions
+            self.assumptions_valid = False
+            if self.check_assume_3():
+                if self.check_assume_4(A):
+                    self.assumptions_valid = True
+ 
+            print('Layers defined. Assumption validity: ', self.assumptions_valid)    
+
+            # *********************** #
+
     
         # set parameters for friendly or malicious agent
         if self.status[k_node] == 'friendly':
@@ -144,7 +186,7 @@ class Flock:
         # compute navigation (if not assembled, draws towards)
         #if self.assembled == 0:
         cmd_i -= pin_matrix[k_node,k_node]*compute_navigation(states_q, states_p, targets, k_node)
-        
+
         # search through each neighbour
         for k_neigh in range(states_q.shape[1]):
             
@@ -252,6 +294,28 @@ def compute_E(states_q, states_p):
 # ***************** #       
 
 #%%
+
+'''
+Definitions:
+    Layer 1 = Malicious Agent
+    Layer 2 = Neighbours of Malicious Agent 
+    Layer 3 = All remaining agents 2 hops out from the Malicious agent
+    Layer 0 = Everyone else
+    
+    set V_l = agents in Layer 2
+    set V_f = agents in Layer 3
+    set V_g = agents in Layer 1 and 2
+    
+Assumptions:
+    (3) Layer 2 must have at least 2 agents
+    (4) At least 2 agents in Layer 2 are neighbours
+    
+'''
+
+
+   
+    
+
 
 mal_kv_hat = -5.5
 mal_ka_hat = 75.5
