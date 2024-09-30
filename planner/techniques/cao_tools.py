@@ -50,8 +50,9 @@ import numpy as np
 # parameters
 # ---------- 
 
-d =  5                          # desired separation
-r = np.divide(2*d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
+d =  10                          # desired separation
+#r = np.divide(2*d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
+r = np.multiply(d, np.sqrt(2))
 #Q = 10 #0.01                 # could be computed using Eqn (3) from [2]
 cmd_min = -10
 cmd_max = 10
@@ -59,6 +60,11 @@ cmd_max = 10
 # gains
 gain_p = 0.2
 gain_v = 1
+
+kv = 1
+ka = 1
+kr = 1
+
 
 # malicious agent type
 mal_type = 'collider'  # runaway, collider
@@ -71,6 +77,11 @@ elif mal_type == 'collider':
     mal_kv = -5
     mal_ka = 75
     mal_kr = -10 
+elif mal_type == 'cooperative':
+    mal_kv = kv
+    mal_ka = ka
+    mal_kr = kr
+    
     
 def return_ranges():
     return r
@@ -116,7 +127,6 @@ class Flock:
         else:
             return False
         
-    
     def update_Q(self,states_q, states_p):
         
         self.Q      = 1.1*compute_E(states_q, states_p)
@@ -137,20 +147,19 @@ class Flock:
             # update Q
             self.Q      = 1.1*compute_E(states_q, states_p)
             # chose a malicious agent (i.e., the pin)
-            malicious = np.where(np.diag(pin_matrix) == 1)[0][0] 
+            #malicious = np.where(np.diag(pin_matrix) == 1)[0][0] 
+            malicious = 2
             self.status[malicious] = 'malicious'
             # malicious agent is layer 1
             self.layer[malicious] = 1
             
-            # *********************** #
-            # assign layers
-            
+            # ********* layer assignment ************** #
             # immediate neighbours to malicious agent are layer 2
             for neighbour in range(0,states_q.shape[1]):
                 if neighbour != malicious:
                     # if connected to malicious agent
-                    if A[malicious,neighbour] > 0:
-                    #if A_connectivity[malicious,neighbour] > 0:
+                    #if A[malicious,neighbour] > 0:
+                    if A_connectivity[malicious,neighbour] > 0:
                         # mark as inner layer
                         self.layer[neighbour] = 2
                         # neighbours of this immediate neighbours are layer 3
@@ -158,25 +167,25 @@ class Flock:
                         # for all unassigned agents
                         for neighbour_outer_option in remaining:
                             # if connected to this neighbour
-                            if A[neighbour,neighbour_outer_option] > 0:
-                            #if A_connectivity [neighbour,neighbour_outer_option] > 0:
+                            #if A[neighbour,neighbour_outer_option] > 0:
+                            if A_connectivity [neighbour,neighbour_outer_option] > 0:
                                 # mark as outer layer
                                 self.layer[neighbour_outer_option] = 3
-            
             # check if valid conditions
             self.assumptions_valid = False
             if self.check_assume_3():
                 if self.check_assume_4(A):
                     self.assumptions_valid = True
- 
             print('Layers defined. Assumption validity: ', self.assumptions_valid)    
-
-            # *********************** #
+            
+            print(self.status)
+            print(self.layer)
+            # ******************************************* #
 
     
         # set parameters for friendly or malicious agent
         if self.status[k_node] == 'friendly':
-            gains = [1,1,1]
+            gains = [kv,ka,kr]
         else:
             gains = [mal_kv, mal_ka, mal_kr]
         
@@ -313,15 +322,56 @@ Assumptions:
 '''
 
 
-   
-    
-
-
 mal_kv_hat = -5.5
 mal_ka_hat = 75.5
 mal_kr_hat = -10.5
 
-Gamma = np.diag([mal_kv_hat,mal_ka_hat,mal_kr_hat])             
+
+
+#%%
+    
+H_bar = 10 # tunable
+i_cont = 1 # tunable
+H = H_bar + i_cont
+
+# solution from wolframalpha (paper didn't provide)
+def potential_function_hat(s, a, r, d, H):
+    
+    num1 = (s-a)*(np.divide(s*(s-a),np.linalg.norm(s)) + 2*(-np.linalg.norm(s) + (1/H)*(d-r)**2 +r))
+    den1 = (r - np.linalg.norm(s) + (1/H)*(d-r)**2)**2
+    num2 = H*(s-a)*(H*s*(a+s)+2*np.linalg.norm(s)*d**2)
+    den2 = np.linalg.norm(s)*(H*np.linalg.norm(s) + d**2)**2
+    
+    return num1/den1 + num2/den2
+
+
+# test
+d =  5                          # desired separation
+r = np.multiply(d, np.sqrt(2))  # range
+d_bar = np.divide(d,np.sqrt(3))                   # malicious agent separation
+
+# test
+x_i = np.array((-1.44,-2.50,0))
+x_j = np.array((2.80,0,0))
+x_m = np.array((0,0,0))
+x_ij = x_i - x_j
+x_ij_star = (d_bar*(x_i-x_m)/(np.linalg.norm(x_i-x_m))) - (d_bar*(x_j-x_m)/(np.linalg.norm(x_j-x_m)))
+
+test = potential_function_hat(x_ij, x_ij_star, r, d_bar, H)
+
+
+
+
+#part1a = np.divide(2*(-a+s),                                r-np.abs(s)+((-d+r)**2)/H )
+#part1b = np.divide(s*(-a+s)**2,                             np.abs(s)*(r-np.abs(s)+((-d+r)**2)/H)**2)
+#part2 = np.divide(H*(-a+s)*(H*s*(a+s)+2*(d**2)*np.abs(s)),  np.abs(s)*((d**2)+H*np.abs(s))**2)
+
+# next step, build the vector (10) and compare to the computed_cmd above
+# and build filters in (11) and (12)
+
+
+
+#Gamma = np.diag([mal_kv_hat,mal_ka_hat,mal_kr_hat])             
 
     
     
