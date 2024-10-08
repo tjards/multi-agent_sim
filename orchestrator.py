@@ -69,6 +69,8 @@ pin_selection_method = 'degree'
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
 
+#twoD = True
+
 #%% Build the system
 # ------------------
 def build_system(system, strategy):
@@ -186,8 +188,9 @@ class Controller:
         # cao has it's own class and a separate graph for connected (in addition to in range)    
         if tactic_type == 'cao':
             self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
-            self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
+            self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
             self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
+            self.pin_matrix = np.ones((nAgents,nAgents))
    
     # integrate learninging agents
     # ----------------------------
@@ -383,6 +386,7 @@ class Controller:
                 kwargs_cao['A']     = self.Graphs.A
                 kwargs_cao['A_connectivity']     = self.Graphs_connectivity.A
                 kwargs_cao['pin_matrix']  = self.pin_matrix
+                kwargs_cao['Ts'] = self.Ts
                 #cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
                 cmd_i[:,k_node] = self.caoClass.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
                 #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
@@ -412,6 +416,10 @@ class Controller:
                 
         # update the commands
         self.cmd = copy.deepcopy(cmd_i) 
+        
+        #if twoD:
+            
+        #    self.cmd[2,:] = 0
         
 
 
