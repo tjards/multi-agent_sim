@@ -47,41 +47,40 @@ dev notes:
 # -----------
 import numpy as np
 
-# parameters
-# ---------- 
+#%% PARAMETERS
 
-d =  18                         # desired separation
-#r = np.divide(2*d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
-r = np.multiply(d, np.sqrt(2))
-#Q = 10 #0.01                 # could be computed using Eqn (3) from [2]
-cmd_min = -5000
-cmd_max = 5000
+# normal agents
+# -------------
+d       =  18                         # desired separation
+r       = np.multiply(d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
+cmd_min = -100
+cmd_max = 100
 
-# gains
-gain_p = 0.1# default zero (target tracking messes up this technique)
-gain_v = 1
+# navigation gains
+gain_p = 0 # default zero (else, messes up this technique)
+gain_v = 0 # default zero (else, messes up this technique)
 
-kv = 5
+# swarming gains
+kv = 3 # used for counter-malign as well
 ka = 1
 kr = 2
 
-kx = 10 #2
+# counter-malign agents
+# ---------------------
+kx = 2          # layer 2 gain
+d_bar  = r/2    # np.divide(d,np.sqrt(3)) # malicious agent separation
+i_cont = 0.2    # small +ve for numerator of potential function (H+i)
+gamma_kp = 2    # layer 3 gamma constant
+H_min = 100     # lower bound on H
 
-d_bar = r/2 #np.divide(d,np.sqrt(3)) # malicious agent separation
-#H_bar = 100 # tunable
-i_cont = 0.2 # tunable
-#H = H_bar + i_cont
-
-gamma_kp = 2 # Layer 3 gamma constant
-
-
-# malicious agent type
-mal_type = 'runaway'  # runaway, collider
-
+# malicious agents
+# -----------------
+mode_malicious = 1          # 1= yes, 0 = no
+mal_type = 'collider'       # runaway, collider
 if mal_type == 'runaway':
-    mal_kv = 0.8# 0.8
-    mal_ka = -0.1 #-0.1
-    mal_kr = 450000 #500
+    mal_kv = 0.8
+    mal_ka = -0.1 
+    mal_kr = 4500 
 elif mal_type == 'collider':
     mal_kv = -5
     mal_ka = 200
@@ -91,33 +90,37 @@ elif mal_type == 'cooperative':
     mal_ka = ka
     mal_kr = kr
     
+# initial estimates 
+mal_kv_hat = mal_kv 
+mal_ka_hat = mal_ka 
+mal_kr_hat = mal_kr   
     
+# items for export
+# ----------------
 def return_ranges():
     return r
 
 def return_desired_sep():
     return d
 
-# define a custom class 
-# ---------------------
+#%% CUSTOM CLASS 
 
 class Flock:
     
     def __init__(self, states_q, states_p):
         
-        self.status = ['friendly'] * states_q.shape[1] # stores status, assume all friendly initially (use nested dicts, later, for multiple malicious agents)
-        #self.status = {i:'friendly' for i in range(0,states_q.shape[1]) }
-        self.layer = [0] * states_q.shape[1] # stores layer, relative to malicious agent
+        self.status = ['friendly'] * states_q.shape[1]  # stores status, assume all friendly initially (use nested dicts, later, for multiple malicious agents)
+        self.layer = [0] * states_q.shape[1]            # stores layer, relative to malicious agent
         self.cmd_i  = np.zeros((states_q.shape[1],3))
         self.d      = d
         self.r      = r
         self.Q      = 1.1*compute_E(states_q, states_p)
-        self.assembled = 0 # keeps track of when the swarm is assembled (first time)
-        self.mode_malicious = 0 # 0 = default (normal flocking), 1 = switches to layer-based malicious mode
-        self.malicious = 2 # the malicious agent
-        self.gain_p = gain_p# default zero (target tracking messes up this technique)
-        self.gain_v = gain_v# default zero (target tracking messes up this technique)
-        self.alpha_kp = gamma_kp*np.ones((states_q.shape[1],states_q.shape[1]))#[gamma_kp] * states_q.shape[1] # stores alpha for Layer3
+        self.assembled = 0                      # keeps track of when the swarm is assembled (first time)
+        self.mode_malicious = mode_malicious    # 0 = default (normal flocking), 1 = switches to layer-based malicious mode
+        self.malicious = 2                      # default malicious agent (changes below based on structure)
+        self.gain_p = gain_p                    # default zero (target tracking messes up this technique)
+        self.gain_v = gain_v                    # default zero (target tracking messes up this technique)
+        self.alpha_kp = gamma_kp*np.ones((states_q.shape[1],states_q.shape[1])) # stores alpha for Layer3
 
     # checks if layer 2 has at least 2 agents (Assumption 3)
     def check_assume_3(self):
@@ -127,7 +130,7 @@ class Flock:
         else:
             return False 
     
-    # checks if at least 2 agents in layer 2 are neighbours
+    # checks if at least 2 agents in layer 2 are neighbours (Assumption 4)
     def check_assume_4(self, A):
         layer_2_indices = [index for index, value in enumerate(self.layer) if value == 2]
         count = 0
@@ -141,73 +144,79 @@ class Flock:
         else:
             return False
         
+    # computes E (a.k.a, Q) from Eqn (3)     
     def update_Q(self,states_q, states_p):
-        
         self.Q      = 1.1*compute_E(states_q, states_p)
+    
+    # identify malicious agent and build layers
+    # -----------------------------------------
+    def build_layers(self, states_q, states_p, k_node, **kwargs):
+        
+        A               = kwargs['A']
+        pin_matrix      = kwargs['pin_matrix']
+        
+        # mark as assembled
+        self.assembled = 1
+        # update Q
+        self.Q      = 1.1*compute_E(states_q, states_p)
+        # chose a malicious agent (i.e., the pin)
+        malicious = np.where(np.diag(pin_matrix) == 1)[0][0] 
+        #malicious = self.malicious
+        self.malicious = malicious 
+        self.status[malicious] = 'malicious'
+        # malicious agent is layer 1
+        self.layer[malicious] = 1
+        # activate response to malicious node ( = 1)
+        self.mode_malicious = mode_malicious
+        self.gain_p = 0 # turn off navigation in malicious mode (messes with results)
+        self.gain_v = 0 # turn off navigation in malicious mode (messes with results)
+        # ********* layer assignment ************** #
+        # immediate neighbours to malicious agent are layer 2
+        for neighbour in range(0,states_q.shape[1]):
+            if neighbour != malicious:
+                # if connected to malicious agent
+                if A[malicious,neighbour] > 0:
+                #if A_connectivity[malicious,neighbour] > 0:
+                    # mark as inner layer
+                    self.layer[neighbour] = 2
+                    # neighbours of this immediate neighbours are layer 3
+                    remaining = [index for index, value in enumerate(self.layer) if value == 0]
+                    # for all unassigned agents
+                    for neighbour_outer_option in remaining:
+                        # if connected to this neighbour
+                        if A[neighbour,neighbour_outer_option] > 0:
+                        #if A_connectivity [neighbour,neighbour_outer_option] > 0:
+                            # mark as outer layer
+                            self.layer[neighbour_outer_option] = 3
+        layer2_indices = [index for index, value in enumerate(self.layer) if value == 2]
+        self.H      = max(compute_H(states_q, states_p, self.malicious, layer2_indices, kx, np.array([mal_kv, mal_ka, mal_kr]), A), H_min)
+        if self.H < 0:
+            raise ValueError("H cannot be negative")
+            
+        # check if valid conditions
+        self.assumptions_valid = False
+        if self.check_assume_3():
+            if self.check_assume_4(A):
+                self.assumptions_valid = True
+        print('Layers defined. Assumption validity: ', self.assumptions_valid)    
+        
+        print(self.status)
+        print(self.layer)
+        # ******************************************* #
         
     # compute commands (Eqn (12) from [1] )
-    # ----------------
+    # -------------------------------------
     def compute_cmd(self, targets, states_q, states_p, k_node, **kwargs):
         
-        # extract adjacency matrix
+        # extract stuff
         A               = kwargs['A']
-        #A  = kwargs['A_connectivity']
         pin_matrix      = kwargs['pin_matrix']
         Ts              = kwargs['Ts']
         
-        # upon first assembly, induce a virtual agent
+        # upon first assembly, build layers
         if np.sum(pin_matrix) == 1 and self.assembled == 0:           
-            # mark as assembled
-            self.assembled = 1
-            # update Q
-            self.Q      = 1.1*compute_E(states_q, states_p)
-            # chose a malicious agent (i.e., the pin)
-            malicious = np.where(np.diag(pin_matrix) == 1)[0][0] 
-            #malicious = self.malicious
-            self.malicious = malicious 
-            self.status[malicious] = 'malicious'
-            # malicious agent is layer 1
-            self.layer[malicious] = 1
-            # activate response to malicious node ( = 1)
-            self.mode_malicious = 1
-            self.gain_p = 0 # turn off navigation in malicious mode (messes with results)
-            self.gain_v = 1 # turn off navigation in malicious mode (messes with results)
-            # ********* layer assignment ************** #
-            # immediate neighbours to malicious agent are layer 2
-            for neighbour in range(0,states_q.shape[1]):
-                if neighbour != malicious:
-                    # if connected to malicious agent
-                    if A[malicious,neighbour] > 0:
-                    #if A_connectivity[malicious,neighbour] > 0:
-                        # mark as inner layer
-                        self.layer[neighbour] = 2
-                        # neighbours of this immediate neighbours are layer 3
-                        remaining = [index for index, value in enumerate(self.layer) if value == 0]
-                        # for all unassigned agents
-                        for neighbour_outer_option in remaining:
-                            # if connected to this neighbour
-                            if A[neighbour,neighbour_outer_option] > 0:
-                            #if A_connectivity [neighbour,neighbour_outer_option] > 0:
-                                # mark as outer layer
-                                self.layer[neighbour_outer_option] = 3
-            layer2_indices = [index for index, value in enumerate(self.layer) if value == 2]
-            self.H      = max(compute_H(states_q, states_p, self.malicious, layer2_indices, kx, np.array([mal_kv, mal_ka, mal_kr]), A), 100)
-            if self.H < 0:
-                raise ValueError("H cannot be negative")
-                
+            self.build_layers(states_q, states_p, k_node, **kwargs)
             
-            # check if valid conditions
-            self.assumptions_valid = False
-            if self.check_assume_3():
-                if self.check_assume_4(A):
-                    self.assumptions_valid = True
-            print('Layers defined. Assumption validity: ', self.assumptions_valid)    
-            
-            print(self.status)
-            print(self.layer)
-            # ******************************************* #
-
-    
         # set parameters for friendly or malicious agent
         if self.status[k_node] == 'friendly':
             gains = [kv,ka,kr]
@@ -217,8 +226,7 @@ class Flock:
         # initialize
         cmd_i = np.zeros((3))
         
-        # compute navigation (if not assembled, draws towards)
-        #if self.assembled == 0:
+        # compute navigation (if not assembled, draws towards goal when gain_p, gain_v set)
         cmd_i -= pin_matrix[k_node,k_node]*compute_navigation(self.gain_p, self.gain_v, states_q, states_p, targets, k_node)
 
         # if no responding to malicious agent
@@ -253,11 +261,12 @@ class Flock:
             
             # for layer 2
             # ------------
-            if self.layer[k_node] == 2: #and self.layer[k_neigh] == 2:
-                        
+            if self.layer[k_node] == 2: 
+                 
+                # search through layer 2
                 for k_neigh in [index for index, value in enumerate(self.layer) if value == 2]:
                         
-                    # if this neighbour is also in layer 2 and not the agent itself (redundant)
+                    # exclude self
                     if k_neigh != k_node:
                         
                         # check if the neighbour is in range
@@ -276,35 +285,22 @@ class Flock:
                             x_i = states_q[:,k_node]
                             x_j = states_q[:,k_neigh]
                             x_ij = x_i - x_j
-                            #x_m =  states_q[:,self.malicious]
-                            
                             x_ij_star = compute_x_star(d, x_i, x_j)
-                            #x_ij_star = (d_bar*(x_i-x_m)/(np.linalg.norm(x_i-x_m))) - (d_bar*(x_j-x_m)/(np.linalg.norm(x_j-x_m)))
-                            #print(np.linalg.norm(x_ij_star))
-                            
-                            #print('Agent ', k_node, ': ', np.linalg.norm(x_ij))
                             cmd_i -= kx*potential_function_hat(x_ij, x_ij_star, r, d_bar, self.H+i_cont) #*(x_ij)
-         
-                # malicious agent gain part (should be an estimate later)
-                #pass_in_neighs_list = [index for index, value in enumerate(self.layer) if value == 2]
                 
-                malicious_k_hat = np.array([mal_kv,mal_ka,mal_kr])              
-                cmd_i -=  Ck_malicious_v2(states_q, states_p, A, self.Q, self.malicious, malicious_k_hat)
-               
+                # creat vector of estimated gains
+                malicious_k_hat = np.array([mal_kv_hat,mal_ka_hat,mal_kr_hat]) 
                 
-                #cmd_i -= Ck_malicious(states_p, states_q, self.malicious, pass_in_neighs_list , self.Q, malicious_gains)
-                #print('malicious cmd estimate node', k_node, ': ', -Ck_malicious_v2(states_q, states_p, A, self.Q, self.malicious, malicious_k_hat))
-                
-                #cmd_i -= np.dot(C_if,np.array([mal_kv,mal_ka,mal_kr]))
-                            
+                # estimate the behaviour of malicious agent
+                cmd_i -=  Ck_malicious(states_q, states_p, A, self.Q, self.malicious, malicious_k_hat)
+                               
             # for layer 3 
-            # ----------------------------
-            elif self.layer[k_node] == 3: # or self.layer[k_node] == 0:
+            # -----------
+            elif self.layer[k_node] == 3: 
                 
                 # search through each neighbour
                 for k_neigh in range(states_q.shape[1]):
-                #for k_neigh in [index for index, value in enumerate(self.layer) if (value == 3 or value ==0)]:
-                
+            
                     # except for itself:
                     if k_node != k_neigh:
                         
@@ -317,13 +313,10 @@ class Flock:
                         #if within range
                         if in_range:
                             
+                            # update the alpha term (paper says this is a der, but I think that's an error)
                             alpha_dot = gamma_kp*np.sum(np.abs(states_p[:,k_node]-states_p[:,k_neigh])) # L-1 norm
                             self.alpha_kp[k_node, k_neigh] = alpha_dot #+= (alpha_dot*Ts).item()
-  
-                            
-                            #print(self.alpha_kp[k_node, k_neigh])
-                            
-                            
+   
                             # compute alignment 
                             cmd_i -= (self.alpha_kp[k_node, k_node])*np.sign(states_p[:,k_node]-states_p[:,k_neigh])
                             # compute cohesion
@@ -332,7 +325,7 @@ class Flock:
                             cmd_i -= gains[2]*compute_repulsion(states_q, k_node, k_neigh, self.Q)*(states_q[:,k_node] - states_q[:,k_neigh]) 
                                 
 
-            # for layer 1 (malicious agent) 
+            # for layer 1 (malicious agent) + everyone else 
             # ----------------------------
             elif self.layer[k_node] <= 1:
                 
@@ -358,13 +351,12 @@ class Flock:
                             # compute repulsion
                             cmd_i -= gains[2]*compute_repulsion(states_q, k_node, k_neigh, self.Q)*(states_q[:,k_node] - states_q[:,k_neigh])   
                             
-                #print('malicious cmd node ', k_node, ': ', cmd_i)
-    
         cmd_i = np.clip(cmd_i, cmd_min, cmd_max)
         
              
         return cmd_i        
 
+#%% 
 # ***************** #
 #  BASIC FLOCKING   #
 # ***************** #
@@ -383,7 +375,6 @@ def compute_alignment(states_q, states_p, k_node, k_neigh):
 def compute_cohesion(states_q, k_node, k_neigh, Q):
  
     s = np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh])
-    #u_i_cohes = np.divide(2*s*(r**2 + (r**2)/Q), np.square(r**2 - s**2 + (r**2)/Q ))
     u_i_cohes = np.divide(2*(r**2 + (r**2)/Q), np.square(r**2 - s**2 + (r**2)/Q ))
     
     return u_i_cohes
@@ -393,7 +384,6 @@ def compute_cohesion(states_q, k_node, k_neigh, Q):
 def compute_repulsion(states_q, k_node, k_neigh, Q):
  
     s = np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh])
-    #u_i_repul = np.divide(-2*s*(r**2 + (r**2)/Q), np.square(s**2 + (r**2)/Q ))
     u_i_repul = np.divide(-2*(r**2 + (r**2)/Q), np.square(s**2 + (r**2)/Q ))
     
     return u_i_repul
@@ -413,16 +403,16 @@ def potential_function_bar(R, x):
     V = np.divide(R**2 - x**2, x**2) + np.divide(x**2, R**2 - x**2)
     return V
 
-# compute Q (aka E) ref: Eqn (3) from [2]
+# compute Q (a.k.a E) ref: Eqn (3) from [2]
 # ---------------------------------------
 def compute_E(states_q, states_p):
+    
     v_sum = 0
     V_max = 0
     N = states_q.shape[1]
     # for each agent
     for k_node in range(states_q.shape[1]):
         v_sum += np.dot(states_p[:,k_node].transpose(),states_p[:,k_node])
-        
         # search through each neighbour
         for k_neigh in range(states_q.shape[1]):
             # except for itself:
@@ -430,22 +420,14 @@ def compute_E(states_q, states_p):
                 V_new =  potential_function_bar(r, np.linalg.norm(states_q[:,k_node] - states_q[:,k_neigh]))
                 if V_new > V_max:
                     V_max = V_new
-                # # check if the neighbour is in range
-                # if A[k_node,k_neigh] == 0:
-                #     in_range = False
-                # else:
-                #     in_range = True 
-                # # if within range
-                # if in_range:
     E = 0.5*v_sum + np.divide((N*(N-1)),2)*V_max
     
     return E
-                    
+      
+#%%              
 # ***************** #
-#  COUNTER MALIGN   #
+#  COUNTER-MALIGN   #
 # ***************** #       
-
-#%%
 
 '''
 Definitions:
@@ -466,7 +448,8 @@ Use CALA to expand lattice to overcome these assumptions
     
 '''
 
-# Layer 2 collective del-potential function (from wolframalpha, paper didn't provide)
+# Layer 2 collective del-potential function (del V_ij)
+# -----------------------------------------------
 def potential_function_hat(s, a, r, d, H):
     
     num1 = (s-a)*(np.divide(s*(s-a),np.linalg.norm(s)) + 2*(-np.linalg.norm(s) + (1/H)*(d-r)**2 +r))
@@ -476,27 +459,24 @@ def potential_function_hat(s, a, r, d, H):
     
     return num1/den1 + num2/den2
 
-
-# def compute_x_star(d_bar, x_i, x_j, x_m):
-    
-#     x_ij_star = (d_bar*(x_i-x_m)/(np.linalg.norm(x_i-x_m))) - (d_bar*(x_j-x_m)/(np.linalg.norm(x_j-x_m)))
-
-#     return x_ij_star
-
-
+# desired displacement 
+# --------------------
 def compute_x_star(d, x_i, x_j):
     
     x_ij_star = d*((x_i - x_j)/np.linalg.norm(x_i - x_j))
     
     return x_ij_star
                   
-            
+# Layer 2 collective potential function prime (\hat{V}'_ij)  
+# ---------------------------------------------------------          
 def V_hat_prime(x_ij, x_ij_star, r):
     
     V_hat_prime = np.divide((np.linalg.norm(x_ij - x_ij_star))**2, r - np.linalg.norm(x_ij)) + np.divide((np.linalg.norm(x_ij - x_ij_star))**2, np.linalg.norm(x_ij)) 
     
     return V_hat_prime
 
+# Layer 2 designable positive constant (H bar)
+# --------------------------------------------
 def compute_H(states_q, states_p, malicious_index, layer2_indices, kx, k_vector, A):
     
     H = 0
@@ -541,10 +521,11 @@ def compute_H(states_q, states_p, malicious_index, layer2_indices, kx, k_vector,
     
     return H
     
-            
-        
+# estimate dynamics of malicious agent 
+# ------------------------------------           
+
 # for this application, k_node = malicious agent, gains = k_hat
-def Ck_malicious_v2(states_q, states_p, A, Q, k_node, gains):
+def Ck_malicious(states_q, states_p, A, Q, k_node, gains):
     
     cmd_i = np.zeros((3))
     
@@ -573,34 +554,8 @@ def Ck_malicious_v2(states_q, states_p, A, Q, k_node, gains):
     return -cmd_i
     
 
+#%% FILTERING
 
-# # build the vector (10) 
-# def Ck_malicious(states_p, states_q, malicious_index, k_neighs, Q, mal_gains):
-    
-#     Ck = np.zeros((states_p.shape[0]))
-    
-#     # for all neighbours
-#     for k_neigh in k_neighs:  
-#         #C_1 = compute_alignment(states_q, states_p, malicious_index, k_neigh)
-#         #C_2 = compute_cohesion(states_q, malicious_index , k_neigh, Q)*(states_q[:,malicious_index ] - states_q[:,k_neigh])
-#         #C_3 = compute_repulsion(states_q, malicious_index , k_neigh, Q)*(states_q[:,malicious_index ] - states_q[:,k_neigh])
-#         #C += np.stack([C_1, C_2, C_3], axis=1) # stack in cols (axis=1)
-        
-#         Ck += mal_gains[0]*compute_alignment(states_q, states_p, malicious_index, k_neigh)
-#         Ck += mal_gains[1]*compute_cohesion(states_q, malicious_index , k_neigh, Q)*(states_q[:,malicious_index ] - states_q[:,k_neigh])
-#         Ck += mal_gains[2]*compute_repulsion(states_q, malicious_index , k_neigh, Q)*(states_q[:,malicious_index ] - states_q[:,k_neigh])
-  
-#     return Ck
-
-
-    
-    
-    
-
-
-
-#%% Filtering
-# -----------
 
 #build filters in (11) 
 def filter_v(filter_v_gain, v_filtered, v, Ts):

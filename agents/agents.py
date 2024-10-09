@@ -19,11 +19,10 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 12    # number of agents
+nAgents = 15    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 18    # initial spread of agents
-
-#twoD = True
+iSpread = 40    # initial spread of agents
+init_conditions = 'random'   # mesh, random
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
@@ -54,23 +53,6 @@ if dynamics == 'quadcopter':
             quad_params[key] = value.tolist()
     config_agents['quad_params'] = quad_params
     
-# def clip_vector_magnitude(matrix, min_magnitude, max_magnitude):
-#     # Calculate the magnitude of each vector (column) in the matrix
-#     magnitudes = np.linalg.norm(matrix, axis=0)
-    
-#     # Create a copy of the matrix to store the clipped vectors
-#     clipped_matrix = matrix.copy()
-    
-#     # Iterate through each vector
-#     for i in range(matrix.shape[1]):  # Iterate over columns
-#         if magnitudes[i] < min_magnitude:
-#             # Scale to minimum magnitude
-#             clipped_matrix[:, i] = (matrix[:, i] / magnitudes[i]) * min_magnitude
-#         elif magnitudes[i] > max_magnitude:
-#             # Scale to maximum magnitude
-#             clipped_matrix[:, i] = (matrix[:, i] / magnitudes[i]) * max_magnitude
-
-#     return clipped_matrix
 
 class Agents:
     
@@ -88,43 +70,44 @@ class Agents:
         
         # Vehicles states
         # ---------------
-        self.state = np.zeros((6,self.nAgents))
-        self.state[0,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (x)
-        self.state[1,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (y)
-        #self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nAgents)-0.5),2)+8  # position (z)
-        self.state[2,:] = iSpread*np.random.rand(1,self.nAgents) + 15   # position (z)
-        self.state[3,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
-        self.state[4,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
-        self.state[5,:] = 0.1*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
-        self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
-        self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
+        
+        if init_conditions == 'random':
+        
+            self.state = np.zeros((6,self.nAgents))
+            self.state[0,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (x)
+            self.state[1,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (y)
+            #self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nAgents)-0.5),2)+8  # position (z)
+            self.state[2,:] = iSpread*np.random.rand(1,self.nAgents) + 15   # position (z)
+            self.state[3,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
+            self.state[4,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
+            self.state[5,:] = 0.1*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
+            self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
+            self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         
         # Vehicle states(mesh)
         # --------------
-        # mesh_distance = iSpread
-        # side_length = int(np.ceil(nAgents ** (1/3)))
-        # x_vals, y_vals, z_vals = np.meshgrid(mesh_distance * np.arange(side_length), 
-        #                              mesh_distance * np.arange(side_length),
-        #                              mesh_distance * np.arange(side_length))
-        # x_vals = x_vals.flatten()[:nAgents]
-        # y_vals = y_vals.flatten()[:nAgents]
-        # z_vals = z_vals.flatten()[:nAgents]
+        mesh_distance = iSpread
         
-        # self.state = np.zeros((6,self.nAgents))
-        # self.state[0,:] = x_vals                   # position (x)
-        # self.state[1,:] = y_vals                    # position (y)
-        # #self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nAgents)-0.5),2)+8  # position (z)
-        # self.state[2,:] = z_vals    # position (z)
-        # self.state[3,:] = 0*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
-        # self.state[4,:] = 0*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
-        # self.state[5,:] = 0*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
-        # self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
-        # self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
-        
-        
+        if init_conditions == 'mesh':
 
+            side_length = int(np.ceil(nAgents ** (1/3)))
+            x_vals, y_vals, z_vals = np.meshgrid(mesh_distance * np.arange(side_length), 
+                                          mesh_distance * np.arange(side_length),
+                                          mesh_distance * np.arange(side_length))
+            x_vals = x_vals.flatten()[:nAgents]
+            y_vals = y_vals.flatten()[:nAgents]
+            z_vals = z_vals.flatten()[:nAgents]
             
-            
+            self.state = np.zeros((6,self.nAgents))
+            self.state[0,:] = x_vals                   # position (x)
+            self.state[1,:] = y_vals                    # position (y)
+            #self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nAgents)-0.5),2)+8  # position (z)
+            self.state[2,:] = z_vals    # position (z)
+            self.state[3,:] = 0*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
+            self.state[4,:] = 0*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
+            self.state[5,:] = 0*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
+            self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
+            self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         
         # agent dynamics
         # --------------

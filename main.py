@@ -55,7 +55,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 
 #%% Setup Simulation
 # ------------------
-np.random.seed(42+2)
+np.random.seed(42)
 
 Ti      = 0       # initial time
 Tf      = 30     # final time (later, add a condition to break out when desirable conditions are met)
