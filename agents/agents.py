@@ -21,7 +21,7 @@ dynamics = 'double integrator'
 
 nAgents = 15    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 50    # initial spread of agents
+iSpread = 100    # initial spread of agents
 init_conditions = 'random'   # mesh, random
 
 # store the config

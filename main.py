@@ -58,7 +58,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42)
 
 Ti      = 0       # initial time
-Tf      = 2     # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 30     # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
