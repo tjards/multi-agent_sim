@@ -57,7 +57,7 @@ cmd_min = -100
 cmd_max = 100
 
 # navigation gains
-gain_p = 0 # default zero (else, messes up this technique)
+gain_p = 1 # default zero (else, messes up this technique)
 gain_v = 0 # default zero (else, messes up this technique)
 
 # swarming gains
@@ -75,14 +75,14 @@ H_min = 100     # lower bound on H
 
 # malicious agents
 # -----------------
-mode_malicious = 1          # 1= yes, 0 = no
+mode_malicious = 0          # 1= yes, 0 = no
 mal_type = 'collider'       # runaway, collider
 if mal_type == 'runaway':
     mal_kv = 0.8
     mal_ka = -0.1 
     mal_kr = 4500 
 elif mal_type == 'collider':
-    mal_kv = -5
+    mal_kv = -50
     mal_ka = 200
     mal_kr = -10
 elif mal_type == 'cooperative':
@@ -91,10 +91,18 @@ elif mal_type == 'cooperative':
     mal_kr = kr
     
 # initial estimates 
-mal_kv_hat = mal_kv 
-mal_ka_hat = mal_ka 
-mal_kr_hat = mal_kr   
-    
+mal_kv_hat = 0.12*mal_kv 
+mal_ka_hat = 0.34*mal_ka 
+mal_kr_hat = 0.56*mal_kr   
+
+# filter parameters
+# -----------------
+filter_v_gain   = 50                        # tunable
+v_filtered      = 0*np.array((0.1,0.2,0.1)) # initial ize at zero
+C_filtered      = np.zeros((3,3))           # initialize at zero
+k_vector_hat = np.array([mal_kv_hat,mal_ka_hat,mal_kr_hat])
+C_estimate = np.zeros((3,3))
+
 # items for export
 # ----------------
 def return_ranges():
@@ -121,7 +129,16 @@ class Flock:
         self.gain_p = gain_p                    # default zero (target tracking messes up this technique)
         self.gain_v = gain_v                    # default zero (target tracking messes up this technique)
         self.alpha_kp = gamma_kp*np.ones((states_q.shape[1],states_q.shape[1])) # stores alpha for Layer3
-
+        # filter
+        self.filter_v_gain  = filter_v_gain
+        self.v_filtered     = v_filtered  
+        self.C_filtered     = C_filtered  
+        self.C_estimate     = C_estimate
+        self.k_vector_hat   = k_vector_hat
+        self.mal_kv_hat = mal_kv_hat
+        self.mal_ka_hat = mal_ka_hat
+        self.mal_kr_hat = mal_kr_hat
+        
     # checks if layer 2 has at least 2 agents (Assumption 3)
     def check_assume_3(self):
         count_layer_2 = self.layer.count(2)
@@ -287,10 +304,10 @@ class Flock:
                             x_ij = x_i - x_j
                             x_ij_star = compute_x_star(d, x_i, x_j)
                             cmd_i -= kx*potential_function_hat(x_ij, x_ij_star, r, d_bar, self.H+i_cont) #*(x_ij)
-                
-                # creat vector of estimated gains
-                malicious_k_hat = np.array([mal_kv_hat,mal_ka_hat,mal_kr_hat]) 
-                
+
+                #malicious_k_hat = np.array([mal_kv,mal_ka,mal_kr])
+                malicious_k_hat = np.array([self.mal_kv_hat, self.mal_ka_hat, self.mal_kr_hat])
+ 
                 # estimate the behaviour of malicious agent
                 cmd_i -=  Ck_malicious(states_q, states_p, A, self.Q, self.malicious, malicious_k_hat)
                                
@@ -345,15 +362,57 @@ class Flock:
                         if in_range:
                         
                             # compute alignment 
-                            cmd_i -= gains[0]*compute_alignment(states_q, states_p, k_node, k_neigh)
+                            C1 = compute_alignment(states_q, states_p, k_node, k_neigh)
+                            cmd_i -= gains[0]*C1
                             # compute cohesion
-                            cmd_i -= gains[1]*compute_cohesion(states_q, k_node, k_neigh, self.Q)*(states_q[:,k_node] - states_q[:,k_neigh])
+                            C2 = compute_cohesion(states_q, k_node, k_neigh, self.Q)*(states_q[:,k_node] - states_q[:,k_neigh])
+                            cmd_i -= gains[1]*C2
                             # compute repulsion
-                            cmd_i -= gains[2]*compute_repulsion(states_q, k_node, k_neigh, self.Q)*(states_q[:,k_node] - states_q[:,k_neigh])   
+                            C3 = compute_repulsion(states_q, k_node, k_neigh, self.Q)*(states_q[:,k_node] - states_q[:,k_neigh])  
+                            cmd_i -= gains[2]*C3 
+                 
+                # do the filtering stuff     
+                if self.layer[k_node] == 1:
+ 
+                    # run the filter 
+                    filter_stuff = True
+                    if filter_stuff:
+                
+                        # creat vector of estimated gains
+                        malicious_k_hat = np.array([self.mal_kv_hat,self.mal_ka_hat,self.mal_kr_hat]) 
+                    
+                        self.v_filtered = filter_v(self.filter_v_gain ,self.v_filtered, states_p[:,self.malicious], Ts)
+                        #print('v error: ', self.v_filtered - states_p[:,self.malicious])
+                    
+                        # Estimate C
+                        self.C_filtered = filter_C(self.filter_v_gain, self.C_filtered, self.C_estimate, Ts)
+                        #print('C error: ', self.C_filtered - self.C_estimate)
+                    
+                        # # updatw gains
+                        Gamma_k = np.diag(malicious_k_hat)
+                        #print(Gamma_k)
+                
+                        malicious_k_hat_updated = k_hat(Gamma_k, self.C_filtered, self.C_estimate, states_p[:,self.malicious], self.v_filtered, states_p, [index for index, value in enumerate(self.layer) if value == 2], malicious_k_hat, Ts)
+                        
+                        if np.any(np.isnan(malicious_k_hat_updated)) or None in malicious_k_hat_updated:
                             
+                            pass
+                        
+                        else:
+                        
+                            self.mal_kv_hat = malicious_k_hat_updated[0]
+                            self.mal_ka_hat = malicious_k_hat_updated[1]
+                            self.mal_kr_hat = malicious_k_hat_updated[2]
+                            #malicious_k_hat = np.array([self.mal_kv_hat,self.mal_ka_hat,self.mal_kr_hat])
+                    
+                        #print('K (estimated)', malicious_k_hat)
+                        #print('K (real)', np.array([mal_kv,mal_ka,mal_kr]) )
+                        
+                    # C is pulled from known part of malicious dynamics
+                    self.C_estimate = np.stack([C1,C2,C3], axis = 1)
+                          
         cmd_i = np.clip(cmd_i, cmd_min, cmd_max)
-        
-             
+               
         return cmd_i        
 
 #%% 
@@ -553,257 +612,39 @@ def Ck_malicious(states_q, states_p, A, Q, k_node, gains):
     
     return -cmd_i
     
-
 #%% FILTERING
 
-
-#build filters in (11) 
+# build filters in (11) and (12)
 def filter_v(filter_v_gain, v_filtered, v, Ts):
     
     v_filtered_dot  = -filter_v_gain*v_filtered + filter_v_gain*v
     v_filtered      = v_filtered + Ts*v_filtered_dot
     
     return v_filtered
-    
-# compute C_filterd from v (13)
-def estimate_C_filtered(C_filtered, v_filtered, v, k_vector, Ts):
 
-    # compute pseudo inverse
-    k_vector_pseudoinv = np.linalg.pinv(k_vector.reshape(3,1)) 
-    v_temp = (-v_filtered + v).reshape(3,1)
+def filter_C(filter_v_gain, C_filtered, C_estimate, Ts):
     
-    # get new C_filtered
-    C_filtered_new = -np.dot(v_temp, k_vector_pseudoinv)
+    C_filtered_dot  = -filter_v_gain*C_filtered + C_estimate 
+    C_filtered      = C_filtered + Ts*C_filtered_dot
     
-    # compute derivative
-    C_filtered_dot = np.divide(C_filtered_new-C_filtered, Ts)
+    return C_filtered 
+      
+# estimate k (14)   
+def k_hat(Gamma_k, C_filtered, C_estimate, v, v_filtered, states_p, neighbours, k_hat, Ts):
     
-    return C_filtered_new, C_filtered_dot  
-
-def estimate_C(filter_v_gain, C_filtered_dot, C_filtered):
-    
-    C_estimate = C_filtered_dot + filter_v_gain*C_filtered
-    
-    return C_estimate
-     
-# estimate k    
-def k_hat(Gamma_k, C_filtered, v, v_filtered, states_p, neighbours, k_hat, Ts):
     sum_v = np.zeros((3))
     for i in neighbours:
         sum_v += (states_p[:,i]-v)
-   
-    # note: Gamma shape may me off (transposed?) not clear in paper.
-   
-    #k_hat_dot = -np.dot(Gamma_k,C_filtered.transpose())*sum_v \
-    #    - np.dot(Gamma_k,C_filtered.transpose())*(C_filtered*k_hat + v - v_filtered)
-    k_hat_dot = -np.dot((Gamma_k*C_filtered.transpose()),sum_v) \
-        -np.dot((Gamma_k*C_filtered.transpose()),np.dot(C_filtered,k_hat) + v - v_filtered) 
+    
+    k_hat_dot = -np.dot((np.dot(Gamma_k,C_filtered.transpose())),sum_v) \
+        -np.dot((np.dot(Gamma_k,C_filtered.transpose())),np.dot(C_filtered,k_hat) + v - v_filtered) 
  
     k_hat = k_hat + Ts*k_hat_dot
+    
     return k_hat
-                
-def k_hat2(C_filtered_dot_k, v, v_filtered, states_p, neighbours, k_hat, Ts):
-    sum_v = np.zeros((3))
-    for i in neighbours:
-        sum_v += (states_p[:,i]-v)
-   
-    k_hat_dot = -C_filtered_dot_k*sum_v \
-        -C_filtered_dot_k*(C_filtered_dot_k + v - v_filtered) 
- 
-    k_hat = k_hat + Ts*k_hat_dot
-    return k_hat
-
-def k_hat(Gamma_k, C_filtered, v, v_filtered, states_p, neighbours, k_hat, Ts):
-    sum_v = np.zeros((3))
-    for i in neighbours:
-        sum_v += (states_p[:,i]-v)
-   
-    # note: Gamma shape may me off (transposed?) not clear in paper.
-   
-    k_hat_dot = -np.dot(np.dot(Gamma_k,C_filtered.transpose()),sum_v) \
-        - np.dot(np.dot(Gamma_k,C_filtered.transpose()),(np.dot(C_filtered,k_hat) + v - v_filtered))
-
-    k_hat = k_hat + Ts*k_hat_dot
-    return k_hat
-
-# -----------------------
+  
 
 
 
 
-
-
-
-
-
-
-'''
-
-#%% test
-    
-import matplotlib.pyplot as plt
-
-# real
-mal_kv = 1 #-5 *0.1 
-mal_ka = 1 #75  *0.1
-mal_kr = 1 #-10 *0.1
-
-# estimated
-mal_kv_hat = mal_kv  #+1
-mal_ka_hat = mal_ka #-2 
-mal_kr_hat = mal_kr #+0.4
-
-#parameters
-H_bar = 10 # tunable
-i_cont = 0.2 # tunable
-H = H_bar + i_cont
-d =  5                          # desired separation
-r = np.multiply(d, np.sqrt(2))  # range
-d_bar = np.divide(d,np.sqrt(3))                   # malicious agent separation
-Q = 10 # ?
-Ts = 0.02
-filter_v_gain   = 25 # tunable
-
-#test conditions
-x_i = np.array((-1.44,-2.50,0))
-x_j = np.array((2.80,0,0))
-v_i = np.array((-0.1,-0.2,0.3))
-v_j = np.array((0.4,0.1,-0.5))
-x_m = np.array((0,0,0))
-v_m = np.array((1,2,-0.5))
-# stack
-states_q = np.stack([x_i,x_j,x_m], axis=1)
-states_p = np.stack([v_i,v_j,v_m], axis=1)
-malicious_index = 2         # index for malcious agent
-k_neighs = [0,1]            # index for neighbours of malicious agent
-
-#where to put these
-x_ij = x_i - x_j
-x_ij_star = (d_bar*(x_i-x_m)/(np.linalg.norm(x_i-x_m))) - (d_bar*(x_j-x_m)/(np.linalg.norm(x_j-x_m)))
-#test = potential_function_hat(x_ij, x_ij_star, r, d_bar, H)
-
-
-v_filtered = 0*np.array((0.1,0.2,0.1))
-C_filtered = np.zeros((3,3))
-
-k_vector_real = np.array([mal_kv,mal_ka,mal_kr])
-k_vector_hat = np.array([mal_kv_hat,mal_ka_hat,mal_kr_hat]) # needs updating in loop
-
-times = []
-test = []
-test2 = []
-test3 = []
-test4 = []
-test5 = []
-
-x_i = np.array((-1.44,-2.50,0))
-x_j = np.array((2.89,0,0))
-x_m = np.array((0,0,0))
-x_ij = x_i - x_j
-x_ij_star = (d_bar*(x_i-x_m)/(np.linalg.norm(x_i-x_m))) - (d_bar*(x_j-x_m)/(np.linalg.norm(x_j-x_m)))
-
-
-for i in range(0,240):
-    
-    # evolve the real malicious agent
-    # -------------------------------
-    # compute v_dot (actual)
-    C_actual = C_malicious(states_p, states_q, malicious_index, k_neighs, Q)
-    v_dot = -np.dot(C_actual,k_vector_real.reshape(3,1))
-    # evolve (double integrator)
-    states_p[:,malicious_index] += v_dot.ravel()*Ts
-    states_q[:,malicious_index] += states_p[:,malicious_index]*Ts
-    
-    
-    #  this is where we estimate k, v, C, ... etc
-    #    assume known for now, just to get algo working
-    # --------------------------------------------------
-    
-    # get filtered v
-    #v_filtered = filter_v(filter_v_gain ,v_filtered, states_p[:,malicious_index], Ts)
-
-    # TRAVIS -> start here. C_estimated is not converging correctly. v_filted is    
-    #C_filtered, C_filtered_dot  = estimate_C_filtered(C_filtered, v_filtered, states_p[:,malicious_index], k_vector_hat, Ts)
-    #C_filtered_dot_k = -(-v_filtered + states_p[:,malicious_index])
-
-    # get new C_filtered
-    ##C_filtered = -np.dot(v_dot, np.linalg.pinv(k_vector_real.reshape(3,1)) )
-    
-    #C_estimated = estimate_C(filter_v_gain, C_filtered_dot, C_filtered)
-    
-    #print(v_filtered - states_p[:,malicious_index])
-    
-    # update k
-    #Gamma_k = np.diag(k_vector_hat)
-    #Gamma_k = np.tile(k_vector_hat.reshape(1,3), (3, 1))
-    #k_vector_hat = k_hat2(C_filtered_dot_k,states_p[:,malicious_index], v_filtered, states_p, k_neighs, k_vector_hat, Ts)
-    #k_vector_hat = k_hat(Gamma_k,  C_estimated , states_p[:,malicious_index], v_filtered, states_p, k_neighs, k_vector_hat, Ts)
-    #k_vector_hat =  k_hat(Gamma_k,  C_estimated , states_p[:,malicious_index], v_filtered, states_p, k_neighs, k_vector_hat, Ts)
-    
-    # test potential function 
-    x_i =np.array((-1.44    +min(0.02*(240/(i+1)),8),  -2.50   -min(0.04*(240/(i+1)),5),   0-min(0.1*(240/(i+1)),3)))
-    x_j =np.array(( 2.89    -0.04*(240/(i+1)),   0      +0.005*(240/(i+1)),         0+min(0.04*(240/(i+1)),2)))
-    x_m = np.array((0,0,0))
-    x_ij = x_i - x_j
-    x_ij_star = (d_bar*(x_i-x_m)/(np.linalg.norm(x_i-x_m))) - (d_bar*(x_j-x_m)/(np.linalg.norm(x_j-x_m)))
-    
-    
-    pfunc = potential_function_hat(x_ij, x_ij_star, r, d_bar, H)
-
-    error_x_im = np.linalg.norm(x_i-x_m)-d_bar
-    error_x_jm = np.linalg.norm(x_j-x_m)-d_bar
-    error_xij_star = np.linalg.norm(x_ij - x_ij_star)
-    norm_xij = np.linalg.norm(x_ij)
-    
-    
-    # tests
-    times.append(i)
-    #test.append(states_p[:,malicious_index][0])
-    #test2.append(v_filtered[0])
-    
-    #test.append(C_actual[0,2])
-    #test2.append(C_estimated[0,2])
-    
-    #test.append(C_actual[2,1])
-    #test2.append(C_estimated[2,1])
-    
-    test.append(np.linalg.norm(pfunc))
-    #test2.append(np.linalg.norm(x_ij-x_ij_star))
-    test2.append(error_x_im)
-    test4.append(error_x_jm)
-    test3.append(error_xij_star)
-    test5.append(norm_xij)
-    
-    #print(v_dot)
-    
-# Plot the results
-plt.figure(figsize=(10, 6))
-
-# Plot actual
-plt.plot(times[:], test[:], '-o', label='V_hat')
-
-# Plot test
-plt.plot(times[:], test2[:], label='error from dbar_i')
-plt.plot(times[:], test4[:], label='error from dbar_j')
-plt.plot(times[:], test3[:], label='error from x_ij_star')
-plt.plot(times[:], test3[:], label='|x_ij|')
-plt.axhline(y=r, color='r', linestyle='--', label='R')
-plt.axhline(y=H, color='k', linestyle='--', label='H')
-# Customize plot
-plt.title('compare')
-plt.xlabel('time')
-plt.ylabel('var')
-plt.legend()
-plt.grid()
-#plt.axis('equal')  # Equal scaling for both axes
-#plt.xlim(-10, 10)  # Adjust limits as needed
-#plt.ylim(-10, 10)  # Adjust limits as needed
-
-# Show the plot
-plt.show()
-
-'''           
-
-    
-    
     

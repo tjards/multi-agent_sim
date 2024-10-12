@@ -133,6 +133,7 @@ while round(t,3) < Tf:
     t += Ts
     i += 1
     
+  
     # print progress
     if verbose == 1 and (round(t,2)).is_integer():
         print(round(t,1),' of ',Tf,' sec completed.')
