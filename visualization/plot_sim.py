@@ -47,6 +47,7 @@ def plotMe(data_file_path):
     #ax.hlines(y=5, xmin=Ti, xmax=Tf, linewidth=1, color='r', linestyle='--')
     ax.grid()
     plt.show()
+
     
     # radii from target
     radii = np.zeros([states_all.shape[2],states_all.shape[0]])

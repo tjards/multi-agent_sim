@@ -59,14 +59,17 @@ elif tactic_type == 'cao':
 # -----------------
 
 pin_update_rate = 100   # number of timesteps after which we update the pins
-pin_selection_method = 'degree_leafs'
+pin_selection_method = 'degree'
     # gramian   = [future] // based on controllability gramian
     # degree    = based on degree centrality  
     # between   = [future] // based on betweenness centrality (buggy at nAgents < 3)
     # degree_leafs = degree and also leaves (only one connection)
     # nopins      = no pins
+    # allpins     = all are pins 
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
+
+#twoD = True
 
 #%% Build the system
 # ------------------
@@ -180,7 +183,14 @@ class Controller:
         
         # sheparding has its own class (differentiating shepherd and herd)
         if tactic_type == 'shep':
-            self.shepherdClass = shep.Shepherding(state)            
+            self.shepherdClass = shep.Shepherding(state) 
+            
+        # cao has it's own class and a separate graph for connected (in addition to in range)    
+        if tactic_type == 'cao':
+            self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
+            self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
+            self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
+            self.pin_matrix = np.ones((nAgents,nAgents))
    
     # integrate learninging agents
     # ----------------------------
@@ -229,6 +239,10 @@ class Controller:
                 r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
             elif tactic_type == 'cao':
                 r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                # new, define a different graph for "connected", which is slightly different than "in range"
+                #separation_matrix = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
+                self.Graphs_connectivity.update_A(state[0:3,:], self.lattice+1, **kwargs_cmd)
+                
             elif tactic_type == 'pinning':
                 # in pull parameters from consensus class
                 if 'consensus_lattice' in self.Learners:
@@ -368,10 +382,16 @@ class Controller:
             # ------------
             if tactic_type == 'cao':
                              
-                kwargs_cao = {}
-                kwargs_cao['A'] = self.Graphs.A
-                cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
-                self.lattice = cao_tools.return_desired_sep()
+                kwargs_cao          = {}
+                kwargs_cao['A']     = self.Graphs.A
+                kwargs_cao['A_connectivity']     = self.Graphs_connectivity.A
+                kwargs_cao['pin_matrix']  = self.pin_matrix
+                kwargs_cao['Ts'] = self.Ts
+                #cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
+                cmd_i[:,k_node] = self.caoClass.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
+                #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
+                #print(self.caoClass.status)
+                #print(self.caoClass.layer)
 
             # ******* #
             #  Mixer  #
@@ -396,6 +416,10 @@ class Controller:
                 
         # update the commands
         self.cmd = copy.deepcopy(cmd_i) 
+        
+        #if twoD:
+            
+        #    self.cmd[2,:] = 0
         
 
 

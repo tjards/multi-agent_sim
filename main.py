@@ -63,7 +63,7 @@ Ts      = 0.02    # sample time
 f       = 0       # parameter for future use
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'circle'
+strategy = 'cao'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -86,6 +86,7 @@ import orchestrator
 Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy)
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
 Controller.learning_agents(Agents.tactic_type, Learners)
+Controller.Ts = Ts
 
 # pull out constants
 rVeh        = Agents.rVeh
@@ -132,6 +133,7 @@ while round(t,3) < Tf:
     t += Ts
     i += 1
     
+  
     # print progress
     if verbose == 1 and (round(t,2)).is_integer():
         print(round(t,1),' of ',Tf,' sec completed.')

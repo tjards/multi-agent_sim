@@ -49,13 +49,13 @@ if plot_quadcopter == 1:
 #%% plotting parameters
 # -------------------
 numFrames           = 50    # frame rate (bigger = slower)
-tail                = 200   # trailing trajectory length 
-zoom                = 0     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
-pan                 = 1     # camera pan? 0 = no, 1 = yes (memory-heavy)
+tail                = 10   # trailing trajectory length 
+zoom                = 1     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
+pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
 connection          = 1     # show connections?
 connection_thresh   = 5.1     # [legacy] nominally 5.1. how close do agents need to be in order to connect?
 updated_connections = 1     # nominally 1 are these connections being updated? nominally, 0; some special cases use 1(RL)
-head                = 2*0.2   # size of head pointing forward (shows directionality)
+head                = 5*0.2   # size of head pointing forward (shows directionality)
 pins_overide        = 1     # default 0, overides using pin variable for colors
 showObs             = 1     # (0 = don't show obstacles, 1 = show obstacles, 2 = show obstacles + floors/walls)
 
