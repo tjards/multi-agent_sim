@@ -24,22 +24,22 @@ b   = 5
 c   = np.divide(np.abs(a-b),np.sqrt(4*a*b)) 
 eps = 0.1
 #eps = 0.5
-h   = 0.2 # 0.9 for obs
+h   = 0.2# 0.2 # 0.9 for obs
 pi  = 3.141592653589793
 
 # gains
-c1_a = 2                # lattice flocking
-c2_a = 2*np.sqrt(2)
-c1_b = 3                # obstacle avoidance
-c2_b = 2*np.sqrt(3)
-c1_g = 1                # navigation/target tracking
-c2_g = 2*np.sqrt(1)
+c1_a = 1               # cohesion
+c2_a = 2*np.sqrt(1)
+c1_b = 1             # obstacles 
+c2_b = 2*np.sqrt(1)
+c1_g = 2               # tracking (for the pins)
+c2_g = 2*np.sqrt(5)
 
 # key ranges 
 d       = 5             # lattice scale (Saber flocking, distance between a-agents)
-r       = 2*d           # range at which neighbours can be sensed (Saber flocking, interaction range of a-agents)
-d_prime = 0.5 #0.6*d      # desired separation (Saber flocking, distance between a- and b-agents)
-r_prime = 2*2*d_prime     # range at which obstacles can be sensed, (Saber flocking, interaction range of a- and b-agents)
+r       = 1.3*d           # range at which neighbours can be sensed (Saber flocking, interaction range of a-agents)
+d_prime = 0.6*d      # desired separation (Saber flocking, distance between a- and b-agents)
+r_prime = 1.3*d_prime     # range at which obstacles can be sensed, (Saber flocking, interaction range of a- and b-agents)
 
 #%% to push out
 def return_ranges():

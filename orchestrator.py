@@ -168,7 +168,7 @@ class Controller:
         # [legacy] general purpose parameters variable (retire this)
         self.params = np.zeros((4,nAgents))             # store dynamic parameters
         
-        # lattice parameters (not always used, move into pinning) 
+        # lattice parameters (not always used, move into pinning) * redudany
         self.lattice = np.zeros((nAgents,nAgents))      # stores lattice parameters
         
         # pins and components (not always used)
@@ -187,7 +187,10 @@ class Controller:
         # sheparding has its own class (differentiating shepherd and herd)
         if tactic_type == 'shep':
             self.shepherdClass = shep.Shepherding(state) 
-            
+        
+        if tactic_type == 'saber':
+            self.lattice = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1])) 
+        
         # cao has it's own class and a separate graph for connected (in addition to in range)    
         if tactic_type == 'cao':
             self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
