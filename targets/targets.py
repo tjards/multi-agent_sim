@@ -16,14 +16,17 @@ import numpy as np
 # ------------------------
 class Targets:
 
-    def __init__(self, nVeh):
+    def __init__(self, nVeh, dimens):
         
-        self.tSpeed  =   0       # speed of target
+        self.tSpeed     =   0       # speed of target
+        self.dimens     = dimens
         
         self.targets = 4*(np.random.rand(6,nVeh)-0.5)
         self.targets[0,:] = 0 #5*(np.random.rand(1,nVeh)-0.5)
         self.targets[1,:] = 0 #5*(np.random.rand(1,nVeh)-0.5)
         self.targets[2,:] = 15
+        if self.dimens == 2:
+            self.targets[2,:] = 0
         self.targets[3,:] = 0
         self.targets[4,:] = 0
         self.targets[5,:] = 0
@@ -39,4 +42,7 @@ class Targets:
         self.targets[0,:] = 100*np.sin(self.tSpeed*t)                 # targets[0,:] + tSpeed*0.002
         self.targets[1,:] = 100*np.sin(self.tSpeed*t)*np.cos(self.tSpeed*t)  # targets[1,:] + tSpeed*0.005
         self.targets[2,:] = 100*np.sin(self.tSpeed*t)*np.sin(self.tSpeed*t)+15  # targets[2,:] + tSpeed*0.0005
+        if self.dimens == 2:
+            self.targets[2,:] = 0*np.sin(self.tSpeed*t)*np.sin(self.tSpeed*t)
+            
         

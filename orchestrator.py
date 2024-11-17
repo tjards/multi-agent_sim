@@ -73,21 +73,21 @@ sensor_aperature    = 140
 
 #%% Build the system
 # ------------------
-def build_system(system, strategy):
+def build_system(system, strategy, dimens):
     
     if system == 'swarm':
     
         # instantiate the agents
         # ------------------------
         import agents.agents as agents
-        Agents = agents.Agents(strategy)
+        Agents = agents.Agents(strategy, dimens)
         with open(os.path.join("config", "config_agents.json"), 'w') as configs_agents:
             json.dump(Agents.config_agents, configs_agents)
         
         # instantiate the targets
         # -----------------------
         import targets.targets as targets
-        Targets = targets.Targets(Agents.nAgents)
+        Targets = targets.Targets(Agents.nAgents, dimens)
         with open(os.path.join("config", "config_targets.json"), 'w') as configs_targets:
             json.dump(Targets.config_targets, configs_targets)
     
@@ -99,7 +99,7 @@ def build_system(system, strategy):
         # instantiate the obstacles 
         # -------------------------
         import obstacles.obstacles as obstacles
-        Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets)
+        Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets, dimens)
         with open(os.path.join("config", "config_obstacles.json"), 'w') as configs_obstacles:
             json.dump(Obstacles.config_obstacles, configs_obstacles)
             
@@ -147,14 +147,17 @@ def build_system(system, strategy):
 # -------------------
 class Controller:
     
-    def __init__(self,tactic_type, nAgents, state):
+    def __init__(self,tactic_type, nAgents, state, dimens):
                 
         # commands
         # --------
+        self.nAgents = nAgents
         self.cmd = np.zeros((3,nAgents))
         self.cmd[0] = 0.001*np.random.rand(1,nAgents)-0.5      # command (x)
         self.cmd[1] = 0.001*np.random.rand(1,nAgents)-0.5      # command (y)
         self.cmd[2] = 0.001*np.random.rand(1,nAgents)-0.5      # command (z)
+        if dimens == 2:
+            self.cmd[2] = 0*self.cmd[2]
 
         # graph
         self.Graphs = graphical.Swarmgraph(state, criteria_table) # initialize 
@@ -237,6 +240,10 @@ class Controller:
             # update connectivity parameters 
             if tactic_type == 'saber':
                 r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+            elif tactic_type == 'circle':
+                r_matrix_1, _, _, _ = encircle_tools.get_params()
+                r_matrix_2  = encircle_tools.compute_desired_sep(r_matrix_1, self.nAgents)
+                r_matrix = r_matrix_2*np.ones((state.shape[1],state.shape[1]))
             elif tactic_type == 'cao':
                 r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
                 # new, define a different graph for "connected", which is slightly different than "in range"

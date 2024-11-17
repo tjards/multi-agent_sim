@@ -13,13 +13,13 @@ import copy
 
 # parameters
 # ----------
-nObs    = 0
+nObs    = 10
 
 # define the obstacle object
 # --------------------------
 class Obstacles:
     
-    def __init__(self, tactic_type, targets):
+    def __init__(self, tactic_type, targets, dimens):
         
         # note: don't let pass-in of walls yet, as it is a manual process still
         
@@ -27,6 +27,7 @@ class Obstacles:
         # -------------------
         self.nObs    = nObs     # number of obstacles 
         self.vehObs  = 0     # include other vehicles as obstacles [0 = no, 1 = yes] 
+        self.dimens  = dimens
 
         # if using reynolds, need make target an obstacle 
         if tactic_type == 'reynolds':
@@ -39,7 +40,7 @@ class Obstacles:
             self.nObs = 1
 
         self.obstacles = np.zeros((4,self.nObs))
-        oSpread = 20
+        oSpread = 25
 
         # manual (comment out if random)
         # obstacles[0,:] = 0    # position (x)
@@ -53,7 +54,10 @@ class Obstacles:
             self.obstacles[1,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[1,0]                   # position (y)
             self.obstacles[2,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[2,0]                  # position (z)
             #obstacles[2,:] = np.maximum(oSpread*(np.random.rand(1,nObs)-0.5),14)     # position (z)
-            self.obstacles[3,:] = np.random.rand(1,self.nObs)+1                             # radii of obstacle(s)
+            self.obstacles[3,:] = np.random.rand(1,self.nObs)+1 # radii of obstacle(s)
+            if self.dimens == 2:
+                self.obstacles[2,:] = 0*self.obstacles[2,:]
+                
 
         # manually make the first target an obstacle
         if self.targetObs == 1:
@@ -61,16 +65,22 @@ class Obstacles:
             self.obstacles[1,0] = targets[1,0]     # position (y)
             self.obstacles[2,0] = targets[2,0]     # position (z)
             self.obstacles[3,0] = 2              # radii of obstacle(s)
-
+            if self.dimens == 2:
+                self.obstacles[2,0] = 0*self.obstacles[2,0]
+                
         # Walls/Floors 
         # - these are defined manually as planes
         # --------------------------------------   
-        self.nWalls = 1                      # default 1, as the ground is an obstacle 
+
+        self.nWalls = 1    # default 1, as the ground is an obstacle (3d case)
         self.walls = np.zeros((6,self.nWalls)) 
         self.walls_plots = np.zeros((4,self.nWalls))
-
-        # add the ground at z = 0:
-        newWall0, newWall_plots0 = self.buildWall('horizontal', -2) 
+        
+        if self.dimens == 3:
+            newWall0, newWall_plots0 = self.buildWall('horizontal', -2) 
+        elif self.dimens == 2: # if 2D, just put ground into infinity
+            newWall0, newWall_plots0 = self.buildWall('horizontal', -1000) 
+            
 
         # load the ground into constraints   
         self.walls[:,0] = newWall0[:,0]

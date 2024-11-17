@@ -19,9 +19,9 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 15    # number of agents
+nAgents = 30    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 20    # initial spread of agents
+iSpread = 50    # initial spread of agents
 init_conditions = 'random'   # mesh, random
 
 # store the config
@@ -56,7 +56,7 @@ if dynamics == 'quadcopter':
 
 class Agents:
     
-    def __init__(self,tactic_type):
+    def __init__(self,tactic_type, dimens):
         
         # initite attributes 
         # ------------------
@@ -65,6 +65,7 @@ class Agents:
         self.tactic_type    = tactic_type    
         self.dynamics_type  = dynamics
         self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
+        self.dimens         = dimens
         
         config_agents.update({'tactic_type': self.tactic_type})
         
@@ -78,9 +79,16 @@ class Agents:
             self.state[1,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (y)
             #self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nAgents)-0.5),2)+8  # position (z)
             self.state[2,:] = iSpread*np.random.rand(1,self.nAgents) + 15   # position (z)
+            if self.dimens == 2:
+                self.state[2,:] = 0*self.state[2,:]
+                
             self.state[3,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
             self.state[4,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
-            self.state[5,:] = 0.1*np.random.rand(1,self.nAgents)                                                      # velocity (vz)
+            self.state[5,:] = 0.1*np.random.rand(1,self.nAgents)
+            if self.dimens == 2:
+                self.state[5,:] = 0*self.state[5,:]
+            
+            # velocity (vz)
             self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
             self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         
@@ -97,7 +105,9 @@ class Agents:
             x_vals = x_vals.flatten()[:nAgents]
             y_vals = y_vals.flatten()[:nAgents]
             z_vals = z_vals.flatten()[:nAgents]
-            
+            if self.dimens == 2:
+                z_vals = 0*z_vals
+                
             self.state = np.zeros((6,self.nAgents))
             self.state[0,:] = x_vals                   # position (x)
             self.state[1,:] = y_vals                    # position (y)

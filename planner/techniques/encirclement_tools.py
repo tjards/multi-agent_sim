@@ -54,6 +54,10 @@ def get_params():
     
     return r_desired, phi_dot_d, ref_plane, quat_0
 
+def compute_desired_sep(r, N):
+    theta = np.pi / N  # Half of the central angle
+    return 2 * r * np.sin(theta)
+
 def sigma_1(z):    
     sigma_1 = np.divide(z,np.sqrt(1+z**2))    
     return sigma_1

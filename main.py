@@ -57,13 +57,15 @@ data_file_path = os.path.join(data_directory, "data.h5")
 # ------------------
 np.random.seed(42)
 
-Ti      = 0       # initial time
-Tf      = 10     # final time (later, add a condition to break out when desirable conditions are met)
-Ts      = 0.02    # sample time
-f       = 0       # parameter for future use
+Ti      = 0         # initial time
+Tf      = 60        # final time (later, add a condition to break out when desirable conditions are met)
+Ts      = 0.02      # sample time
+f       = 0         # parameter for future use
+dimens  = 2         # dimension (2 = 2D, 3 = 3D)
+
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'saber'
+strategy = 'pinning'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -76,15 +78,15 @@ strategy = 'saber'
 
 # save to config file
 # -------------------
-config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'verbose': 1, 'system': system, 'strategy': strategy}
+config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'dimens': dimens, 'verbose': 1, 'system': system, 'strategy': strategy}
 with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
     json.dump(config_sim, configs_sim)
 
 #%% build the system
 # ------------------
 import orchestrator
-Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy)
-Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state)
+Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens)
+Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state, dimens)
 Controller.learning_agents(Agents.tactic_type, Learners)
 Controller.Ts = Ts
 
@@ -186,11 +188,12 @@ if verbose == 1:
 with open(os.path.join("config", "config_sim.json"), 'r') as configs_sim:
     config_sim = json.load(configs_sim)
     config_Ts = config_sim['Ts']
+    config_dimens = config_sim['dimens']
 with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
     config_agents = json.load(configs_agents)
     config_tactic_type = config_agents['tactic_type']
 
-ani = animation_sim.animateMe(data_file_path, config_Ts, config_tactic_type)
+ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
 
 
 

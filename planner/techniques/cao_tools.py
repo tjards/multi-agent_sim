@@ -51,7 +51,7 @@ import numpy as np
 
 # normal agents
 # -------------
-d       =  18                         # desired separation
+d       =  5                         # desired separation
 r       = np.multiply(d, np.sqrt(2))  # sensor range (adjust this later, derived from desired separation now)
 cmd_min = -100
 cmd_max = 100
@@ -170,6 +170,7 @@ class Flock:
     def build_layers(self, states_q, states_p, k_node, **kwargs):
         
         A               = kwargs['A']
+        #A               = kwargs['A_connectivity'] 
         pin_matrix      = kwargs['pin_matrix']
         
         # mark as assembled

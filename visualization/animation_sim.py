@@ -10,6 +10,7 @@ New and improved
 dev notes:
     
     3 Jul 24: need to import new parameter to reflect connection (pull from A)
+    17 Nov 24: for 2D, agents still have a z dimen, but it is fixed to zero
 
 
 """
@@ -77,7 +78,7 @@ def quat2Dcm(q):
 
 # main animation function
 # -----------------------
-def animateMe(data_file_path, Ts,  tactic_type):
+def animateMe(data_file_path, Ts, dimens, tactic_type):
     
     # extract the data
     _, t_all = data_manager.load_data_HDF5('History', 't_all', data_file_path)
@@ -112,8 +113,11 @@ def animateMe(data_file_path, Ts,  tactic_type):
     # initialize plot and axis
     # ------------------------
     fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    
+    if dimens == 3:
+        ax = fig.add_subplot(projection='3d')
+    elif dimens == 2:
+        ax = fig.add_subplot()
+
     # initialize quadcopter lines
     # ---------------------------
     if plot_quadcopter == 1:
@@ -128,9 +132,14 @@ def animateMe(data_file_path, Ts,  tactic_type):
             quat_line1.append([])
             quat_line2.append([])
             quat_line3.append([])
-            quat_line1[iVeh], = ax.plot([], [], [], lw=2, color=quatColour)
-            quat_line2[iVeh], = ax.plot([], [], [], lw=2, color='gray')
-            quat_line3[iVeh], = ax.plot([], [], [], '--', lw=1, color=quatColour)
+            if dimens == 3:
+                quat_line1[iVeh], = ax.plot([], [], [], lw=2, color=quatColour)
+                quat_line2[iVeh], = ax.plot([], [], [], lw=2, color='gray')
+                quat_line3[iVeh], = ax.plot([], [], [], '--', lw=1, color=quatColour)
+            elif dimens == 2:
+                quat_line1[iVeh], = ax.plot([], [], lw=2, color=quatColour)
+                quat_line2[iVeh], = ax.plot([], [], lw=2, color='gray')
+                quat_line3[iVeh], = ax.plot([], [], '--', lw=1, color=quatColour)
   
     # create lists of lines for n-agents and n-obstacles
     # --------------------------------------------------
@@ -142,13 +151,25 @@ def animateMe(data_file_path, Ts,  tactic_type):
     lattices = []
     # agents
     for i in range(0, nVeh):
-        centroids = ax.plot([], [], [], 'kx')
-        centroids_line = ax.plot([], [], [], '--', lw=1, color='black')
-        line_dot = ax.plot([], [], [], 'bo', ms=3)
-        line_tail = ax.plot([], [], [], ':', lw=1, color='blue')
-        line_head = ax.plot([], [], [], '-', lw=1, color='magenta')
-        line_target = ax.plot([], [], [], 'gx')
-        lattice = ax.plot([], [], [], ':', lw=1, color='blue')
+        
+        if dimens == 3:
+            centroids = ax.plot([], [], [], 'kx')
+            centroids_line = ax.plot([], [], [], '--', lw=1, color='black')
+            line_dot = ax.plot([], [], [], 'bo', ms=3)
+            line_tail = ax.plot([], [], [], ':', lw=1, color='blue')
+            line_head = ax.plot([], [], [], '-', lw=1, color='magenta')
+            line_target = ax.plot([], [], [], 'gx')
+            lattice = ax.plot([], [], [], ':', lw=1, color='blue')
+        elif dimens == 2:
+            centroids = ax.plot([],  [], 'kx')
+            centroids_line = ax.plot([], [], '--', lw=1, color='black')
+            line_dot = ax.plot([], [], 'bo', ms=3)
+            line_tail = ax.plot([], [], ':', lw=1, color='blue')
+            line_head = ax.plot([], [], '-', lw=1, color='magenta')
+            line_target = ax.plot([], [], 'gx')
+            lattice = ax.plot([], [], ':', lw=1, color='blue')
+            
+            
         lines_dots.extend(line_dot)
         lines_tails.extend(line_tail)
         lines_heads.extend(line_head)
@@ -157,30 +178,51 @@ def animateMe(data_file_path, Ts,  tactic_type):
     # obstacles
     if showObs >= 1:
         r_o = obstacles_all[:,3,:]
-        for j in range(0, nObs):    
-            line_obstacle = ax.plot([], [], [], 'ro', ms = 10*r_o[0,j], markerfacecolor=(1,1,0,0.5) )
+        for j in range(0, nObs):
+            if dimens == 3:
+                line_obstacle = ax.plot([], [], [], 'ro', ms = 10*r_o[0,j], markerfacecolor=(1,1,0,0.5) )
+            elif dimens == 2:
+                line_obstacle = ax.plot([],[], 'ro', ms = 10*r_o[0,j], markerfacecolor=(1,1,0,0.5) )
+            
             lines_obstacles.extend(line_obstacle)    
         
     # set initial axis properties
     # ---------------------------
-    if zoom == 2: 
-        fixed_axis = 1000
-        ax.set_xlim3d([-fixed_axis, fixed_axis])
-        ax.set_ylim3d([-fixed_axis, fixed_axis])
-        ax.set_zlim3d([-fixed_axis, fixed_axis])
-    else:
-        margins = 0.5
-        maxRange = 0.5*np.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max() + margins
-        mid_x = 0.5*(x.max()+x.min())
-        mid_y = 0.5*(y.max()+y.min())
-        mid_z = 0.5*(z.max()+z.min())
-        ax.set_xlim3d([mid_x-maxRange, mid_x+maxRange])
-        ax.set_xlabel('x-direction')
-        ax.set_ylim3d([mid_y-maxRange, mid_y+maxRange])
-        ax.set_ylabel('y-direction')
-        ax.set_zlim3d([mid_z-maxRange, mid_z+maxRange])
-        ax.set_zlabel('Altitude')
     
+    if dimens == 3:
+        if zoom == 2: 
+            fixed_axis = 1000
+            ax.set_xlim3d([-fixed_axis, fixed_axis])
+            ax.set_ylim3d([-fixed_axis, fixed_axis])
+            ax.set_zlim3d([-fixed_axis, fixed_axis])
+        else:
+            margins = 0.5
+            maxRange = 0.5*np.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max() + margins
+            mid_x = 0.5*(x.max()+x.min())
+            mid_y = 0.5*(y.max()+y.min())
+            mid_z = 0.5*(z.max()+z.min())
+            ax.set_xlim3d([mid_x-maxRange, mid_x+maxRange])
+            ax.set_xlabel('x-direction')
+            ax.set_ylim3d([mid_y-maxRange, mid_y+maxRange])
+            ax.set_ylabel('y-direction')
+            ax.set_zlim3d([mid_z-maxRange, mid_z+maxRange])
+            ax.set_zlabel('Altitude')
+    
+    elif dimens == 2:
+        if zoom == 2: 
+            fixed_axis = 1000
+            ax.set_xlim([-fixed_axis, fixed_axis])
+            ax.set_ylim([-fixed_axis, fixed_axis])
+        else:
+            margins = 0.5       
+            maxRange = 0.5*np.array([x.max()-x.min(), y.max()-y.min()]).max() + margins
+            mid_x = 0.5*(x.max()+x.min())
+            mid_y = 0.5*(y.max()+y.min())
+            ax.set_xlim([mid_x-maxRange, mid_x+maxRange])
+            ax.set_xlabel('x-direction')
+            ax.set_ylim([mid_y-maxRange, mid_y+maxRange])
+            ax.set_ylabel('y-direction')
+
     # set labels
     # -----------
     cd = round(np.linalg.norm(centroid_all[0,:,0].ravel()-targets_all[0,0:3,0]),1)
@@ -190,13 +232,20 @@ def animateMe(data_file_path, Ts,  tactic_type):
         mode = 'Mode: Closed Curves'
     else:
         mode = 'Mode: '+tactic_type
-    titleTime = ax.text2D(0.05, 0.95, "", transform=ax.transAxes)
-    titleType1 = ax.text2D(0.95, 0.95, mode, transform=ax.transAxes, horizontalalignment='right')
-    titleType2 = ax.text2D(0.95, 0.91, '%s : %s' % ("Centroid distance", cd), transform=ax.transAxes, horizontalalignment='right')
     
+    if dimens == 3:
+        titleTime = ax.text2D(0.05, 0.95, "", transform=ax.transAxes)
+        titleType1 = ax.text2D(0.95, 0.95, mode, transform=ax.transAxes, horizontalalignment='right')
+        titleType2 = ax.text2D(0.95, 0.91, '%s : %s' % ("Centroid distance", cd), transform=ax.transAxes, horizontalalignment='right')
+    elif dimens == 2:
+        titleTime = ax.text(0.05, 0.95, "", transform=ax.transAxes)
+        titleType1 = ax.text(0.95, 0.95, mode, transform=ax.transAxes, horizontalalignment='right')
+        titleType2 = ax.text(0.95, 0.91, '%s : %s' % ("Centroid distance", cd), transform=ax.transAxes, horizontalalignment='right')
+
+
     # draw the ground (a stationary plane)
     # ------------------------------------
-    if showObs == 2:
+    if showObs == 2 and dimens == 3:
         for i in range(0, walls_plots.shape[1]):
             xx, yy = np.meshgrid(np.linspace(mid_x-maxRange, mid_x+maxRange, 20), np.linspace(mid_y-maxRange, mid_y+maxRange, 20))
             if walls_plots[2,i] == 0:
@@ -258,25 +307,41 @@ def animateMe(data_file_path, Ts,  tactic_type):
         
         # update the axis limits (if required)
         # ------------------------------------       
-        if zoom == 1:
-            margins = 0.5
-            maxRange = 0.5*np.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max() + margins
-            mid_x = 0.5*(x.max()+x.min())
-            mid_y = 0.5*(y.max()+y.min())
-            mid_z = 0.5*(z.max()+z.min())
-            ax.set_xlim3d([mid_x-maxRange, mid_x+maxRange])
-            ax.set_ylim3d([mid_y-maxRange, mid_y+maxRange])
-            ax.set_zlim3d([mid_z-maxRange, mid_z+maxRange])
-        elif zoom == 3:
-            fixed_zoom = 300
-            cmid_x = 0.5*(cx.max()+cx.min())
-            cmid_y = 0.5*(cy.max()+cy.min())
-            cmid_z = 0.5*(cz.max()+cz.min())
-            ax.set_xlim3d([cmid_x-fixed_zoom, cmid_x+fixed_zoom])
-            ax.set_ylim3d([cmid_y-fixed_zoom, cmid_y+fixed_zoom])
-            ax.set_zlim3d([cmid_z-fixed_zoom, cmid_z+fixed_zoom])        
         
-        
+        if dimens == 3:
+            if zoom == 1:
+                margins = 0.5
+                maxRange = 0.5*np.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max() + margins
+                mid_x = 0.5*(x.max()+x.min())
+                mid_y = 0.5*(y.max()+y.min())
+                mid_z = 0.5*(z.max()+z.min())
+                ax.set_xlim3d([mid_x-maxRange, mid_x+maxRange])
+                ax.set_ylim3d([mid_y-maxRange, mid_y+maxRange])
+                ax.set_zlim3d([mid_z-maxRange, mid_z+maxRange])
+            elif zoom == 3:
+                fixed_zoom = 300
+                cmid_x = 0.5*(cx.max()+cx.min())
+                cmid_y = 0.5*(cy.max()+cy.min())
+                cmid_z = 0.5*(cz.max()+cz.min())
+                ax.set_xlim3d([cmid_x-fixed_zoom, cmid_x+fixed_zoom])
+                ax.set_ylim3d([cmid_y-fixed_zoom, cmid_y+fixed_zoom])
+                ax.set_zlim3d([cmid_z-fixed_zoom, cmid_z+fixed_zoom])
+        elif dimens == 2:
+            if zoom == 1:
+                margins = 0.5
+                maxRange = 0.5*np.array([x.max()-x.min(), y.max()-y.min()]).max() + margins
+                mid_x = 0.5*(x.max()+x.min())
+                mid_y = 0.5*(y.max()+y.min())
+                ax.set_xlim([mid_x-maxRange, mid_x+maxRange])
+                ax.set_ylim([mid_y-maxRange, mid_y+maxRange])
+            elif zoom == 3:
+                fixed_zoom = 300
+                cmid_x = 0.5*(cx.max()+cx.min())
+                cmid_y = 0.5*(cy.max()+cy.min())
+                ax.set_xlim([cmid_x-fixed_zoom, cmid_x+fixed_zoom])
+                ax.set_ylim([cmid_y-fixed_zoom, cmid_y+fixed_zoom])
+
+
         # update states
         # ------------------
         for j in range(0, nVeh):
@@ -304,28 +369,37 @@ def animateMe(data_file_path, Ts,  tactic_type):
                 motorPoints2[1,:] += y[j] 
                 motorPoints2[2,:] += z[j] 
                 
-                quat_line1[j].set_data(motorPoints2[0,0:3], motorPoints2[1,0:3])
-                quat_line1[j].set_3d_properties(motorPoints2[2,0:3])
-                quat_line2[j].set_data(motorPoints2[0,3:6], motorPoints2[1,3:6])
-                quat_line2[j].set_3d_properties(motorPoints2[2,3:6])
-                quat_line3[j].set_data(x_from0[:,j], y_from0[:,j])
-                quat_line3[j].set_3d_properties(z_from0[:,j])
-                    
-            
+                if dimens == 3:
+                    quat_line1[j].set_data(motorPoints2[0,0:3], motorPoints2[1,0:3])
+                    quat_line1[j].set_3d_properties(motorPoints2[2,0:3])
+                    quat_line2[j].set_data(motorPoints2[0,3:6], motorPoints2[1,3:6])
+                    quat_line2[j].set_3d_properties(motorPoints2[2,3:6])
+                    quat_line3[j].set_data(x_from0[:,j], y_from0[:,j])
+                    quat_line3[j].set_3d_properties(z_from0[:,j])
+                elif dimens == 2:
+                    quat_line1[j].set_data(motorPoints2[0,0:3], motorPoints2[1,0:3])
+                    quat_line2[j].set_data(motorPoints2[0,3:6], motorPoints2[1,3:6])
+                    quat_line3[j].set_data(x_from0[:,j], y_from0[:,j])
+     
             # agents
             lines_dots[j].set_data(x[j], y[j])
-            lines_dots[j].set_3d_properties(z[j])
+            if dimens == 3:
+                lines_dots[j].set_3d_properties(z[j])
     
             # tails
             lines_tails[j].set_data(x_from0[:,j], y_from0[:,j])
-            lines_tails[j].set_3d_properties(z_from0[:,j])
+            if dimens == 3:
+                lines_tails[j].set_3d_properties(z_from0[:,j])
             
             # targets
             lines_targets[j] .set_data(x_t[j], y_t[j])
-            lines_targets[j] .set_3d_properties(z_t[j]) 
+            if dimens == 3:
+                lines_targets[j] .set_3d_properties(z_t[j]) 
+            
             # heads
             lines_heads[j].set_data(x_point[:,j],y_point[:,j])
-            lines_heads[j].set_3d_properties(z_point[:,j])
+            if dimens == 3:
+                lines_heads[j].set_3d_properties(z_point[:,j])
 
             # set colors (based on f-factor [legacy])
             if tactic_type == 3:
@@ -416,7 +490,8 @@ def animateMe(data_file_path, Ts,  tactic_type):
                         y_lat[2*k_neigh:2*k_neigh+2,j] = pos[1,j]
                         z_lat[2*k_neigh:2*k_neigh+2,j] = pos[2,j]  
                 lattices[j].set_data(x_lat[:,j], y_lat[:,j])
-                lattices[j].set_3d_properties(z_lat[:,j])         
+                if dimens == 3:
+                    lattices[j].set_3d_properties(z_lat[:,j])         
                 
                 if tactic_type == 'shep' and pins_all[i*numFrames,j,j] == 1:
                     lattices[j].set_color('r')
@@ -427,7 +502,8 @@ def animateMe(data_file_path, Ts,  tactic_type):
         cy = centroid_all[i*numFrames,1,:]
         cz = centroid_all[i*numFrames,2,:]
         centroids[0].set_data(cx,cy)
-        centroids[0].set_3d_properties(cz)
+        if dimens == 3:
+            centroids[0].set_3d_properties(cz)
         
         # line from target to centroid
         # ----------------------------
@@ -435,7 +511,8 @@ def animateMe(data_file_path, Ts,  tactic_type):
         cy_line=np.vstack((cy,y_t[0])).ravel()
         cz_line=np.vstack((cz,z_t[0])).ravel()
         centroids_line[0].set_data(cx_line,cy_line)
-        centroids_line[0].set_3d_properties(cz_line)
+        if dimens == 3:
+            centroids_line[0].set_3d_properties(cz_line)
         
         # obstacles
         # ---------
@@ -443,7 +520,8 @@ def animateMe(data_file_path, Ts,  tactic_type):
             for k in range(0, nObs):
                 
                 lines_obstacles[k].set_data(x_o[k], y_o[k])
-                lines_obstacles[k].set_3d_properties(z_o[k])
+                if dimens == 3:
+                    lines_obstacles[k].set_3d_properties(z_o[k])
                 
         # labels
         # ------
