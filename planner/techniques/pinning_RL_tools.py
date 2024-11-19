@@ -57,6 +57,7 @@ Dev notes:
     05 Mar 2024 - ok, I think this works with RL. produced some initial results.  
     03 Jul 2024 - cleaning up the graphical representation. Moved graph up a level, feed into pinning. Should pin selection be part of the graph module or in here?
     08 Jul 2024 - add a RL feature to maximize k-connectivity: resilient self-assembly in contested swarms via learned k-connectivity 
+    19 Nov 2024 - i want to start drawing from other potential function types
     
 """
 

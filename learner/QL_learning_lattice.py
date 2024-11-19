@@ -31,7 +31,7 @@ from scipy.spatial import distance
 
 #%% hyper parameters
 # ----------------
-options_range   = [4, 8]    # range of action options [min, max]
+options_range   = [4, 15]    # range of action options [min, max]
 nOptions        = 2         # number of action options (evenly spaced between [min, max])
 time_horizon    = 50       # how long to apply action and await reward (eg., 1 sec/0.02 sample per sec = 50)
 time_horizon_v  = 0.1       # optional, max speed constraint to permit new action (higher makes more stable)
@@ -72,7 +72,7 @@ class q_learning_agent:
         self.action_options     = {state: np.linspace(options_range[0], options_range[1], self.nOptions) for state in range(self.nAgents)}
         #self.explore_rate       = 1     # [0,1], 1 = always learn, 0 = always exploit best option
         self.explore_rate       = 1*np.ones((nAgents)) # now each agent has its own
-        self.learn_rate         = 0.5   # [0,1]
+        self.learn_rate         = 0.2   # [0,1]
         self.discount           = 0.1 #0.8   # balance immediate/future rewards, (gamma): 0.8 to 0.99
         self.time_horizon       = time_horizon
         self.time_horizon_v     = time_horizon_v

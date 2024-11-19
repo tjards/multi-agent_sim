@@ -58,14 +58,13 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42)
 
 Ti      = 0         # initial time
-Tf      = 20        # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 30        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
 f       = 0         # parameter for future use
 dimens  = 2         # dimension (2 = 2D, 3 = 3D)
-
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'saber'
+strategy = 'pinning'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -75,6 +74,13 @@ strategy = 'saber'
     # pinning   = pinning control (with RL)
     # shep      = shepherding
     # cao       = cao flocking
+
+if dimens == 2 and strategy == 'lemni':
+    raise ValueError("Lemniscate trajectories not supported in 2D. Please choose different strategy.")
+
+if dimens == 2 and strategy == 'cao':
+    raise ValueError("Cao not adapted for 2D yet.")
+
 
 # save to config file
 # -------------------

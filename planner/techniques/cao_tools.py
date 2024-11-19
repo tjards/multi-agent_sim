@@ -22,22 +22,7 @@ Vol. 82, No. 7, July 2009, 1334–1343
 
 dev notes:
     
-    - create a custom class
-    - 2 x subclasses (member, malicious), inherit most common things
-    
-    - * automatically select the agent with max degree centrality (i.e. the natural pin) as the malicious agent 
-    - * compute E using Eqn (3) based on initial states (i.e., when the Class is initialized)
-    - * regular agent implemented using Eqn (3)
-    - * malicious agent implemented using Eqn (4, 5)
-    - HOW TO ID malicious agent?
-    - * identify layers
-    - agents surrounding malicious agent use Eqn (15), which relies on (14)
-    - outer layer use Eqn (17)
-    - HOW to decide which later you’re in?
-    
-    - paper validation is kind of contrived
-    - us graph methods to identify agent 1-hop out from malicious, then 1 hop out from them for layer 2
-    - 3d?
+    17 Nov 24 - doesn't  work in 2D yet. Need to stop filter from causing exp growth to inf (no measurements)
 
 
 @author: tjards
@@ -75,7 +60,7 @@ H_min = 100     # lower bound on H
 
 # malicious agents
 # -----------------
-mode_malicious = 0          # 1= yes, 0 = no
+mode_malicious = 1          # 1= yes, 0 = no
 mal_type = 'collider'       # runaway, collider
 if mal_type == 'runaway':
     mal_kv = 0.8
@@ -603,8 +588,13 @@ def Ck_malicious(states_q, states_p, A, Q, k_node, gains):
         
             # if within range, do your thing
             if in_range:
+                
+                # if np.isnan(states_q).any():
+                #     print("stop here")
+                # if np.isnan(states_p).any():
+                #     print('stop here')
             
-                # compute alignment 
+                # compute alignment
                 cmd_i -= gains[0]*compute_alignment(states_q, states_p, k_node, k_neigh)
                 # compute cohesion
                 cmd_i -= gains[1]*compute_cohesion(states_q, k_node, k_neigh, Q)*(states_q[:,k_node] - states_q[:,k_neigh])
