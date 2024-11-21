@@ -19,9 +19,9 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 12    # number of agents
+nAgents = 7    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 20    # initial spread of agents
+iSpread = 25    # initial spread of agents
 init_conditions = 'random'   # mesh, random
 
 # store the config
@@ -214,10 +214,10 @@ class Agents:
 
     # spacing (between agents)
     # -----------------------
-    def spacing(self, states_q):
+    def spacing(self, states_q, radius):
         
         # visibility radius
-        radius = 1.5*5
+        #radius = Controller.d_init + 0.5
         
         seps=cdist(states_q.transpose(), states_q.transpose())    
         vals = np.unique(seps[np.where(seps!=0)])

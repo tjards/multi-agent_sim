@@ -36,7 +36,7 @@ c1_g = 2               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
 
 # key ranges 
-d       = 5             # lattice scale (Saber flocking, distance between a-agents)
+d       = 7             # lattice scale (Saber flocking, distance between a-agents)
 r       = 1.3*d           # range at which neighbours can be sensed (Saber flocking, interaction range of a-agents)
 d_prime = 0.6*d      # desired separation (Saber flocking, distance between a- and b-agents)
 r_prime = 1.3*d_prime     # range at which obstacles can be sensed, (Saber flocking, interaction range of a- and b-agents)
@@ -44,6 +44,9 @@ r_prime = 1.3*d_prime     # range at which obstacles can be sensed, (Saber flock
 #%% to push out
 def return_ranges():
     return d
+
+#def return_ranges_r():
+#    return r
 
 #%% save configs
 # --------------
@@ -125,13 +128,38 @@ def norm_sat(u,maxu):
 #%% Main functions
 # ----------------
 
+# gradient term
+def gradient(states_q, k_node, k_neigh, r, d):
+    
+    r_a = sigma_norm(r)     # lattice separation (sensor range)
+    d_a = sigma_norm(d)     # lattice separation (goal)
+    u_gradient = c1_a*phi_a(states_q[:,k_node],states_q[:,k_neigh],r_a, d_a)*n_ij(states_q[:,k_node],states_q[:,k_neigh])
+    
+    return u_gradient 
+
+# alignment term
+def velocity_alignment(states_q, states_p, k_node, k_neigh, r, d):
+    
+    r_a = sigma_norm(r)  # lattice separation (sensor range)
+    u_velocity_alignment = c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node])
+    
+    return u_velocity_alignment
+
+# navigation term
+def navigation(states_q, states_p, targets, targets_v, k_node):
+    
+    u_navigation = - c1_g*sigma_1(states_q[:,k_node]-targets[:,k_node])-c2_g*(states_p[:,k_node] - targets_v[:,k_node])
+
+    return u_navigation
+
+
 # interaction command
 # -------------------
 def compute_cmd_a(states_q, states_p, targets, targets_v, k_node):
         
     # initialize 
-    r_a = sigma_norm(r)                         # lattice separation (sensor range)
-    d_a = sigma_norm(d)                         # lattice separation (goal)   
+    #r_a = sigma_norm(r)                         # lattice separation (sensor range)
+    #d_a = sigma_norm(d)                         # lattice separation (goal)   
     u_int = np.zeros((3,states_q.shape[1]))     # interactions
 
     # Lattice Flocking term (phi_alpha)
@@ -145,7 +173,8 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node):
             # if it is within the interaction range
             if dist < r:
                 # compute the interaction command
-                u_int[:,k_node] += c1_a*phi_a(states_q[:,k_node],states_q[:,k_neigh],r_a, d_a)*n_ij(states_q[:,k_node],states_q[:,k_neigh]) + c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node]) 
+                #u_int[:,k_node] += c1_a*phi_a(states_q[:,k_node],states_q[:,k_neigh],r_a, d_a)*n_ij(states_q[:,k_node],states_q[:,k_neigh]) + c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node]) 
+                u_int[:,k_node] += gradient(states_q, k_node, k_neigh, r, d) + velocity_alignment(states_q, states_p, k_node, k_neigh, r, d)
 
     return u_int[:,k_node]     
 
@@ -158,8 +187,9 @@ def compute_cmd_g(states_q, states_p, targets, targets_v, k_node):
 
     # Navigation term (phi_gamma)
     # ---------------------------
-    u_nav[:,k_node] = - c1_g*sigma_1(states_q[:,k_node]-targets[:,k_node])-c2_g*(states_p[:,k_node] - targets_v[:,k_node])
-  
+    #u_nav[:,k_node] = - c1_g*sigma_1(states_q[:,k_node]-targets[:,k_node])-c2_g*(states_p[:,k_node] - targets_v[:,k_node])
+    u_nav[:,k_node] = navigation(states_q, states_p, targets, targets_v, k_node)
+    
     return u_nav[:,k_node]
 
 # obstacle avoidance command

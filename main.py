@@ -81,7 +81,6 @@ if dimens == 2 and strategy == 'lemni':
 if dimens == 2 and strategy == 'cao':
     raise ValueError("Cao not adapted for 2D yet.")
 
-
 # save to config file
 # -------------------
 config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'dimens': dimens, 'verbose': 1, 'system': system, 'strategy': strategy}
