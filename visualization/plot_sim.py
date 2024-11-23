@@ -203,7 +203,7 @@ def plotMe(data_file_path):
         ax2.tick_params(axis='y',colors ='tab:blue')
         #ax2.invert_yaxis()
         
-        ax.legend(['Within Range', 'Oustide Range'], loc = 'upper left')
+        ax.legend(['Within Range', 'All'], loc = 'upper left')
         ax.grid()
         #fig.savefig("test.png")
         plt.show()    

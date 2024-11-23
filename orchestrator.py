@@ -151,6 +151,7 @@ class Controller:
                 
         # commands
         # --------
+        self.dimens  = dimens
         self.nAgents = nAgents
         self.cmd = np.zeros((3,nAgents))
         self.cmd[0] = 0.001*np.random.rand(1,nAgents)-0.5      # command (x)
@@ -423,6 +424,8 @@ class Controller:
                 cmd_i[:,k_node] = cmd_i[:,k_node]
             elif tactic_type == 'cao':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
+                
+            
                 
         # update the commands
         self.cmd = copy.deepcopy(cmd_i) 

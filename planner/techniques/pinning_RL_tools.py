@@ -50,24 +50,44 @@ learning            = 0     # requires heterolattice, do we want to learn lattic
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
 # define the method for lattice formation
-flocking_method = 'flocking_saber'
+flocking_method = 'morse'
     
-                # 'flocking_saber' = Olfati-saber flocking
-                
+                # 'flocking_saber'  = Olfati-saber flocking
+                # 'morse'
+                # 'lennard_jones'
+                # 'gromacs_soft_core'
+      
 # variable imports
 # ----------------
 r       = None
 d       = None
 
+# import olfat-saber stuff as baseline
+from planner.techniques.saber_tools import velocity_alignment as alignment_term
+from planner.techniques.saber_tools import navigation as navigation_term
+from planner.techniques.saber_tools import compute_cmd_b as obstacle_term
+from planner.techniques.saber_tools import r
+from planner.techniques.saber_tools import d
+
 if flocking_method == 'flocking_saber':
     
     from planner.techniques.saber_tools import gradient as cohesion_term
-    from planner.techniques.saber_tools import velocity_alignment as alignment_term
-    from planner.techniques.saber_tools import navigation as navigation_term
-    from planner.techniques.saber_tools import compute_cmd_b as obstacle_term
-    from planner.techniques.saber_tools import r
-    from planner.techniques.saber_tools import d
-            
+
+if flocking_method == 'morse':
+    
+    from planner.techniques.gradient_tools import grad_morse_gradient as cohesion_term
+
+if flocking_method == 'lennard_jones':
+    
+    from planner.techniques.gradient_tools import grad_lennard_jones as cohesion_term
+
+if flocking_method == 'gromacs_soft_core':
+    
+    from planner.techniques.gradient_tools import  grad_gromacs_soft_core as cohesion_term
+    
+    
+
+  
 # learning requires heterolattice
 if learning == 1 and hetero_lattice != 1:
     print('Warning: learning lattice requires hetero lattice enabled to find local consensus. Enforcing.')

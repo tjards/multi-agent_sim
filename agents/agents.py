@@ -19,9 +19,9 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 7    # number of agents
+nAgents = 12    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 25    # initial spread of agents
+iSpread = 45   # initial spread of agents
 init_conditions = 'random'   # mesh, random
 
 # store the config
@@ -192,7 +192,8 @@ class Agents:
         # note: replace target_q with states_q to get separation between agents
         #seps=cdist(states_q.transpose(), np.reshape(target_q[:,0],(-1,1)).transpose())
         seps=cdist(states_q.transpose(), states_q.transpose())    
-        vals = np.unique(seps[np.where(seps!=0)])
+        #vals = np.unique(seps[np.where(seps!=0)])
+        vals = seps[np.where(seps>0.5)]
         means = np.mean(vals)
         varis = np.var(vals)
         maxes = np.max(vals)
@@ -220,7 +221,8 @@ class Agents:
         #radius = Controller.d_init + 0.5
         
         seps=cdist(states_q.transpose(), states_q.transpose())    
-        vals = np.unique(seps[np.where(seps!=0)])
+        #vals = np.unique(seps[np.where(seps!=0)])
+        vals = seps[np.where(seps>0.5)]
         vals_t = vals # even those out of range
         vals = np.unique(vals[np.where(vals<radius)])
         
