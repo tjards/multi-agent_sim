@@ -46,6 +46,7 @@ import random
 # ------------------
 
 # learning parameters
+hetero_gradient     = 1     # supports heterogeneous potential functions
 hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
 learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
@@ -104,7 +105,6 @@ if flocking_method == 'mixed':
         term_indices = np.random.randint(0, 4, size=(1, nAgents))
     
         
-
 # learning requires heterolattice
 if learning == 1 and hetero_lattice != 1:
     print('Warning: learning lattice requires hetero lattice enabled to find local consensus. Enforcing.')

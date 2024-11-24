@@ -20,29 +20,52 @@ hessian_function: Hessian function of the potential, ∇²φ(x_ij).
 
 
 # %% import stuff
+# ---------------
+
 import numpy as np
 import copy
 import random
 random.seed(42)
 
 #%% hyperparameters
+# -----------------
+
 gain                = 0.5
 data_driven_hessian = 'linear_filter'
     # 'known'           = For case when hessian is known 
     # 'linear_filter'   = Try a linear filer
     # 'GPR'             = Gaussian Process Regressor
     
-if data_driven_hessian == 'GPR':
+# if data_driven_hessian == 'GPR':
     
-    from sklearn.gaussian_process import GaussianProcessRegressor
-    from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+#     from sklearn.gaussian_process import GaussianProcessRegressor
+#     from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+
+ 
+#%% filters
+# --------
+def low_pass_filter(current_value, previous_value, alpha):
+    """Applies exponential moving average."""
+    return alpha * current_value + (1 - alpha) * previous_value
+
+filter_v_gain = 10
+def filter_v(v_filtered, v, Ts):
+    
+    v_filtered_dot  = -filter_v_gain*v_filtered + filter_v_gain*v
+    v_filtered      = v_filtered + Ts*v_filtered_dot
+    
+    return v_filtered_dot, v_filtered
+
+def filter_C(C_filtered, C_estimate, Ts):
+    
+    C_filtered_dot  = -filter_v_gain*C_filtered + C_estimate 
+    C_filtered      = C_filtered + Ts*C_filtered_dot
+    
+    return C_filtered_dot, C_filtered 
 
 
 
 #%%
-
-
-
 class GradientEstimator:
     
     # initialize
@@ -57,18 +80,26 @@ class GradientEstimator:
         self.nAgents            = nAgents
         self.Ts                 = Ts
         self.dimens             = dimens
-        #self.gradient_estimates = np.zeros((nAgents, nAgents, dimens))  # Assume 2D space
         self.gradient_estimates = np.zeros((dimens, nAgents, nAgents))
-        #self.hessians           = np.zeros((dimens, dimens, nAgents, nAgents))
         
         # for filters, each agent stores for each neighbour
         #   (dimens, observed by, observed of)
-        self.C_dot              = np.zeros((dimens, nAgents, nAgents)) 
         self.C                  = np.zeros((dimens, nAgents, nAgents))
         self.C_filtered         = np.zeros((dimens, nAgents, nAgents))
         self.v_filtered         = np.zeros((dimens, nAgents, nAgents))
         self.v_dot_filtered     = np.zeros((dimens, nAgents, nAgents))
         self.C_dot_filtered     = np.zeros((dimens, nAgents, nAgents))
+        
+        # Initialize filter parameters for Kalman filter
+        # self.P = np.zeros((dimens, dimens, nAgents, nAgents))  # Covariance matrices
+        # self.Q = np.eye(dimens) * 1e-4  # Process noise covariance (adjust as needed)
+        # self.R = np.eye(dimens) * 1e-2  # Observation noise covariance (adjust as needed)
+
+        # # Pre-fill initial covariance matrices
+        # for i in range(nAgents):
+        #     for j in range(nAgents):
+        #         if i != j:
+        #             self.P[:,:, i, j] = np.eye(dimens).diagonal()
         
 
     # update gradient estimates based on relative pos/vel
@@ -87,9 +118,6 @@ class GradientEstimator:
         Returns:
             Updated gradient estimates for all agent pairs.
         """
-        # transpose for now, but don't do this in later vers
-        #states_q = np.transpose(states_q)
-        #states_p = np.transpose(states_p)
         
         # for each neighbour
         for k_neigh in range(0, self.nAgents):
@@ -110,8 +138,8 @@ class GradientEstimator:
                 if in_range:
                     
                     # relative states
-                    x_ij = states_q[0:self.dimens,k_neigh] - states_q[0:self.dimens,k_node]
-                    v_ij = states_p[0:self.dimens,k_neigh] - states_p[0:self.dimens,k_node]
+                    #x_ij = states_q[0:self.dimens,k_neigh] - states_q[0:self.dimens,k_node]
+                    #v_ij = states_p[0:self.dimens,k_neigh] - states_p[0:self.dimens,k_node]
                 
                     # pull current gradient 
                     current_gradient = self.gradient_estimates[0:self.dimens, k_node, k_neigh]
@@ -137,16 +165,17 @@ class GradientEstimator:
                         self.v_filtered[0:self.dimens, k_node, k_neigh] = v_filtered 
                         
                         # C filter
-                        C_dot_filtered, C_filtered = filter_C(self.C_filtered[0:self.dimens, k_node, k_neigh], current_gradient , Ts)
+                        C_dot_filtered, C_filtered = filter_C(self.C_filtered[0:self.dimens, k_node, k_neigh], current_gradient, Ts)
                         self.C_dot_filtered[0:self.dimens, k_node, k_neigh] = C_dot_filtered
                         self.C_filtered[0:self.dimens, k_node, k_neigh] = C_filtered 
                         
                         gradient_dot = C_dot_filtered
    
+                    #self.gradient_estimates[0:self.dimens, k_node, k_neigh] = C_filtered
                     
+    
                     # find gradient_dot via filters
                     # -----------------------------
-                    
                     
                     # predict the next gradient
                     predicted_gradient = current_gradient + gradient_dot * self.Ts
@@ -160,37 +189,46 @@ class GradientEstimator:
                     
                     # load
                     self.gradient_estimates[0:self.dimens, k_node, k_neigh] = updated_gradient
+                    
+                    
+                    # FIRST ATTEPT AT EkF
+                    # -------------------
+                    # # Get the current gradient estimate
+                    # current_gradient = self.gradient_estimates[:, k_node, k_neigh]
+      
+                    # # Predict step
+                    # #gradient_dot = np.zeros(self.dimens)  # Assume gradient_dot is precomputed elsewhere
+                    # predicted_gradient = current_gradient + gradient_dot * self.Ts
+      
+                    # # Linearize the system (Jacobian calculation)
+                    # F = gradient_dot #np.eye(self.dimens)  # State transition Jacobian (linearized for simplicity)
                 
+                    # # Predict covariance
+                    # P_pred = F @ self.P[k_node, k_neigh] @ F.T + self.Q
+                
+                    # # Observation Jacobian (H)
+                    # H = np.eye(self.dimens)  # Assuming direct observation of the gradient
+                
+                    # # Kalman gain
+                    # S = H @ P_pred @ H.T + self.R  # Innovation covariance
+                    # K = P_pred @ H.T @ np.linalg.inv(S)
+                
+                    # # Update step
+                    # observed_gradient = observed_gradients[:, k_neigh]
+                    # innovation = observed_gradient - predicted_gradient  # Difference between observed and predicted
+                    # updated_gradient = predicted_gradient + K @ innovation
+                
+                    # # Update covariance
+                    # P_updated = (np.eye(self.dimens) - K @ H) @ P_pred
+
+                    # # Store updated values
+                    # self.gradient_estimates[:, k_node, k_neigh] = updated_gradient
+                    # self.P[:,:,k_node, k_neigh] = P_updated
+                    
+                
+                    
+                        
             
-        
-        
-        # for i in range(self.num_agents):
-        #     for j in range(self.num_agents):
-        #         if i != j:
-        #             # Compute relative position and velocity
-        #             x_ij = positions[j] - positions[i]
-        #             v_ij = velocities[j] - velocities[i]
-
-        #             # Current gradient estimate
-        #             current_gradient = self.gradient_estimates[i, j]
-
-        #             # Compute the Hessian and update gradient estimate
-        #             hessian = self.hessian_function(x_ij)
-        #             gradient_dot = -np.dot(hessian, v_ij)
-
-        #             # Predict next gradient
-        #             predicted_gradient = current_gradient + gradient_dot * self.dt
-
-        #             # Correct using gradient observation
-        #             observed_gradient = self.gradient_function(x_ij)
-        #             #gain = 0.5  # Gain for correction, can be tuned
-        #             updated_gradient = predicted_gradient + gain * (observed_gradient - predicted_gradient)
-
-        #             # Store updated estimate
-        #             self.gradient_estimates[i, j] = updated_gradient
-
-        # return self.gradient_estimates
-
 #%% Example usage with a simple potential function
 def potential_function(x):
     """Example Lennard-Jones potential."""
@@ -214,29 +252,6 @@ def hessian_function(x):
     factor2 = -4 * (12 / r**14 - 6 / r**8)
     outer = np.outer(x, x) / r**2
     return factor1 * outer + factor2 * np.eye(2)
-
-def low_pass_filter(current_value, previous_value, alpha):
-    """Applies exponential moving average."""
-    return alpha * current_value + (1 - alpha) * previous_value
-
-
-# more filters
-filter_v_gain = 10
-
-def filter_v(v_filtered, v, Ts):
-    
-    v_filtered_dot  = -filter_v_gain*v_filtered + filter_v_gain*v
-    v_filtered      = v_filtered + Ts*v_filtered_dot
-    
-    return v_filtered_dot, v_filtered
-
-def filter_C(C_filtered, C_estimate, Ts):
-    
-    C_filtered_dot  = -filter_v_gain*C_filtered + C_estimate 
-    C_filtered      = C_filtered + Ts*C_filtered_dot
-    
-    return C_filtered_dot, C_filtered 
-
 
 #%% try simulation 
 nAgents = 3
@@ -284,10 +299,9 @@ for step in range(0, steps):
         
         # initialie observations 
         observed_gradients = np.zeros((dimens, nAgents))
-        observed_hessians = np.zeros((dimens, dimens, nAgents))
+        #observed_hessians = np.zeros((dimens, dimens, nAgents))
 
         # initialize some controls
-        controller = 5
         cmds = np.zeros((dimens, 1))
         
         # for each neighbour
@@ -315,7 +329,8 @@ for step in range(0, steps):
     
     
         # Update positions and velocities (simple dynamics for testing)
-        #states_p[0:dimens, k_node] += controller*cmds.ravel()*Ts
+        controller = 1
+        states_p[0:dimens, k_node] += controller*cmds.ravel()*Ts
         states_q[0:dimens, k_node] += states_p[0:dimens, k_node] * Ts
     
         
