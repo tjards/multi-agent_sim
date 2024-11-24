@@ -22,12 +22,11 @@ hessian_function: Hessian function of the potential, ∇²φ(x_ij).
 # %% import stuff
 import numpy as np
 import copy
+import random
+random.seed(42)
 
 #%% hyperparameters
 gain = 0.5
-
-
-
 
 #%%
 class GradientEstimator:
@@ -45,6 +44,7 @@ class GradientEstimator:
         self.Ts                 = Ts
         self.dimens             = dimens
         self.gradient_estimates = np.zeros((nAgents, nAgents, dimens))  # Assume 2D space
+        self.hessians           = np.zeros((dimens, dimens, nAgents, nAgents))
 
     # update gradient estimates based on relative pos/vel
     def update_estimates(self, states_q, states_p, observed_gradients, observed_hessians, A, k_node):
@@ -92,6 +92,9 @@ class GradientEstimator:
                     
                     # compute hessian (this will be from a data-driven model later)
                     hessian = observed_hessians[0:self.dimens, 0:self.dimens, k_neigh]
+                    #hessian += np.eye(hessian.shape[0]) * 1e-5  # Add small diagonal term
+                    hessian = low_pass_filter(hessian, self.hessians[0:self.dimens, 0:self.dimens, k_node, k_neigh],alpha=0.01)
+                    self.hessians[0:self.dimens,0:self.dimens,k_node, k_neigh] = hessian
                     
                     # gradient_dot
                     gradient_dot = -np.dot(hessian, v_ij)
@@ -101,6 +104,7 @@ class GradientEstimator:
                     
                     # pull the observed gradient 
                     observed_gradient = observed_gradients[0:self.dimens, k_neigh]
+                    #observed_gradient = low_pass_filter(observed_gradients[:, k_neigh], self.gradient_estimates[k_node, k_neigh],alpha=0.1)
                     
                     # correct with innovation
                     updated_gradient = predicted_gradient + gain * (observed_gradient - predicted_gradient)
@@ -162,12 +166,13 @@ def hessian_function(x):
     outer = np.outer(x, x) / r**2
     return factor1 * outer + factor2 * np.eye(2)
 
+def low_pass_filter(current_value, previous_value, alpha):
+    """Applies exponential moving average."""
+    return alpha * current_value + (1 - alpha) * previous_value
+
+
 
 #%% try simulation 
-import random
-random.seed(42)
-
-
 nAgents = 10
 dimens  = 2
 Ts      = 0.02
@@ -197,11 +202,14 @@ estimator = GradientEstimator(nAgents, dimens, Ts)
 # )
 
 # Run gradient estimation for a few steps
-steps = 10
+steps = 100
 actual_gradients_list = []
 estimated_gradients_list = []
+x_rels_all = []
 
 for step in range(0, steps):
+    
+    x_rels = np.zeros((dimens, nAgents, nAgents))
     
     # for all agents
     for k_node in range(0,nAgents):
@@ -209,9 +217,9 @@ for step in range(0, steps):
         # initialie observations 
         observed_gradients = np.zeros((dimens, nAgents))
         observed_hessians = np.zeros((dimens, dimens, nAgents))
-        
+
         # initialize some controls
-        controller = 0.1
+        controller = 1
         cmds = np.zeros((dimens, 1))
         
         # for each neighbour
@@ -224,6 +232,10 @@ for step in range(0, steps):
             
             # compute a command
             cmds += observed_gradients[0:dimens, k_neigh].reshape((dimens,1))
+            
+            # store
+            x_rels[:,k_node, k_neigh] = x_ij
+            
         
         # # simulate the observed gradients 
         # x_ij = positions[j] - positions[i]
@@ -233,8 +245,11 @@ for step in range(0, steps):
         estimator.update_estimates(states_q, states_p, observed_gradients, observed_hessians, A, k_node)
     
         # Update positions and velocities (simple dynamics for testing)
+        #states_p[0:dimens, k_node] += controller*cmds.ravel()*Ts
         states_q[0:dimens, k_node] += states_p[0:dimens, k_node] * Ts
-        states_p[0:dimens, k_node] += controller*cmds.ravel()*Ts
+    
+        
+    x_rels_all.append(x_rels)
         
     # STORE
     # =====
@@ -255,20 +270,28 @@ for step in range(0, steps):
 
 #%% plot stuff
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+#import matplotlib.cm as cm
+from matplotlib import colormaps
+
 
 # convert to arrays
 actual_gradients_array = np.array(actual_gradients_list)
 estimated_gradients_array = np.array(estimated_gradients_list)
+x_rels_all_array = np.array(x_rels_all)
 
 # Create the plot
 plt.figure(figsize=(12, 8))
-colormap = cm.get_cmap('tab10', nAgents)  # Use 'tab10' for distinct colors, with up to nAgents colors
+
+colormap = colormaps['tab10']
+colors = [colormap(i / nAgents) for i in range(nAgents)]
+
+
+#colormap = cm.get_cmap('tab10', nAgents)  # Use 'tab10' for distinct colors, with up to nAgents colors
 
 
 # Loop through each agent to plot its gradients for all steps
 which_agent = 1
-for i in range(which_agent):
+for i in range(0,which_agent):
     
     for j in range(nAgents):
         #if A[i, j] == 1:  # Only plot if agents are neighbors
@@ -276,12 +299,12 @@ for i in range(which_agent):
         actual_gradients_for_pair = actual_gradients_array[:, i, j]
         estimated_gradients_for_pair = estimated_gradients_array[:, i, j]
             
-        color = colormap(j)  # Get the color for agent j
+        color = colors[j]  # Get the color for agent j
 
-        #plt.plot(np.arange(0, steps), np.linalg.norm(actual_gradients_for_pair, axis=1), label=f'Actual Gradient (Agent {i+1} -> Agent {j+1})', linestyle='-', color = color)
-        #plt.plot(np.arange(0, steps), np.linalg.norm(estimated_gradients_for_pair, axis=1), label=f'Estimated Gradient (Agent {i+1} -> Agent {j+1})', linestyle='--', color = color)
-        plt.plot(np.arange(0, steps), np.linalg.norm(actual_gradients_for_pair-estimated_gradients_for_pair, axis=1), label=f'Agent {i+1} -> Agent {j+1}', linestyle='-', color = color)
-        
+        plt.plot(np.arange(0, steps), np.linalg.norm(actual_gradients_for_pair, axis=1), label=f'Actual Gradient (Agent {i+1} -> Agent {j+1})', linestyle='-', color = color)
+        plt.plot(np.arange(0, steps), np.linalg.norm(estimated_gradients_for_pair, axis=1), label=f'Estimated Gradient (Agent {i+1} -> Agent {j+1})', linestyle='--', color = color)
+        #plt.plot(np.arange(0, steps), np.linalg.norm(actual_gradients_for_pair-estimated_gradients_for_pair, axis=1), label=f'Agent {i+1} -> Agent {j+1}', linestyle='-', color = color)
+        #plt.plot(np.arange(0, steps), np.linalg.norm(x_rels_all_array[:,i,j], axis =1), label = 'rels', color = 'k')
 
 
 plt.xlabel('Step')
