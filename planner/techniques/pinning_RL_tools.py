@@ -40,6 +40,7 @@ import numpy as np
 import random
 import os
 import json
+import random 
 
 #%% simulation setup
 # ------------------
@@ -50,12 +51,13 @@ learning            = 0     # requires heterolattice, do we want to learn lattic
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
 # define the method for lattice formation
-flocking_method = 'morse'
+flocking_method = 'mixed'
     
                 # 'flocking_saber'  = Olfati-saber flocking
                 # 'morse'
                 # 'lennard_jones'
                 # 'gromacs_soft_core'
+                # 'mixed' - randomly mix these
       
 # variable imports
 # ----------------
@@ -85,9 +87,24 @@ if flocking_method == 'gromacs_soft_core':
     
     from planner.techniques.gradient_tools import  grad_gromacs_soft_core as cohesion_term
     
-    
+if flocking_method == 'mixed':
 
-  
+    term_list = []
+    from planner.techniques.saber_tools import gradient as term_add
+    term_list.append(term_add)
+    from planner.techniques.gradient_tools import grad_morse_gradient as term_add
+    term_list.append(term_add)
+    from planner.techniques.gradient_tools import grad_lennard_jones as term_add
+    term_list.append(term_add)
+    from planner.techniques.gradient_tools import  grad_gromacs_soft_core as term_add
+    term_list.append(term_add)
+    with open(os.path.join("config", "config_agents.json"), 'r') as agent_configs:
+        agent_config = json.load(agent_configs)
+        nAgents = agent_config['nAgents']
+        term_indices = np.random.randint(0, 4, size=(1, nAgents))
+    
+        
+
 # learning requires heterolattice
 if learning == 1 and hetero_lattice != 1:
     print('Warning: learning lattice requires hetero lattice enabled to find local consensus. Enforcing.')
@@ -190,7 +207,10 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
             # ---------------
             if in_range:
                 
-                #print(d)
+                # for the case iof mixed potential functions
+                if flocking_method == 'mixed':
+                    cohesion_term = term_list[term_indices[0][k_node]] 
+                    
                 
                 # compute the interaction commands
                 u_int[:,k_node] += cohesion_term(states_q, k_node, k_neigh, r, d)
