@@ -73,7 +73,7 @@ sensor_aperature    = 140
 
 #%% Build the system
 # ------------------
-def build_system(system, strategy, dimens):
+def build_system(system, strategy, dimens, Ts):
     
     if system == 'swarm':
     
@@ -140,7 +140,19 @@ def build_system(system, strategy, dimens):
                             
                         # LOAD    
                         Learners['learning_lattice'] = Learning_agent
-    
+                
+                # see if I have to integrate different potential functions
+                potential_function_learner = planner_configs['hetero_gradient']
+                if potential_function_learner == 1:
+                    
+                    # import the gradient estimator
+                    import learner.gradient_estimator as gradient_estimator
+                    
+                    Gradient_agent = gradient_estimator.GradientEstimator(Agents.nAgents, Agents.dimens, Ts)
+                    
+                    # load
+                    Learners['estimator_gradients'] = Gradient_agent
+                
     return Agents, Targets, Trajectory, Obstacles, Learners
 
 #%% Master controller
@@ -216,7 +228,14 @@ class Controller:
                  
                  self.Learners['learning_lattice'] = Learners['learning_lattice']
                  print('Q-Learning based lattice optimization enabled')
-        else:
+    
+    
+        if tactic_type == 'pinning' and 'estimator_gradients' in Learners:
+            
+            self.Learners['estimator_gradients'] = Learners['estimator_gradients']
+            print('Estimating neighbouring gradients enabled')
+    
+        if len(self.Learners) == 0:
             
             print('Note: controller has no learning agents')
         
@@ -362,6 +381,10 @@ class Controller:
                     if 'learning_lattice' in self.Learners:
                         kwargs_pinning['learning_lattice'] = self.Learners['learning_lattice']
                 
+                if 'estimator_gradients' in self.Learners:
+                    kwargs_pinning['estimator_gradients'] = self.Learners['estimator_gradients']
+                    
+                
                 # info about graph
                 kwargs_pinning['directional_graph']         = self.Graphs.directional_graph
                 kwargs_pinning['A']                         = self.Graphs.A
@@ -425,14 +448,16 @@ class Controller:
             elif tactic_type == 'cao':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
                 
-            
+           
+            if self.dimens == 2 and self.cmd[2,:].any() != 0:
+                
+                print('warning, 3D cmds in 2D at node ', k_node)
+                print(self.cmd[2,k_node])    
                 
         # update the commands
         self.cmd = copy.deepcopy(cmd_i) 
         
-        #if twoD:
-            
-        #    self.cmd[2,:] = 0
+
         
 
 

@@ -55,7 +55,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 
 #%% Setup Simulation
 # ------------------
-np.random.seed(42)
+np.random.seed(42+4)
 
 Ti      = 0         # initial time
 Tf      = 60        # final time (later, add a condition to break out when desirable conditions are met)
@@ -90,7 +90,7 @@ with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
 #%% build the system
 # ------------------
 import orchestrator
-Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens)
+Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens, Ts)
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state, dimens)
 Controller.learning_agents(Agents.tactic_type, Learners)
 Controller.Ts = Ts

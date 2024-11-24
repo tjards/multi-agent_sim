@@ -32,7 +32,7 @@ c1_a = 1               # cohesion
 c2_a = 2*np.sqrt(1)
 c1_b = 1             # obstacles 
 c2_b = 2*np.sqrt(1)
-c1_g = 2               # tracking (for the pins)
+c1_g = 3               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
 
 # key ranges 

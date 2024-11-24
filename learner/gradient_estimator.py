@@ -25,12 +25,13 @@ hessian_function: Hessian function of the potential, ∇²φ(x_ij).
 import numpy as np
 import copy
 import random
-random.seed(42)
+#random.seed(42)
 
 #%% hyperparameters
 # -----------------
 
-gain                = 0.5
+gain_gradient_filter = 0.5
+gain_gradient_control= 0.5
 data_driven_hessian = 'linear_filter'
     # 'known'           = For case when hessian is known 
     # 'linear_filter'   = Try a linear filer
@@ -77,10 +78,13 @@ class GradientEstimator:
             Ts      = step size
             dimens  = numbers of dimensions (2D, 3D)
         """
-        self.nAgents            = nAgents
-        self.Ts                 = Ts
-        self.dimens             = dimens
-        self.gradient_estimates = np.zeros((dimens, nAgents, nAgents))
+        self.nAgents                = nAgents
+        self.Ts                     = Ts
+        self.dimens                 = dimens
+        self.gradient_estimates     = np.zeros((dimens, nAgents, nAgents))
+        self.observed_gradients     = np.zeros((dimens, nAgents, nAgents))
+        self.last_velos             = np.zeros((dimens, nAgents, nAgents))
+        self.gain_gradient_control  = gain_gradient_control
         
         # for filters, each agent stores for each neighbour
         #   (dimens, observed by, observed of)
@@ -160,12 +164,12 @@ class GradientEstimator:
                     if data_driven_hessian == 'linear_filter':
                         
                         # v filter
-                        v_dot_filtered, v_filtered = filter_v(self.v_filtered[0:self.dimens, k_node, k_neigh], states_p[:,k_neigh], Ts)
+                        v_dot_filtered, v_filtered = filter_v(self.v_filtered[0:self.dimens, k_node, k_neigh], states_p[:,k_neigh], self.Ts)
                         self.v_dot_filtered[0:self.dimens, k_node, k_neigh] = v_dot_filtered
                         self.v_filtered[0:self.dimens, k_node, k_neigh] = v_filtered 
                         
                         # C filter
-                        C_dot_filtered, C_filtered = filter_C(self.C_filtered[0:self.dimens, k_node, k_neigh], current_gradient, Ts)
+                        C_dot_filtered, C_filtered = filter_C(self.C_filtered[0:self.dimens, k_node, k_neigh], current_gradient, self.Ts)
                         self.C_dot_filtered[0:self.dimens, k_node, k_neigh] = C_dot_filtered
                         self.C_filtered[0:self.dimens, k_node, k_neigh] = C_filtered 
                         
@@ -185,7 +189,9 @@ class GradientEstimator:
                     #observed_gradient = low_pass_filter(observed_gradients[:, k_neigh], self.gradient_estimates[k_node, k_neigh],alpha=0.1)
                     
                     # correct with innovation
-                    updated_gradient = predicted_gradient + gain * (observed_gradient - predicted_gradient)
+                    updated_gradient = predicted_gradient + gain_gradient_filter * (observed_gradient - predicted_gradient)
+                    
+                    #print(self.C_dot_filtered)
                     
                     # load
                     self.gradient_estimates[0:self.dimens, k_node, k_neigh] = updated_gradient
@@ -243,7 +249,7 @@ def gradient_function(x):
     factor = 4 * (12 / r**13 - 6 / r**7)
     return factor * x / r
 
-def hessian_function(x):
+def hessian_function(x, dimens):
     """Hessian of the Lennard-Jones potential."""
     r = np.linalg.norm(x)
     if r == 0:
@@ -254,6 +260,8 @@ def hessian_function(x):
     return factor1 * outer + factor2 * np.eye(2)
 
 #%% try simulation 
+
+'''
 nAgents = 3
 dimens  = 2
 Ts      = 0.02
@@ -400,6 +408,10 @@ plt.legend(loc='upper right')
 plt.grid(True)
 plt.show()
 
+
+'''
+
+
 #%%% Estimating the Hessian
 
 '''
@@ -468,3 +480,4 @@ plt.legend()
 plt.show()
 
 '''
+

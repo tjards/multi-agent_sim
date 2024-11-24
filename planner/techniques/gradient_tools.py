@@ -54,7 +54,11 @@ def grad_gromacs_soft_core(states_q, k_node, k_neigh, r_range, d):
 
     # Combine gradients
     gradient = grad_attr - grad_rep
-    return - gradient
+    
+    r_hat = (states_q[:,k_node]-states_q[:,k_neigh])/r
+    
+    
+    return - gradient*r_hat
 
 def grad_morse_gradient(states_q, k_node, k_neigh, r_range, d):
     

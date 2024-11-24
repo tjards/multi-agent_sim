@@ -30,6 +30,16 @@ Some related work:
     https://ieeexplore-ieee-org.proxy.queensu.ca/stamp/stamp.jsp?tp=&arnumber=6762966
     https://ieeexplore-ieee-org.proxy.queensu.ca/document/9275901
 
+Dev notes:
+    
+    24 Nov 25 - gradient estimation is working, but now I wantto feed these back to 
+    pin, so it can stop the motion (i.e., pin adds up all differences and forces stop).
+    The pin will then be able to bring everyone back.
+    so, sum of: gradient_agent.gain_gradient_control * gradient_agent.C_filtered[0:gradient_agent.dimens, k_node, k_neigh]
+    
+
+
+
 @author: tjards
 
 """
@@ -103,6 +113,7 @@ if flocking_method == 'mixed':
         agent_config = json.load(agent_configs)
         nAgents = agent_config['nAgents']
         term_indices = np.random.randint(0, 4, size=(1, nAgents))
+        print(term_indices)
     
         
 # learning requires heterolattice
@@ -122,6 +133,7 @@ d_init  = d         # default d (don't mess with this)
 # --------------
 config = {}
 with open(os.path.join("config", "config_planner_pinning.json"), 'w') as configs:
+    config['hetero_gradient']     = hetero_gradient
     config['hetero_lattice']      = hetero_lattice
     config['learning']            = learning
     #config['directional']         = directional
@@ -148,6 +160,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
     headings                = kwargs.get('quads_headings')
     consensus_agent         = kwargs.get('consensus_lattice') # rename this object 
     learning_agent          = kwargs.get('learning_lattice')
+    gradient_agent          = kwargs.get('estimator_gradients')
     directional             = kwargs.get('directional_graph')
     A                       = kwargs.get('A')
     local_k_connectivity    = kwargs.get('local_k_connectivity')
@@ -173,7 +186,18 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
         
         kwargs['learning_grid_size'] = learning_grid_size # consider adapting this with time
         learning_agent.update_step(reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
-        
+     
+    # estimate neighbouring gradients
+    # -------------------------------
+    if hetero_gradient == 1:
+        # compute accelerations
+        gradient_agent.observed_gradients[:,k_node,:] = (states_p[0:gradient_agent.dimens,:] - gradient_agent.last_velos[0:gradient_agent.dimens, k_node, :]) #/gradient_agent.Ts
+        # load last velo (for next time)
+        gradient_agent.last_velos[0:gradient_agent.dimens, k_node, :] = states_p[0:gradient_agent.dimens,:]
+        # now update
+        observed_gradients = gradient_agent.observed_gradients[:,k_node,:]
+        gradient_agent.update_estimates(states_q[0:gradient_agent.dimens,:], states_p[0:gradient_agent.dimens], observed_gradients, A, k_node)       
+     
     # initialize parameters
     # ----------------------
     if hetero_lattice == 1:
@@ -211,10 +235,25 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
                 if flocking_method == 'mixed':
                     cohesion_term = term_list[term_indices[0][k_node]] 
                     
-                
                 # compute the interaction commands
                 u_int[:,k_node] += cohesion_term(states_q, k_node, k_neigh, r, d)
+                
+                # we will grab this cohesion term for gradient estimation
+                if hetero_gradient == 1:
+                    #u_int[0:gradient_agent.dimens,k_node] -= gradient_agent.gradient_estimates[0:gradient_agent.dimens, k_node, k_neigh]
+                    u_int[0:gradient_agent.dimens,k_node] -= gradient_agent.gain_gradient_control * gradient_agent.C_filtered[0:gradient_agent.dimens, k_node, k_neigh]
+                    
+                    # TRAVIS: I don't think this is what I'm supposed to bring in
+                    #gradient_agent.observed_gradients[0:gradient_agent.dimens,k_node, k_neigh] = u_int[0:gradient_agent.dimens,k_node]
+                    
                 u_int[:,k_node] += alignment_term(states_q, states_p, k_node, k_neigh, r, d)
+                
+                # TRAVIS: I don't think this is what I'm supposed to bring in
+                #gradient_agent.observed_gradients[0:gradient_agent.dimens,k_node, k_neigh] = u_int[0:gradient_agent.dimens,k_node]
+                
+                #if u_int[2,:].any() != 0:
+                #    print('debug needed: 3D cmds in 2D')
+                
                 
                 # seek consensus
                 if hetero_lattice == 1:
@@ -223,7 +262,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
             else:
                 if hetero_lattice == 1:
                     consensus_agent.prox_i[k_node, k_neigh] = 0      # annotate as not in range
-                
+           
     return u_int[:,k_node] 
 
 # # avoid obstacles
@@ -272,6 +311,9 @@ def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets
     u_nav = compute_cmd_g(states_q, states_p, targets, targets_v, k_node, kwargs.get('pin_matrix'))
        
     cmd_i[:,k_node] = u_int + u_obs + u_nav
+    
+    #if cmd_i[2,:].any() != 0:
+    #    print('debug needed: 3D cmds in 2D')
     
     return cmd_i[:,k_node]
 
