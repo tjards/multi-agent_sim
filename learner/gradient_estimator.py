@@ -26,9 +26,23 @@ import random
 random.seed(42)
 
 #%% hyperparameters
-gain = 0.5
+gain                = 0.5
+data_driven_hessian = 'linear_filter'
+    # 'known'           = For case when hessian is known 
+    # 'linear_filter'   = Try a linear filer
+    # 'GPR'             = Gaussian Process Regressor
+    
+if data_driven_hessian == 'GPR':
+    
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+
+
 
 #%%
+
+
+
 class GradientEstimator:
     
     # initialize
@@ -43,11 +57,23 @@ class GradientEstimator:
         self.nAgents            = nAgents
         self.Ts                 = Ts
         self.dimens             = dimens
-        self.gradient_estimates = np.zeros((nAgents, nAgents, dimens))  # Assume 2D space
-        self.hessians           = np.zeros((dimens, dimens, nAgents, nAgents))
+        #self.gradient_estimates = np.zeros((nAgents, nAgents, dimens))  # Assume 2D space
+        self.gradient_estimates = np.zeros((dimens, nAgents, nAgents))
+        #self.hessians           = np.zeros((dimens, dimens, nAgents, nAgents))
+        
+        # for filters, each agent stores for each neighbour
+        #   (dimens, observed by, observed of)
+        self.C_dot              = np.zeros((dimens, nAgents, nAgents)) 
+        self.C                  = np.zeros((dimens, nAgents, nAgents))
+        self.C_filtered         = np.zeros((dimens, nAgents, nAgents))
+        self.v_filtered         = np.zeros((dimens, nAgents, nAgents))
+        self.v_dot_filtered     = np.zeros((dimens, nAgents, nAgents))
+        self.C_dot_filtered     = np.zeros((dimens, nAgents, nAgents))
+        
 
     # update gradient estimates based on relative pos/vel
-    def update_estimates(self, states_q, states_p, observed_gradients, observed_hessians, A, k_node):
+    #def update_estimates(self, states_q, states_p, observed_gradients, observed_hessians, A, k_node):
+    def update_estimates(self, states_q, states_p, observed_gradients, A, k_node):
         
         """
         Arguments:
@@ -88,16 +114,39 @@ class GradientEstimator:
                     v_ij = states_p[0:self.dimens,k_neigh] - states_p[0:self.dimens,k_node]
                 
                     # pull current gradient 
-                    current_gradient = self.gradient_estimates[k_node, k_neigh]
+                    current_gradient = self.gradient_estimates[0:self.dimens, k_node, k_neigh]
                     
-                    # compute hessian (this will be from a data-driven model later)
-                    hessian = observed_hessians[0:self.dimens, 0:self.dimens, k_neigh]
-                    #hessian += np.eye(hessian.shape[0]) * 1e-5  # Add small diagonal term
-                    hessian = low_pass_filter(hessian, self.hessians[0:self.dimens, 0:self.dimens, k_node, k_neigh],alpha=0.01)
-                    self.hessians[0:self.dimens,0:self.dimens,k_node, k_neigh] = hessian
+                    # find gradient_dot via hessian
+                    # ============================
+                    # if data_driven_hessian == 'known':
                     
-                    # gradient_dot
-                    gradient_dot = -np.dot(hessian, v_ij)
+                    #     # compute hessian (this will be from a data-driven model later)
+                    #     hessian = observed_hessians[0:self.dimens, 0:self.dimens, k_neigh]
+                    #     #hessian += np.eye(hessian.shape[0]) * 1e-5  # Add small diagonal term
+                    #     #hessian = low_pass_filter(hessian, self.hessians[0:self.dimens, 0:self.dimens, k_node, k_neigh],alpha=0.01)
+                    #     self.hessians[0:self.dimens,0:self.dimens,k_node, k_neigh] = hessian
+                    
+                    #    # gradient_dot
+                    #    gradient_dot = -np.dot(hessian, v_ij)
+                        
+                    if data_driven_hessian == 'linear_filter':
+                        
+                        # v filter
+                        v_dot_filtered, v_filtered = filter_v(self.v_filtered[0:self.dimens, k_node, k_neigh], states_p[:,k_neigh], Ts)
+                        self.v_dot_filtered[0:self.dimens, k_node, k_neigh] = v_dot_filtered
+                        self.v_filtered[0:self.dimens, k_node, k_neigh] = v_filtered 
+                        
+                        # C filter
+                        C_dot_filtered, C_filtered = filter_C(self.C_filtered[0:self.dimens, k_node, k_neigh], current_gradient , Ts)
+                        self.C_dot_filtered[0:self.dimens, k_node, k_neigh] = C_dot_filtered
+                        self.C_filtered[0:self.dimens, k_node, k_neigh] = C_filtered 
+                        
+                        gradient_dot = C_dot_filtered
+   
+                    
+                    # find gradient_dot via filters
+                    # -----------------------------
+                    
                     
                     # predict the next gradient
                     predicted_gradient = current_gradient + gradient_dot * self.Ts
@@ -110,7 +159,7 @@ class GradientEstimator:
                     updated_gradient = predicted_gradient + gain * (observed_gradient - predicted_gradient)
                     
                     # load
-                    self.gradient_estimates[k_node, k_neigh] = updated_gradient
+                    self.gradient_estimates[0:self.dimens, k_node, k_neigh] = updated_gradient
                 
             
         
@@ -171,12 +220,31 @@ def low_pass_filter(current_value, previous_value, alpha):
     return alpha * current_value + (1 - alpha) * previous_value
 
 
+# more filters
+filter_v_gain = 10
+
+def filter_v(v_filtered, v, Ts):
+    
+    v_filtered_dot  = -filter_v_gain*v_filtered + filter_v_gain*v
+    v_filtered      = v_filtered + Ts*v_filtered_dot
+    
+    return v_filtered_dot, v_filtered
+
+def filter_C(C_filtered, C_estimate, Ts):
+    
+    C_filtered_dot  = -filter_v_gain*C_filtered + C_estimate 
+    C_filtered      = C_filtered + Ts*C_filtered_dot
+    
+    return C_filtered_dot, C_filtered 
+
 
 #%% try simulation 
-nAgents = 10
+nAgents = 3
 dimens  = 2
 Ts      = 0.02
 A = np.ones((nAgents,nAgents)) # assume all connected (would depend on swarm topology)
+for i in range(0,nAgents):
+    A[i,i] = 0
 
 # initialize states 
 states_q = np.random.rand(dimens, nAgents) * 10  # Random positions
@@ -202,7 +270,7 @@ estimator = GradientEstimator(nAgents, dimens, Ts)
 # )
 
 # Run gradient estimation for a few steps
-steps = 100
+steps = 10
 actual_gradients_list = []
 estimated_gradients_list = []
 x_rels_all = []
@@ -219,7 +287,7 @@ for step in range(0, steps):
         observed_hessians = np.zeros((dimens, dimens, nAgents))
 
         # initialize some controls
-        controller = 1
+        controller = 5
         cmds = np.zeros((dimens, 1))
         
         # for each neighbour
@@ -228,7 +296,7 @@ for step in range(0, steps):
             x_ij = states_q[0:dimens, k_neigh] - states_q[0:dimens, k_node]
             v_ij = states_p[0:dimens, k_neigh] - states_p[0:dimens, k_node]
             observed_gradients[0:dimens, k_neigh]               = gradient_function(x_ij)
-            observed_hessians[0:dimens, 0:dimens, k_neigh]      = hessian_function(x_ij)
+            #observed_hessians[0:dimens, 0:dimens, k_neigh]      = hessian_function(x_ij)
             
             # compute a command
             cmds += observed_gradients[0:dimens, k_neigh].reshape((dimens,1))
@@ -242,7 +310,9 @@ for step in range(0, steps):
         # v_ij = velocities[j] - velocities[i]
         
         # update the estimates 
-        estimator.update_estimates(states_q, states_p, observed_gradients, observed_hessians, A, k_node)
+        #estimator.update_estimates(states_q, states_p, observed_gradients, observed_hessians, A, k_node)
+        estimator.update_estimates(states_q, states_p, observed_gradients, A, k_node)
+    
     
         # Update positions and velocities (simple dynamics for testing)
         #states_p[0:dimens, k_node] += controller*cmds.ravel()*Ts
@@ -257,9 +327,9 @@ for step in range(0, steps):
     estimated_gradients = estimator.gradient_estimates
     for k_node in range(nAgents):
         for k_neigh in range(nAgents):
-            #if A[k_node, k_neigh] == 1:  # Only compare if they are neighbors
-            x_ij = states_q[0:dimens, k_neigh] - states_q[0:dimens, k_node]
-            actual_gradients[k_node, k_neigh] = gradient_function(x_ij)
+            if A[k_node, k_neigh] == 1:  # Only compare if they are neighbors
+                x_ij = states_q[0:dimens, k_neigh] - states_q[0:dimens, k_node]
+                actual_gradients[0:dimens, k_node, k_neigh] = gradient_function(x_ij)
     
     # Store both actual and estimated gradients for later plotting
     actual_gradients_list.append(copy.deepcopy(actual_gradients))
@@ -296,8 +366,8 @@ for i in range(0,which_agent):
     for j in range(nAgents):
         #if A[i, j] == 1:  # Only plot if agents are neighbors
         
-        actual_gradients_for_pair = actual_gradients_array[:, i, j]
-        estimated_gradients_for_pair = estimated_gradients_array[:, i, j]
+        actual_gradients_for_pair = actual_gradients_array[:,:, i, j]
+        estimated_gradients_for_pair = estimated_gradients_array[:,:, i, j]
             
         color = colors[j]  # Get the color for agent j
 
@@ -308,7 +378,7 @@ for i in range(0,which_agent):
 
 
 plt.xlabel('Step')
-plt.ylabel('Error in Gradient Magnitude')
+plt.ylabel('Gradient Magnitude')
 plt.title('Comparison of Actual vs Estimated Gradients')
 #plt.ylim([0, 1])
 plt.legend(loc='upper right')
