@@ -51,20 +51,25 @@ import random
 import os
 import json
 import random 
+import copy
 
 #%% simulation setup
 # ------------------
 
 # learning parameters
-hetero_gradient     = 1     # supports heterogeneous potential functions
-hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
+hetero_lattice      = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
 learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
+# future learning parameters default to zero for now
+hetero_gradient     = 0     # (this doesn't work) supports heterogeneous potential functions
+
 # define the method for lattice formation
-flocking_method = 'mixed'
-    
-                # 'flocking_saber'  = Olfati-saber flocking
+flocking_method = 'lennard_jones'
+#flocking_options = ['saber','morse','lennard_jones','gromacs_soft_core']   
+flocking_options = ['saber','lennard_jones'] # only saber works for hetero, need to feed a/b updates in for lenard
+ 
+                # 'saber'  = Olfati-saber flocking
                 # 'morse'
                 # 'lennard_jones'
                 # 'gromacs_soft_core'
@@ -74,6 +79,7 @@ flocking_method = 'mixed'
 # ----------------
 r       = None
 d       = None
+d_min   = 5         # default 5
 
 # import olfat-saber stuff as baseline
 from planner.techniques.saber_tools import velocity_alignment as alignment_term
@@ -82,40 +88,28 @@ from planner.techniques.saber_tools import compute_cmd_b as obstacle_term
 from planner.techniques.saber_tools import r
 from planner.techniques.saber_tools import d
 
-if flocking_method == 'flocking_saber':
-    
-    from planner.techniques.saber_tools import gradient as cohesion_term
+# import the gradients
+from planner.techniques.saber_tools import gradient as cohesion_term_sab
+from planner.techniques.gradient_tools import grad_morse_gradient as cohesion_term_mor
+from planner.techniques.gradient_tools import grad_lennard_jones as cohesion_term_len
+from planner.techniques.gradient_tools import  grad_gromacs_soft_core as cohesion_term_gro
 
-if flocking_method == 'morse':
-    
-    from planner.techniques.gradient_tools import grad_morse_gradient as cohesion_term
+# build a list of gradient options    
+cohesion_list = {}
+cohesion_list['saber'] = cohesion_term_sab
+cohesion_list['morse'] = cohesion_term_mor
+cohesion_list['lennard_jones'] = cohesion_term_len
+cohesion_list['gromacs_soft_core'] = cohesion_term_gro
 
-if flocking_method == 'lennard_jones':
-    
-    from planner.techniques.gradient_tools import grad_lennard_jones as cohesion_term
-
-if flocking_method == 'gromacs_soft_core':
-    
-    from planner.techniques.gradient_tools import  grad_gromacs_soft_core as cohesion_term
-    
+# build out a random list of gradients (for mixed case)
 if flocking_method == 'mixed':
-
-    term_list = []
-    from planner.techniques.saber_tools import gradient as term_add
-    term_list.append(term_add)
-    from planner.techniques.gradient_tools import grad_morse_gradient as term_add
-    term_list.append(term_add)
-    from planner.techniques.gradient_tools import grad_lennard_jones as term_add
-    term_list.append(term_add)
-    from planner.techniques.gradient_tools import  grad_gromacs_soft_core as term_add
-    term_list.append(term_add)
     with open(os.path.join("config", "config_agents.json"), 'r') as agent_configs:
         agent_config = json.load(agent_configs)
         nAgents = agent_config['nAgents']
-        term_indices = np.random.randint(0, 4, size=(1, nAgents))
+        term_indices = np.random.randint(0, len(flocking_options), size=(1, nAgents))
+        term_selected = [flocking_options[i] for i in term_indices.flatten()]
         print(term_indices)
-    
-        
+   
 # learning requires heterolattice
 if learning == 1 and hetero_lattice != 1:
     print('Warning: learning lattice requires hetero lattice enabled to find local consensus. Enforcing.')
@@ -126,7 +120,7 @@ if learning == 1 and hetero_lattice != 1:
 
 #r      = imported above
 #d      = imported above
-d_min   = 5         # default 5
+#d_min   = 5         # default 5
 d_init  = d         # default d (don't mess with this)
 
 #%% save configs
@@ -164,6 +158,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
     directional             = kwargs.get('directional_graph')
     A                       = kwargs.get('A')
     local_k_connectivity    = kwargs.get('local_k_connectivity')
+    pin_matrix              = kwargs.get('pin_matrix')
     
     # safety checks
     # -------------
@@ -180,7 +175,6 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
     
     # learning processs (if applicable)
     # ---------------------------------    
-        
     # execute the reinforcement learning, local case (if applicable)
     if learning == 1: 
         
@@ -189,6 +183,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
      
     # estimate neighbouring gradients
     # -------------------------------
+    '''
     if hetero_gradient == 1:
         # compute accelerations
         gradient_agent.observed_gradients[:,k_node,:] = (states_p[0:gradient_agent.dimens,:] - gradient_agent.last_velos[0:gradient_agent.dimens, k_node, :]) #/gradient_agent.Ts
@@ -196,9 +191,11 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
         gradient_agent.last_velos[0:gradient_agent.dimens, k_node, :] = states_p[0:gradient_agent.dimens,:]
         # now update
         observed_gradients = gradient_agent.observed_gradients[:,k_node,:]
-        gradient_agent.update_estimates(states_q[0:gradient_agent.dimens,:], states_p[0:gradient_agent.dimens], observed_gradients, A, k_node)       
-     
-    # initialize parameters
+        gradient_agent.update_estimates(states_q[0:gradient_agent.dimens,:], states_p[0:gradient_agent.dimens, :], observed_gradients, A, k_node)       
+   '''  
+   
+    
+   # initialize parameters
     # ----------------------
     if hetero_lattice == 1:
         d = consensus_agent.d_weighted[k_node, k_node]
@@ -233,19 +230,37 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
                 
                 # for the case iof mixed potential functions
                 if flocking_method == 'mixed':
-                    cohesion_term = term_list[term_indices[0][k_node]] 
+                    
+                    u_int[:,k_node] += cohesion_list[term_selected[k_node]](states_q, k_node, k_neigh, r, d)
+                
+                    
+                    # here cohesion_term = term_list[term_indices[0][k_node]]
+                    #cohesion_term = copy.deepcopy(term_list[term_indices[0][k_node]])
+                    #d = d_mixed[k_node,0]
+                else:
+                    
+                    u_int[:,k_node] += cohesion_list[flocking_method](states_q, k_node, k_neigh, r, d)
+                    
+                    
                     
                 # compute the interaction commands
-                u_int[:,k_node] += cohesion_term(states_q, k_node, k_neigh, r, d)
+                #u_int[:,k_node] += cohesion_term(states_q, k_node, k_neigh, r, d)
                 
+                '''
                 # we will grab this cohesion term for gradient estimation
                 if hetero_gradient == 1:
                     #u_int[0:gradient_agent.dimens,k_node] -= gradient_agent.gradient_estimates[0:gradient_agent.dimens, k_node, k_neigh]
                     u_int[0:gradient_agent.dimens,k_node] -= gradient_agent.gain_gradient_control * gradient_agent.C_filtered[0:gradient_agent.dimens, k_node, k_neigh]
                     
+                    # add the addition navigation term for pin_sum
+                    u_int[0:gradient_agent.dimens,k_node] -= gradient_agent.gain_gradient_control * pin_matrix[k_node,k_node]*gradient_agent.C_sum_bypin[0:gradient_agent.dimens,k_node]
+                    
+                    
                     # TRAVIS: I don't think this is what I'm supposed to bring in
                     #gradient_agent.observed_gradients[0:gradient_agent.dimens,k_node, k_neigh] = u_int[0:gradient_agent.dimens,k_node]
                     
+                '''
+                
                 u_int[:,k_node] += alignment_term(states_q, states_p, k_node, k_neigh, r, d)
                 
                 # TRAVIS: I don't think this is what I'm supposed to bring in
@@ -257,7 +272,9 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
                 
                 # seek consensus
                 if hetero_lattice == 1:
-                    consensus_agent.update(k_node, k_neigh)          # update lattice via consensus
+                    #consensus_agent.update(k_node, k_neigh)          # update lattice via consensus
+                    #consensus_agent.update(k_node, k_neigh)          # update lattice via consensus
+                    consensus_agent.update(k_node, k_neigh, states_q)          # update lattice via consensus
                     consensus_agent.prox_i[k_node, k_neigh] = 1      # annotate as in range     
             else:
                 if hetero_lattice == 1:

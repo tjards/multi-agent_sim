@@ -74,8 +74,13 @@ def grad_morse_gradient(states_q, k_node, k_neigh, r_range, d):
 
 def grad_lennard_jones(states_q, k_node, k_neigh, r_range, d):
     
-    A = 1 # these need to be tuned for d
-    B = 2
+    # compute A and B
+    gain = 1
+    B = 1
+    A = ((d**6)*B)/2
+    
+    A = gain* A #1 # these need to be tuned for d
+    B = gain*B #2
     r = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
     r_hat = (states_q[:,k_node]-states_q[:,k_neigh])/r
     

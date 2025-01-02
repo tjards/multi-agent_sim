@@ -21,8 +21,8 @@ dynamics = 'double integrator'
 
 nAgents = 7    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 30   # initial spread of agents
-init_conditions = 'random'   # mesh, random
+iSpread = 40   # initial spread of agents
+init_conditions = 'evenly_spaced'   # mesh, random, evenly_spaced
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
@@ -71,6 +71,44 @@ class Agents:
         
         # Vehicles states
         # ---------------
+        
+        d_sep = 7
+        
+        if init_conditions == 'evenly_spaced':
+            self.state = np.zeros((6, self.nAgents))
+    
+            # Calculate the number of rows and columns required
+            grid_size = int(np.ceil(np.sqrt(self.nAgents)))
+            
+            # Generate a grid of positions
+            x_coords = np.arange(0, grid_size * d_sep, d_sep)
+            y_coords = np.arange(0, grid_size * d_sep, d_sep)
+            x_grid, y_grid = np.meshgrid(x_coords, y_coords)
+            
+            # Flatten the grid and take the first nAgents positions
+            positions = np.vstack((x_grid.flatten(), y_grid.flatten())).T[:self.nAgents]
+            
+            self.state[0, :] = positions[:, 0]  # position (x)
+            self.state[1, :] = positions[:, 1]  # position (y)
+            
+            # Assign z positions (if applicable)
+            self.state[2, :] = iSpread * np.random.rand(1, self.nAgents) + 15  # position (z)
+            if self.dimens == 2:
+                self.state[2, :] = 0 * self.state[2, :]
+            
+            # Random velocities
+            self.state[3, :] = 0.1 * np.random.rand(1, self.nAgents)  # velocity (vx)
+            self.state[4, :] = 0.1 * np.random.rand(1, self.nAgents)  # velocity (vy)
+            self.state[5, :] = 0.1 * np.random.rand(1, self.nAgents)  # velocity (vz)
+            if self.dimens == 2:
+                self.state[5, :] = 0 * self.state[5, :]
+            
+            # Compute centroid and velocity centroid
+            self.centroid = self.compute_centroid(self.state[0:3, :].transpose())
+            self.centroid_v = self.compute_centroid(self.state[3:6, :].transpose())
+
+        
+        
         
         if init_conditions == 'random':
         

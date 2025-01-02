@@ -30,8 +30,8 @@ import random
 #%% hyperparameters
 # -----------------
 
-gain_gradient_filter = 0.5
-gain_gradient_control= 0.5
+gain_gradient_filter = 0.5 #0.5
+gain_gradient_control= 30 # default 1
 data_driven_hessian = 'linear_filter'
     # 'known'           = For case when hessian is known 
     # 'linear_filter'   = Try a linear filer
@@ -49,7 +49,7 @@ def low_pass_filter(current_value, previous_value, alpha):
     """Applies exponential moving average."""
     return alpha * current_value + (1 - alpha) * previous_value
 
-filter_v_gain = 10
+filter_v_gain = 50
 def filter_v(v_filtered, v, Ts):
     
     v_filtered_dot  = -filter_v_gain*v_filtered + filter_v_gain*v
@@ -93,6 +93,11 @@ class GradientEstimator:
         self.v_filtered         = np.zeros((dimens, nAgents, nAgents))
         self.v_dot_filtered     = np.zeros((dimens, nAgents, nAgents))
         self.C_dot_filtered     = np.zeros((dimens, nAgents, nAgents))
+        
+        # pin controller (sum of everything in that component)
+        self.C_sum              = np.zeros((dimens, nAgents))
+        self.C_sum_bypin       = np.zeros((dimens, nAgents)) 
+        
         
         # Initialize filter parameters for Kalman filter
         # self.P = np.zeros((dimens, dimens, nAgents, nAgents))  # Covariance matrices
@@ -189,12 +194,17 @@ class GradientEstimator:
                     #observed_gradient = low_pass_filter(observed_gradients[:, k_neigh], self.gradient_estimates[k_node, k_neigh],alpha=0.1)
                     
                     # correct with innovation
-                    updated_gradient = predicted_gradient + gain_gradient_filter * (observed_gradient - predicted_gradient)
+                    updated_gradient = (1-gain_gradient_filter) * predicted_gradient + gain_gradient_filter * (observed_gradient - predicted_gradient)
                     
                     #print(self.C_dot_filtered)
                     
                     # load
                     self.gradient_estimates[0:self.dimens, k_node, k_neigh] = updated_gradient
+                    
+                    # sum to the total for this node, all neighbours (will be feed to pin)
+                    self.C_sum[0:self.dimens, k_node] += updated_gradient
+                    
+                    
                     
                     
                     # FIRST ATTEPT AT EkF

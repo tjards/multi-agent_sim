@@ -28,15 +28,15 @@ h   = 0.2# 0.2 # 0.9 for obs
 pi  = 3.141592653589793
 
 # gains
-c1_a = 1               # cohesion
-c2_a = 2*np.sqrt(1)
+c1_a = 4               # cohesion
+c2_a = 1*np.sqrt(2)
 c1_b = 1             # obstacles 
 c2_b = 2*np.sqrt(1)
-c1_g = 3               # tracking (for the pins)
-c2_g = 2*np.sqrt(5)
+c1_g = 1               # tracking (for the pins)
+c2_g = 2*np.sqrt(1)
 
 # key ranges 
-d       = 7             # lattice scale (Saber flocking, distance between a-agents)
+d       = 10            # lattice scale (Saber flocking, distance between a-agents)
 r       = 1.3*d           # range at which neighbours can be sensed (Saber flocking, interaction range of a-agents)
 d_prime = 0.6*d      # desired separation (Saber flocking, distance between a- and b-agents)
 r_prime = 1.3*d_prime     # range at which obstacles can be sensed, (Saber flocking, interaction range of a- and b-agents)

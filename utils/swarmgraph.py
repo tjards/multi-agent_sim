@@ -45,6 +45,7 @@ class Swarmgraph:
             self.directional_graph = True
         else:
             self.directional_graph = False
+        self.components = []
 
     # update A
     # --------

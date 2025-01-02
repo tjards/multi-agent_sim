@@ -59,7 +59,7 @@ elif tactic_type == 'cao':
 # -----------------
 
 pin_update_rate = 100   # number of timesteps after which we update the pins
-pin_selection_method = 'degree'
+pin_selection_method = 'degree_leafs'
     # gramian   = [future] // based on controllability gramian
     # degree    = based on degree centrality  
     # between   = [future] // based on betweenness centrality (buggy at nAgents < 3)
@@ -383,6 +383,10 @@ class Controller:
                 
                 if 'estimator_gradients' in self.Learners:
                     kwargs_pinning['estimator_gradients'] = self.Learners['estimator_gradients']
+                    # reset the sum for pins
+                    self.Learners['estimator_gradients'].C_sum[0:self.dimens, 0:self.nAgents] = np.zeros((self.dimens, self.nAgents)) 
+                    kwargs_pinning['pin_matrix'] = self.pin_matrix
+                    
                     
                 
                 # info about graph
@@ -390,6 +394,7 @@ class Controller:
                 kwargs_pinning['A']                         = self.Graphs.A
                 kwargs_pinning['D']                         = self.Graphs.D
                 kwargs_pinning['local_k_connectivity']      = self.Graphs.local_k_connectivity
+                
                             
                 # compute command
                 cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
@@ -397,7 +402,23 @@ class Controller:
                 # update the lattice parameters (note: plots relies on this)
                 if 'consensus_lattice' in self.Learners:
                     self.lattice = self.Learners['consensus_lattice'].d_weighted
-                
+                    
+                if 'estimator_gradients' in self.Learners:
+                    # reset the by_pin sums
+                    self.Learners['estimator_gradients'].C_sum_bypin[0:self.dimens, 0:self.nAgents] = np.zeros((self.dimens, self.nAgents)) 
+                    # figure out who the pins are
+                    pins_list = np.where(np.any(self.pin_matrix > 0, axis=1))[0]
+                    # cycle through components
+                    component_index = 0
+                    for each_component in self.Graphs.components:
+                        for each_node in each_component:
+                            # add up all the gradients in this component (and hand to the pin)
+                            self.Learners['estimator_gradients'].C_sum_bypin[0:self.dimens, pins_list[component_index]] += self.Learners['estimator_gradients'].C_sum[0:self.dimens, each_node]
+                        component_index += 1
+                        #print(self.Learners['estimator_gradients'].C_sum_bypin)
+                    #print(self.Learners['estimator_gradients'].C_sum_bypin[:, :])
+
+                        
             # Shepherding
             # ------------
             if tactic_type == 'shep':
