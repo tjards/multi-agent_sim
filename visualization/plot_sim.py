@@ -207,7 +207,7 @@ def plotMe(data_file_path):
         ax2.plot(t_all[start::],metrics_order_all[start::,2], color='tab:blue', linestyle = '-')
         ax2.set_ylabel('Number of Connections', color='tab:blue')
         ax2.tick_params(axis='y',colors ='tab:blue')
-        #ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
         
         #ax2.invert_yaxis()
         
@@ -220,9 +220,6 @@ def plotMe(data_file_path):
     # -------------------
     plot_space = True
     if plot_space:
-        
-        from matplotlib.ticker import MaxNLocator
-
         
         _, lattice_violations = data_manager.load_data_HDF5('History', 'lattice_violations', data_file_path)
         

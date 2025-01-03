@@ -77,12 +77,14 @@ class Consensuser:
         #self.gain_lower_bound = 1 #0.3 # for update_gradient(), weight of constraint term
         self.gain_gradient = 0.2 #0.2# for update_gradient(), nominally same as Ts
         
+        
         # store the parameters
         self.d_weighted  = np.zeros((len(self.params),len(self.params)))   
         i = 0
         while (i < len(self.params)):
             self.d_weighted[i,:] = self.params[i]
             i+=1
+        self.d_hat = self.d_weighted.copy()
         
         # set dconstraints
         mean_range = (d_min+d_max)/2 # offset proportional to deviation from center of range
@@ -146,6 +148,14 @@ class Consensuser:
                 
                 # actual distance 
                 d = np.linalg.norm(states_q[:,k_neigh]-states_q[:, k_node]) 
+                
+                # low-pass filter
+                tau=0.2
+                dot_d_hat = (1/tau)*(d - self.d_hat[k_node, k_neigh])
+                self.d_hat[k_node, k_neigh] += 0.02*dot_d_hat 
+                d_hat = self.d_hat[k_node, k_neigh]
+                
+                
                 # current desired distance
                 d_i = self.d_weighted[k_node, k_neigh]
                 # constraints 
@@ -154,9 +164,11 @@ class Consensuser:
                 # preferred (not used, for now)
                 d_pref = self.d_weighted[k_node, k_node] 
                 # compute the PF and gradient for bump function 
-                V_b, V_b_grad = bump_function_gradient(d, d_min, d_max, d_pref)  
+                #V_b, V_b_grad = bump_function_gradient(d, d_min, d_max, d_pref)  
+                V_b, V_b_grad = bump_function_gradient(d_hat, d_min, d_max, d_pref)  
                 # build the total gradient function (force)
-                terms = V_b*(d_i - d) + 0.5*V_b_grad*(d_i - d)**2
+                #terms = V_b*(d_i - d) + 0.5*V_b_grad*(d_i - d)**2
+                terms = V_b*(d_i - d_hat) + 0.5*V_b_grad*(d_i - d_hat)**2
                 # use gradient descent to update desired distance
                 self.d_weighted[k_node, k_neigh] -= self.gain_gradient*terms
                 

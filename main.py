@@ -28,7 +28,7 @@ dev notes:
     to do: 
         - standardize the planners (standard inputs, outputs, ...etc)
         - too many conditional statements throughout
-        - 2D option
+
 """
 
 #%% Import stuff
