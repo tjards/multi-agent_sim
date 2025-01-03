@@ -221,7 +221,7 @@ class Agents:
                 
         return order
 
-    # separation
+    # separation 
     # ----------
     def separation(self, states_q,target_q,obstacles, A):
         
@@ -257,9 +257,9 @@ class Agents:
             means_obs = 0
             varis_obs = 0
         
-        return means, varis, means_obs, varis_obs, maxes, mines
+        return means, len(vals), means_obs, varis_obs, maxes, mines
 
-    # spacing (between agents)
+    # spacing (between agents) (do I need this?)
     # -----------------------
     def spacing(self, states_q, radius):
         

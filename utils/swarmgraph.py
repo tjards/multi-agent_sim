@@ -26,7 +26,7 @@ import numpy as np
 
 # Parameters
 # ----------
-slack = 0.5 # slack given to determine if in range 
+slack = 0.2 # slack given to determine if in range 
 
 #%% define the Graph class
 # ------------------------

@@ -15,16 +15,17 @@ import matplotlib.pyplot as plt
 plt.style.use('default')
 #plt.style.available
 #plt.style.use('Solarize_Light2')
+from matplotlib.ticker import MaxNLocator
 
 from data import data_manager
 import os
 
-# paths
+#%% paths
 # -----
 data_directory = 'data'
 data_file_path = os.path.join(data_directory, "data.h5")
 
-# produce plots
+#%% produce plots
 # -------------
 def plotMe(data_file_path):
     
@@ -34,11 +35,13 @@ def plotMe(data_file_path):
     _, targets_all = data_manager.load_data_HDF5('History', 'targets_all', data_file_path)
     _, obstacles_all = data_manager.load_data_HDF5('History', 'obstacles_all', data_file_path)
     _, cmds_all = data_manager.load_data_HDF5('History', 'cmds_all', data_file_path)
+    
     Ts = t_all[2]-t_all[1]
     Tf = t_all.shape[0]*Ts
+    plot_start = int(1/Ts)
+
 
     # separtion 
-    plot_start = int(1/Ts)
     fig, ax = plt.subplots()
     ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,1],'-b')
     ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,5],':b')
@@ -46,7 +49,7 @@ def plotMe(data_file_path):
     ax.fill_between(t_all[plot_start::], metrics_order_all[plot_start::,5], metrics_order_all[plot_start::,6], color = 'blue', alpha = 0.1)
     #note: can include region to note shade using "where = Y2 < Y1
     ax.set(xlabel='Time [s]', ylabel='Mean Distance (with Min/Max Bounds) [m]',
-            title='Separation between Agents (in range)')
+            title='Proximity of Connected Agents')
     #ax.plot([70, 70], [100, 250], '--b', lw=1)
     #ax.hlines(y=5, xmin=Ti, xmax=Tf, linewidth=1, color='r', linestyle='--')
     ax.grid()
@@ -85,7 +88,7 @@ def plotMe(data_file_path):
                 
         fig, ax = plt.subplots()
         #start = int(0/0.02)
-        start = int(0/Ts)
+        start = plot_start
         
         for j in range(0,states_all.shape[2]):
             ax.plot(t_all[start::],radii_o_means2[start::].ravel(),'-g')
@@ -106,7 +109,7 @@ def plotMe(data_file_path):
         
         # Plotting the array
         fig, ax = plt.subplots()
-        start = int(0/Ts)
+        start = plot_start
         #for i in range(0,len(local_k_connectivity[0,:])):
         temp_means = 0*local_k_connectivity[:,0]   
         temp_maxs = 0*local_k_connectivity[:,0]
@@ -183,12 +186,14 @@ def plotMe(data_file_path):
         fig, ax = plt.subplots()
         
         # set forst axis
-        ax.plot(t_all[start::],metrics_order_all[start::,9],'-g')
+        
+        ax.plot(t_all[start::],metrics_order_all[start::,1],'-g')
+        #ax.plot(t_all[start::],metrics_order_all[start::,9],'-g')
         ax.plot(t_all[start::],metrics_order_all[start::,11],'--g')
-        ax.fill_between(t_all[start::], metrics_order_all[start::,9], metrics_order_all[start::,11], color = 'green', alpha = 0.1)
+        #ax.fill_between(t_all[start::], metrics_order_all[start::,9], metrics_order_all[start::,11], color = 'green', alpha = 0.1)
         
         #note: can include region to note shade using "where = Y2 < Y1
-        ax.set(xlabel='Time [s]', title='Spacing between Agents [m]')
+        ax.set(xlabel='Time [s]', title='Connectivity between Agents')
         ax.set_ylabel('Mean Distance [m]', color = 'g')
         ax.tick_params(axis='y',colors ='green')
         ax.set_xlim([0, Tf])
@@ -199,12 +204,83 @@ def plotMe(data_file_path):
         ax2 = ax.twinx()
         ax2.set_xlim([0, Tf])
         #ax2.set_ylim([0, 100])
-        ax2.plot(t_all[start::],metrics_order_all[start::,10], color='tab:blue', linestyle = '-')
+        ax2.plot(t_all[start::],metrics_order_all[start::,2], color='tab:blue', linestyle = '-')
+        ax2.set_ylabel('Number of Connections', color='tab:blue')
+        ax2.tick_params(axis='y',colors ='tab:blue')
+        #ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
+        
+        #ax2.invert_yaxis()
+        
+        ax.legend(['Connected', 'All'], loc = 'upper left')
+        ax.grid()
+        #fig.savefig("test.png")
+        plt.show()    
+        
+    #%% Lattice violation
+    # -------------------
+    plot_space = True
+    if plot_space:
+        
+        from matplotlib.ticker import MaxNLocator
+
+        
+        _, lattice_violations = data_manager.load_data_HDF5('History', 'lattice_violations', data_file_path)
+        
+        fig, ax = plt.subplots()
+        
+        # set forst axis
+        
+        ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,1],'-g', label = None)
+        ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,5],':g', label = None)
+        ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,6],':g', label = None)
+        ax.fill_between(t_all[start::], metrics_order_all[start::,5], metrics_order_all[start::,6], color = 'green', alpha = 0.1)
+        
+        #note: can include region to note shade using "where = Y2 < Y1
+        ax.set(xlabel='Time [s]', title='Connectivity between Agents')
+        ax.set_ylabel('Mean Distance (with Min/Max values)[m]', color = 'g')
+        ax.tick_params(axis='y',colors ='green')
+        ax.set_xlim([0, Tf])
+        #ax.set_ylim([0, 40])
+        total_e = np.sqrt(np.sum(cmds_all**2))
+        
+        # set second axis
+        ax2 = ax.twinx()
+        ax2.set_xlim([0, Tf])
+        #ax2.set_ylim([0, 100])
+        ax2.plot(t_all[start::],metrics_order_all[start::,2], color='tab:blue', linestyle = '-', label = 'Connected')
         ax2.set_ylabel('Number of Connections', color='tab:blue')
         ax2.tick_params(axis='y',colors ='tab:blue')
         #ax2.invert_yaxis()
         
-        ax.legend(['Within Range', 'All'], loc = 'upper left')
+        
+        count_violations = np.zeros((len(t_all), 1))
+        for i in range(0,len(t_all)):
+            count_violations[i,:] = np.count_nonzero(lattice_violations[i,:,:])
+            
+            
+            
+        ax2.plot(t_all[start::], count_violations[start::], color='tab:blue',linestyle = '--', label = 'Constraint Violation')
+        ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
+        
+        
+        ax2.legend(loc = 'upper left')
         ax.grid()
         #fig.savefig("test.png")
-        plt.show()    
+        plt.show() 
+        
+        
+        
+        
+    
+
+            
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

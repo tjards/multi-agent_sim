@@ -58,7 +58,7 @@ elif tactic_type == 'cao':
 #%% Hyperparameters 
 # -----------------
 
-pin_update_rate = 1   # number of timesteps after which we update the pins
+pin_update_rate = 10   # number of timesteps after which we update the pins
 pin_selection_method = 'degree_leafs'
     # gramian   = [future] // based on controllability gramian
     # degree    = based on degree centrality  
@@ -196,6 +196,7 @@ class Controller:
             while (i < nAgents):
                 self.lattice[i,:] = d_init
                 i+=1
+            self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
         
         # sheparding has its own class (differentiating shepherd and herd)
         if tactic_type == 'shep':
@@ -283,6 +284,7 @@ class Controller:
                 kwargs_cmd['aperature'] = sensor_aperature
                 #r_matrix = kwargs_cmd['d_weighted']  # if we want the graph based on lattice parameters
                 r_matrix = pinning_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                self.Graphs_connectivity.update_A(state[0:3,:], self.lattice, **kwargs_cmd)
             else:
                 r_matrix = 0*np.ones((state.shape[1],state.shape[1]))
 
