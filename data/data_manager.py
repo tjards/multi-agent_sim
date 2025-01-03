@@ -196,7 +196,8 @@ class History:
         
         # metrics
         self.metrics_order[0,0]      = Agents.order(Agents.state[3:6,:])
-        self.metrics_order[0,1:7]    = Agents.separation(Agents.state[0:3,:],Targets.targets[0:3,:],Obstacles.obstacles)
+        #self.metrics_order[0,1:7]    = Agents.separation(Agents.state[0:3,:],Targets.targets[0:3,:],Obstacles.obstacles)
+        self.metrics_order[0,1:7]    = Agents.separation(Agents.state[0:3,:],Targets.targets[0:3,:],Obstacles.obstacles, Controller.Graphs.A)
         self.metrics_order[0,7:9]    = Agents.energy(Controller.cmd)
         self.metrics_order[0,9:12]   = Agents.spacing(Agents.state[0:3,:], Controller.lattice.min())
         self.metrics_order_all[i,:]  = self.metrics_order

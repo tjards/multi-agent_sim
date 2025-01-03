@@ -58,7 +58,7 @@ elif tactic_type == 'cao':
 #%% Hyperparameters 
 # -----------------
 
-pin_update_rate = 100   # number of timesteps after which we update the pins
+pin_update_rate = 1   # number of timesteps after which we update the pins
 pin_selection_method = 'degree_leafs'
     # gramian   = [future] // based on controllability gramian
     # degree    = based on degree centrality  
@@ -288,6 +288,8 @@ class Controller:
 
             # update the graph
             self.Graphs.update_A(state[0:3,:], r_matrix, **kwargs_cmd)
+            #self.Graphs.update_A(state[0:3,:], self.lattice, **kwargs_cmd)
+
             self.Graphs.find_connected_components()
             self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
             self.pin_matrix = self.Graphs.pin_matrix

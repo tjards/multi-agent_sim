@@ -75,7 +75,7 @@ def grad_morse_gradient(states_q, k_node, k_neigh, r_range, d):
 def grad_lennard_jones(states_q, k_node, k_neigh, r_range, d):
     
     # compute A and B
-    gain = 1
+    gain = 1000000
     B = 1
     A = ((d**6)*B)/2
     

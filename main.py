@@ -159,6 +159,12 @@ while round(t,3) < Tf:
     if tactic_type == 'pinning' and dynamics == 'quadcopter':
         my_kwargs['quads_headings'] = Agents.quads_headings
                 
+    # EXPERIMENT - add an artificial perturbation
+    #if t > 10 and t < 11:    
+    #    # agent 0 tries to go too far, notice others ignore the update
+    #    Controller.Learners['consensus_lattice'].d_weighted[0,:] = 12
+        
+        
     Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
     
 #%% Save data

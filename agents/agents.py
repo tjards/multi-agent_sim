@@ -21,8 +21,8 @@ dynamics = 'double integrator'
 
 nAgents = 7    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 40   # initial spread of agents
-init_conditions = 'evenly_spaced'   # mesh, random, evenly_spaced
+iSpread = 20   # initial spread of agents
+init_conditions = 'random'   # mesh, random, evenly_spaced
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
@@ -72,7 +72,7 @@ class Agents:
         # Vehicles states
         # ---------------
         
-        d_sep = 7
+        d_sep = 10
         
         if init_conditions == 'evenly_spaced':
             self.state = np.zeros((6, self.nAgents))
@@ -223,15 +223,23 @@ class Agents:
 
     # separation
     # ----------
-    def separation(self, states_q,target_q,obstacles):
+    def separation(self, states_q,target_q,obstacles, A):
         
         # distance from targets or agents
         # ---------------------
         # note: replace target_q with states_q to get separation between agents
         #seps=cdist(states_q.transpose(), np.reshape(target_q[:,0],(-1,1)).transpose())
-        seps=cdist(states_q.transpose(), states_q.transpose())    
+        seps=cdist(states_q.transpose(), states_q.transpose()) 
+        
+        seps = np.multiply(seps,A)
+
         #vals = np.unique(seps[np.where(seps!=0)])
         vals = seps[np.where(seps>0.5)]
+        if len(vals) == 0:
+            vals=cdist(states_q.transpose(), states_q.transpose())
+            vals = 0*seps
+        
+        
         means = np.mean(vals)
         varis = np.var(vals)
         maxes = np.max(vals)
@@ -287,8 +295,8 @@ class Agents:
     def evolve(self, cmd, pin_matrix, t, Ts):
         
         # constraints
-        vmax = 10
-        vmin = -10
+        vmax = 5
+        vmin = -5
 
         if dynamics == 'quadcopter':
             
