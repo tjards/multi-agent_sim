@@ -19,7 +19,7 @@ approach = 'gradient'
 
 # too close ratio (<= 1)
 tcr = 1         # default 1 = never too close; <1 ratio of d_min too close
-d_max = 10        # max range for lattice options 
+#d_max = 10        # max range for lattice options 
 # d_min is imported, as it could be tied to physical constraints (maybe change this later)  
 
 
@@ -62,7 +62,9 @@ def bump_function_gradient(d_hat, d_min, d_max, d_pref):
 class Consensuser:
     
     #def __init__(self, params_n, hetero_lattice, directional, d_min, d):
-    def __init__(self, params_n, hetero_lattice, d_min, d):
+    def __init__(self, params_n, hetero_lattice, d_min, d, r_max):
+        
+        d_max = r_max - 0.5
         
         # select parameter ranges
         if hetero_lattice == 1:
@@ -72,8 +74,8 @@ class Consensuser:
             self.params_range = [d,d]
         
         # parameters
-        self.d_min      = d_min
-        self.d_max      = d_max
+        #self.d_min      = d_min
+        #self.d_max      = d_max
         self.params_n   = params_n  # number of parameters
         #self.params     = [random.uniform(self.params_range[0], self.params_range[1]) for _ in range(self.params_n)] # options for these parameters
         self.params     = [round(random.uniform(self.params_range[0], self.params_range[1]),1) for _ in range(self.params_n)] # options for these parameters
@@ -82,12 +84,27 @@ class Consensuser:
         #self.gain_lower_bound = 1 #0.3 # for update_gradient(), weight of constraint term
         self.gain_gradient = 0.2 #0.2# for update_gradient(), nominally same as Ts
         
+        
         # store the parameters
         self.d_weighted  = np.zeros((len(self.params),len(self.params)))   
         i = 0
         while (i < len(self.params)):
             self.d_weighted[i,:] = self.params[i]
             i+=1
+        
+        # set dmins and dmaxes
+        mean_range = (d_min+d_max)/2 # offset proportional to deviation from center of range
+        self.d_min = np.zeros((len(self.params),len(self.params)))
+        self.d_max = np.zeros((len(self.params),len(self.params))) 
+        i = 0
+        while (i < len(self.params)):
+            offset = self.params[i] - mean_range 
+            self.d_min[i,:] = np.max([d_min + random.uniform(0,1)*offset, d_min])
+            self.d_max[i,:] = np.min([d_max + random.uniform(0,1)*offset, d_max])
+            i+=1
+                
+        
+
         
         # store whether agents are in proximity to eachother (1 =  yes, 0 = no)
         self.prox_i = np.zeros((len(self.params),len(self.params)))
@@ -130,8 +147,13 @@ class Consensuser:
                 # ========
                 d = np.linalg.norm(states_q[:,k_neigh]-states_q[:, k_node])
                 d_i = self.d_weighted[k_node, k_neigh]
-                d_min = self.d_min
-                d_max = self.d_max
+                #d_min = self.d_min
+                #d_max = self.d_max
+                d_min = self.d_min[k_node, k_neigh] # allows for different constraints per agent
+                d_max = self.d_max[k_node, k_neigh]
+                
+                
+                
                 d_pref = self.d_weighted[k_node, k_node] 
                 V_b, V_b_grad = bump_function_gradient(d, d_min, d_max, d_pref)  # travis, I think you are passing in wrong d here
                 

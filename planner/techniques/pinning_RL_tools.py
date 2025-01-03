@@ -133,6 +133,7 @@ with open(os.path.join("config", "config_planner_pinning.json"), 'w') as configs
     #config['directional']         = directional
     config['d']                   = d
     config['d_min']               = d_min
+    config['r_max']               = r
     json.dump(config, configs)
 
 # for externals

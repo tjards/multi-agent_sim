@@ -117,7 +117,7 @@ def build_system(system, strategy, dimens, Ts):
                 if lattice_consensus == 1:
                     import learner.consensus_lattice as consensus_lattice
                     #Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['directional'], planner_configs['d_min'], planner_configs['d'])
-                    Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['d_min'], planner_configs['d'])
+                    Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['d_min'], planner_configs['d'], planner_configs['r_max'])
                     
                     #LOAD
                     Learners['consensus_lattice'] = Consensuser

@@ -38,11 +38,12 @@ def plotMe(data_file_path):
     Tf = t_all.shape[0]*Ts
 
     # separtion 
+    plot_start = int(1/Ts)
     fig, ax = plt.subplots()
-    ax.plot(t_all[4::],metrics_order_all[4::,1],'-b')
-    ax.plot(t_all[4::],metrics_order_all[4::,5],':b')
-    ax.plot(t_all[4::],metrics_order_all[4::,6],':b')
-    ax.fill_between(t_all[4::], metrics_order_all[4::,5], metrics_order_all[4::,6], color = 'blue', alpha = 0.1)
+    ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,1],'-b')
+    ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,5],':b')
+    ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,6],':b')
+    ax.fill_between(t_all[plot_start::], metrics_order_all[plot_start::,5], metrics_order_all[plot_start::,6], color = 'blue', alpha = 0.1)
     #note: can include region to note shade using "where = Y2 < Y1
     ax.set(xlabel='Time [s]', ylabel='Mean Distance (with Min/Max Bounds) [m]',
             title='Separation between Agents (in range)')
