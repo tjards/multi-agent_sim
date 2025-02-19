@@ -112,6 +112,26 @@ def smooth_bump_function6(x, d_min, d_max, d, p):
     else:
         return 0
 
+
+def bump_function_gradient(d_hat, d_min, d_max, p):
+    
+    # first, adjust bounds
+    #d1, d2, = adjust_dminmax(d_min, d_max, d_pref)
+    d1, d2 = d_min, d_max
+    
+    if d1 < d_hat < d2:
+        lambda_val = 2 * (d_hat - (d1 + d2) / 2) / (d2 - d1)
+        #V_b = np.exp(-lambda_val**2 / (1 - lambda_val**2))
+        V_b = np.exp(-((lambda_val**2 / (1 - lambda_val**2))**p))
+        
+        #gradient = V_b * (-4 * lambda_val / ((1 - lambda_val**2)**2 * (d2 - d1)))
+        gradient = V_b * (-4 * lambda_val * p * (lambda_val**2 / (1 - lambda_val**2))**(p - 1) / ((1 - lambda_val**2)**2 * (d2 - d1)))
+
+        return gradient
+    else:
+        return 0
+
+
 # Parameters
 d_min   = 5
 d       = 12 # desired center
@@ -126,9 +146,12 @@ x_values = np.linspace(0, 20, 500)
 #y_values_shifted = np.array([smooth_bump_function5(x, d_min, d_max, d, p) for x in x_values])
 
 # Plot the smooth bump function
+p_range = 4
+
+
 plt.figure(figsize=(8, 5))
 #plt.plot(x_values, y_values, linestyle='--', label="Bump Function", color='purple')
-for p in range(1,6):
+for p in range(1,p_range):
     y_values_shifted = np.array([smooth_bump_function5(x, d_min, d_max, d, p, 'no') for x in x_values])
     plt.plot(x_values, y_values_shifted, linestyle='-',label=f'p={p}')
 plt.axvline(d, color='green', linestyle=':', label="Desired")
@@ -136,9 +159,31 @@ plt.axvline(d_min, color='red', linestyle=':', label="Minimum")
 plt.axvline(d_max, color='red', linestyle=':', label="Maximum")
 #plt.axvline(center, color='black', linestyle=':', label="Mean")
 plt.title("Bump Function")
-plt.xlabel("Input ($\hat{d})$")
+plt.xlabel("Input ($\hat{d_{ij}})$")
 plt.ylabel("Output")
 plt.xlim([d_min-1, d_max+1])
 plt.legend()
 plt.grid()
 plt.show()
+
+
+#%%
+plt.figure(figsize=(8, 5))
+#plt.plot(x_values, y_values, linestyle='--', label="Bump Function", color='purple')
+for p in range(1,p_range):
+    #y_values_shifted = np.array([smooth_bump_function5(x, d_min, d_max, d, p, 'no') for x in x_values])
+    y_values_shifted_d = np.array([bump_function_gradient(x, d_min, d_max, p) for x in x_values])
+    plt.plot(x_values, y_values_shifted_d, linestyle='-',label=f'p={p}')
+plt.axvline(d, color='green', linestyle=':', label="Desired")
+plt.axvline(d_min, color='red', linestyle=':', label="Minimum")
+plt.axvline(d_max, color='red', linestyle=':', label="Maximum")
+#plt.axvline(center, color='black', linestyle=':', label="Mean")
+plt.title("Bump Function Gradient")
+plt.xlabel("Input ($\hat{d_{ij}})$")
+plt.ylabel("Output")
+plt.xlim([d_min-1, d_max+1])
+plt.legend()
+plt.grid()
+plt.show()
+
+ 

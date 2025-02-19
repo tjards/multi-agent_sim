@@ -150,7 +150,7 @@ class Consensuser:
                 d = np.linalg.norm(states_q[:,k_neigh]-states_q[:, k_node]) 
                 
                 # low-pass filter
-                tau=0.2
+                tau=0.5
                 dot_d_hat = (1/tau)*(d - self.d_hat[k_node, k_neigh])
                 self.d_hat[k_node, k_neigh] += 0.02*dot_d_hat 
                 d_hat = self.d_hat[k_node, k_neigh]
@@ -168,7 +168,7 @@ class Consensuser:
                 V_b, V_b_grad = bump_function_gradient(d_hat, d_min, d_max, d_pref)  
                 # build the total gradient function (force)
                 #terms = V_b*(d_i - d) + 0.5*V_b_grad*(d_i - d)**2
-                terms = V_b*(d_i - d_hat) + 0.5*V_b_grad*(d_i - d_hat)**2
+                terms = V_b*(d_i - d_hat) #+ 0.5*V_b_grad*(d_i - d_hat)**2 # travis - this second term of Vdot... may come in useful later
                 # use gradient descent to update desired distance
                 self.d_weighted[k_node, k_neigh] -= self.gain_gradient*terms
                 
