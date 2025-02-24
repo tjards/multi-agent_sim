@@ -51,7 +51,7 @@ if plot_quadcopter == 1:
 # -------------------
 numFrames           = 50    # frame rate (bigger = slower)
 tail                = 10   # trailing trajectory length 
-zoom                = 1     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
+zoom                = 0     # do you want to adjust frames with motion? [0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below) ]
 pan                 = 0     # camera pan? 0 = no, 1 = yes (memory-heavy)
 connection          = 1     # show connections?
 connection_thresh   = 5.1     # [legacy] nominally 5.1. how close do agents need to be in order to connect?
@@ -93,8 +93,8 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
     
     if updated_connections == 1:
         
-        _, lattices_connections = data_manager.load_data_HDF5('History', 'lattices', data_file_path)
-        _, connectivity = data_manager.load_data_HDF5('History', 'connectivity', data_file_path)
+        _, lattices_connections = data_manager.load_data_HDF5('History', 'lattices', data_file_path)    # lattice parameters
+        _, connectivity = data_manager.load_data_HDF5('History', 'connectivity', data_file_path)        #   Adjacency matrix
         
     
     quats_all       = []

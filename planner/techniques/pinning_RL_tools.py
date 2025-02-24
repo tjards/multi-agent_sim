@@ -37,14 +37,13 @@ Dev notes:
     The pin will then be able to bring everyone back.
     so, sum of: gradient_agent.gain_gradient_control * gradient_agent.C_filtered[0:gradient_agent.dimens, k_node, k_neigh]
     
-
-
+    23 Feb 25 - now supports constrained gradient-based lattice consensus seeking 
 
 @author: tjards
 
 """
 
-#%% Import stuff
+#%% import stuff
 # --------------
 import numpy as np
 import random
@@ -144,10 +143,11 @@ def return_lattice_param():
 def return_ranges():
     return r
 
-#%% Control systems functions
+#%% control systems functions
 # -------------------------
 
 # form the lattice
+# -----------------
 def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values, **kwargs):   
     
     # pull out the args (try .get() to ignore n/a cases)
@@ -182,7 +182,7 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
         kwargs['learning_grid_size'] = learning_grid_size # consider adapting this with time
         learning_agent.update_step(reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
      
-    # estimate neighbouring gradients
+    # estimate neighbouring gradients (legacy, delete later)
     # -------------------------------
     '''
     if hetero_gradient == 1:
@@ -195,7 +195,6 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
         gradient_agent.update_estimates(states_q[0:gradient_agent.dimens,:], states_p[0:gradient_agent.dimens, :], observed_gradients, A, k_node)       
    '''  
    
-    
    # initialize parameters
     # ----------------------
     if hetero_lattice == 1:
@@ -234,19 +233,16 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
                     
                     u_int[:,k_node] += cohesion_list[term_selected[k_node]](states_q, k_node, k_neigh, r, d)
                 
-                    
                     # here cohesion_term = term_list[term_indices[0][k_node]]
                     #cohesion_term = copy.deepcopy(term_list[term_indices[0][k_node]])
                     #d = d_mixed[k_node,0]
+                    
                 else:
                     
                     u_int[:,k_node] += cohesion_list[flocking_method](states_q, k_node, k_neigh, r, d)
                     
-                    
-                    
-                # compute the interaction commands
-                #u_int[:,k_node] += cohesion_term(states_q, k_node, k_neigh, r, d)
-                
+
+                # legacy (delete later)
                 '''
                 # we will grab this cohesion term for gradient estimation
                 if hetero_gradient == 1:
@@ -257,33 +253,31 @@ def compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values,
                     u_int[0:gradient_agent.dimens,k_node] -= gradient_agent.gain_gradient_control * pin_matrix[k_node,k_node]*gradient_agent.C_sum_bypin[0:gradient_agent.dimens,k_node]
                     
                     
-                    # TRAVIS: I don't think this is what I'm supposed to bring in
+                    # I don't think this is what I'm supposed to bring in
                     #gradient_agent.observed_gradients[0:gradient_agent.dimens,k_node, k_neigh] = u_int[0:gradient_agent.dimens,k_node]
                     
                 '''
                 
                 u_int[:,k_node] += alignment_term(states_q, states_p, k_node, k_neigh, r, d)
                 
-                # TRAVIS: I don't think this is what I'm supposed to bring in
+                # I don't think this is what I'm supposed to bring in
                 #gradient_agent.observed_gradients[0:gradient_agent.dimens,k_node, k_neigh] = u_int[0:gradient_agent.dimens,k_node]
                 
                 #if u_int[2,:].any() != 0:
                 #    print('debug needed: 3D cmds in 2D')
                 
-                
                 # seek consensus
                 if hetero_lattice == 1:
-                    #consensus_agent.update(k_node, k_neigh)          # update lattice via consensus
-                    #consensus_agent.update(k_node, k_neigh)          # update lattice via consensus
-                    consensus_agent.update(k_node, k_neigh, states_q)          # update lattice via consensus
-                    consensus_agent.prox_i[k_node, k_neigh] = 1      # annotate as in range     
+                    consensus_agent.update(k_node, k_neigh, states_q)   # update lattice via consensus
+                    consensus_agent.prox_i[k_node, k_neigh] = 1         # annotate as in range     
             else:
                 if hetero_lattice == 1:
                     consensus_agent.prox_i[k_node, k_neigh] = 0      # annotate as not in range
            
     return u_int[:,k_node] 
 
-# # avoid obstacles
+# avoid obstacles
+# ---------------
 def compute_cmd_b(states_q, states_p, obstacles, walls, k_node):
     
     u_obs = np.zeros((3,states_q.shape[1]))     # obstacles 
@@ -292,6 +286,7 @@ def compute_cmd_b(states_q, states_p, obstacles, walls, k_node):
     return u_obs[:,k_node] 
 
 # track the target
+# -----------------
 def compute_cmd_g(states_q, states_p, targets, targets_v, k_node, pin_matrix):
 
     # initialize 
@@ -301,6 +296,7 @@ def compute_cmd_g(states_q, states_p, targets, targets_v, k_node, pin_matrix):
     return u_nav[:,k_node]
 
 # consolidate control signals
+# ---------------------------
 def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
         
     directional         = kwargs.get('directional_graph')
@@ -309,7 +305,6 @@ def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets
     if directional and kwargs.get('quads_headings') is None:
         kwargs['quads_headings'] = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
         print('no headings avail, assuming 0')
-    
     
     if 'learning_lattice' in kwargs:
         learning_agent  = kwargs.get('learning_lattice')
@@ -336,7 +331,8 @@ def compute_cmd(centroid, states_q, states_p, obstacles, walls, targets, targets
     return cmd_i[:,k_node]
 
 
-# old methods
+#%% legacy code 
+# -------------
 """
 
 #%% Select pins for each component 

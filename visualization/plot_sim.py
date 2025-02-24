@@ -25,6 +25,38 @@ import os
 data_directory = 'data'
 data_file_path = os.path.join(data_directory, "data.h5")
 
+# graph analysis
+# ---------------
+
+# find connected components
+# -------------------------
+def find_connected_components(A):
+    
+    all_components = []                                     # stores all connected components
+    visited = []                                            # stores all visisted nodes
+    for node in range(0,A.shape[1]):                        # search all nodes (breadth)
+        if node not in visited:                             # exclude nodes already visited
+            component       = []                            # stores component nodes
+            candidates = np.nonzero(A[node,:].ravel()==1)[0].tolist()    # create a set of candidates from neighbours 
+            component.append(node)
+            visited.append(node)
+            candidates = list(set(candidates)-set(visited))
+            while candidates:                               # now search depth
+                candidate = candidates.pop(0)               # grab a candidate 
+                visited.append(candidate)                   # it has how been visited 
+                subcandidates = np.nonzero(A[:,candidate].ravel()==1)[0].tolist()
+                component.append(candidate)
+                #component.sort()
+                candidates.extend(list(set(subcandidates)-set(candidates)-set(visited))) # add the unique nodes          
+            all_components.append(component)
+    #return all_components
+    components = all_components 
+    return components 
+
+
+
+
+
 #%% produce plots
 # -------------
 def plotMe(data_file_path):
@@ -264,9 +296,118 @@ def plotMe(data_file_path):
         ax.grid()
         #fig.savefig("test.png")
         plt.show() 
+
+
+        #%% Heatmap of connections
+        # -------------------------
+        heat_map = True
+        start = plot_start
+        
+        if heat_map:
+            _, lattices_connections = data_manager.load_data_HDF5('History', 'lattices', data_file_path)    # lattice parameters
+            _, connectivity = data_manager.load_data_HDF5('History', 'connectivity', data_file_path)        # Adjacency matrix
+            import matplotlib.colors as mcolors
+            import seaborn as sns
+            #import matplotlib.pyplot as plt
+            from scipy.spatial.distance import cdist
+            import utils.swarmgraph as graphical 
+        
+            # Pull out positions
+            poses = states_all[:, 0:3, :]
+        
+            diffs_all = []
+            components_all = [] # stores the graph component indices
+        
+            # Loop through time steps
+            for i in range(start, t_all.shape[0]):
+                
+                
+                # initiate component indices
+                '''
+                components = np.array(states_all.shape[2])
+                '''
+                
+                # Compute the separations for each agent
+                seps = cdist(states_all[i, 0:3, :].T, states_all[i, 0:3, :].T)
+                seps_desired = lattices_connections[i, :, :]
+                diffs = seps - seps_desired
+        
+                # Bring in connectivity info
+                A = connectivity[i, :, :]
+                
+                '''
+                components = find_connected_components(A)
+                # Given: components is a list of lists, where each sublist contains indices belonging to that component
+                index_to_component = np.full(states_all.shape[2], -1)  # Fill with -1 initially to detect missing assignments
+
+                # Assign each index to its component number
+                for component_idx, sublist in enumerate(components):
+                    for index in sublist:
+                        index_to_component[index] = component_idx  # Store the component ID
+                '''
+        
+                
+                # masks
+                # -----
+                # mask out diagonal elements
+                mask = ~np.eye(seps.shape[0], dtype=bool)
+                diffs = diffs[mask]
+                
+                # mask out NaNs
+                A_mask = A[mask]
+                diffs[~A_mask.astype(bool)] = np.nan  # Ensure NaN for out-of-range pairs
+        
+                # mask out agent connections that never meet 
+                A_last = connectivity[-1, :, :][mask]
+                diffs = diffs[A_last.astype(bool)]
         
         
+                # Store results
+                diffs_all.append(diffs)
+                '''
+                components_all.append(index_to_component)
+                '''
+                #if len(components) > 1:
+                #    print(index_to_component)
         
+            # Convert to numpy array and transpose for heatmap
+            diffs_all = np.array(diffs_all).T
+        
+            # Compute range limits
+            #center_value = np.nanmean(diffs_all)
+            mins_value = -1 #np.nanmin(diffs_all)
+            maxs_value = 2 #np.nanmax(diffs_all)
+        
+            # Clip extreme values for better color contrast
+            diffs_all_clipped = np.clip(diffs_all, mins_value, maxs_value)
+        
+            # Use a blue colormap 
+            #cmap = plt.cm.Blues_r
+            #cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", ["red", "green", "blue"])
+            cmap = plt.cm.plasma
+
+
+            norm = mcolors.Normalize(vmin=mins_value, vmax=maxs_value)
+        
+            # Improve x-axis tick labels for readability
+            #xtick_positions = np.linspace(0, diffs_all.shape[1] - 1, num=10, dtype=int)
+        
+            # Plot heatmap (NaNs appear as white)
+            plt.figure(figsize=(10, 6))
+            sns.heatmap(
+                diffs_all_clipped, cmap=cmap, norm=norm, xticklabels=500, 
+                mask=np.isnan(diffs_all_clipped), yticklabels=False, cbar=True
+            )
+        
+            # Labels
+            plt.xlabel("Timestep")
+            plt.ylabel("Agent-Agent Index")
+            plt.title("Separation Error Heatmap [m]")
+            plt.show()
+
+          
+
+            
         
     
 

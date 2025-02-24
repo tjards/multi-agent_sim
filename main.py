@@ -58,7 +58,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42+1)
 
 Ti      = 0         # initial time
-Tf      = 60        # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 180        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
 f       = 0         # parameter for future use
 dimens  = 2         # dimension (2 = 2D, 3 = 3D)
@@ -163,8 +163,7 @@ while round(t,3) < Tf:
     #if t > 10 and t < 11:    
         # agent 0 tries to go too far, notice others ignore the update
     #    Controller.Learners['consensus_lattice'].d_weighted[0,:] = 15
-        
-        
+           
     Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
     
 #%% Save data

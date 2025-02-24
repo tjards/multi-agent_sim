@@ -211,7 +211,7 @@ class History:
         self.metrics_order_all[i,:]  = self.metrics_order
         self.swarm_prox              = self.sigma_norm(Agents.centroid.ravel()-Targets.targets[0:3,0])
         
-        self.lattices[i,:,:]         = Controller.lattice
+        self.lattices[i,:,:]         = Controller.lattice # lattice parameters (diag is d_init)
         
         if 'consensus_lattice' in Controller.Learners:
             #self.lattice_mins[i,:,:] = Controller.Learners['consensus_lattice'].d_min
