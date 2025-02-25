@@ -174,6 +174,7 @@ class Controller:
 
         # graph
         self.Graphs = graphical.Swarmgraph(state, criteria_table) # initialize 
+        self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
         
         # general purpose counter (nominally, pin reset)
         self.counter = 0                
@@ -196,7 +197,7 @@ class Controller:
             while (i < nAgents):
                 self.lattice[i,:] = d_init
                 i+=1
-            self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
+            #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
         
         # sheparding has its own class (differentiating shepherd and herd)
         if tactic_type == 'shep':
@@ -209,8 +210,11 @@ class Controller:
         if tactic_type == 'cao':
             self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
             self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
-            self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
+            #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
             self.pin_matrix = np.ones((nAgents,nAgents))
+            
+            
+
    
     # integrate learninging agents
     # ----------------------------

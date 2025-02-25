@@ -250,7 +250,7 @@ def plotMe(data_file_path):
         
     #%% Lattice violation
     # -------------------
-    plot_space = True
+    plot_space = False
     if plot_space:
         
         _, lattice_violations = data_manager.load_data_HDF5('History', 'lattice_violations', data_file_path)
@@ -300,7 +300,7 @@ def plotMe(data_file_path):
 
         #%% Heatmap of connections
         # -------------------------
-        heat_map = True
+        heat_map = False
         start = plot_start
         
         if heat_map:

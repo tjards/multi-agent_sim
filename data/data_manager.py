@@ -179,6 +179,8 @@ class History:
             self.lattice_violations = np.zeros([nSteps, Agents.nAgents, Agents.nAgents]) 
             #self.lattice_mins[0,:,:] = Controller.Learners['consensus_lattice'].d_min
             #self.lattice_maxs[0,:,:] = Controller.Learners['consensus_lattice'].d_max
+        else:
+            self.lattice_violations = np.zeros([nSteps, Agents.nAgents, Agents.nAgents]) 
         
         
     def sigma_norm(self, z): 
@@ -217,7 +219,10 @@ class History:
             #self.lattice_mins[i,:,:] = Controller.Learners['consensus_lattice'].d_min
             #self.lattice_maxs[i,:,:] = Controller.Learners['consensus_lattice'].d_max
             self.lattice_violations[i,:,:] = Controller.Graphs.A*Controller.Learners['consensus_lattice'].compute_violations(Agents.state[0:3,:])
-           
+       
+            
+            
+        
         # if there are quadcopters
         dynamics = Agents.dynamics_type
         if dynamics == 'quadcopter': 

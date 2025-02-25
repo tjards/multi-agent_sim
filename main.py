@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This project implements an autonomous, decentralized swarming strategies including:
-    
-- Flocking (Reynolds, Olfati-Saber, Starling, and Cao)
-- Dynamic Encirclement 
-- Heterogeneous Pinning Control with Reinforcement Learning 
-- Arbitrary Closed Curves (primarily lemniscates)
-- Shepherding
+This project implements an autonomous, decentralized swarming strategies.
 
 The strategies requires no human invervention once the target is selected and all agents rely on local knowledge only. 
 Each vehicle makes its own decisions about where to go based on its relative position to other vehicles.
@@ -58,7 +52,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42+1)
 
 Ti      = 0         # initial time
-Tf      = 30        # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 60        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
 f       = 0         # parameter for future use
 dimens  = 2         # dimension (2 = 2D, 3 = 3D)
