@@ -270,12 +270,13 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
     
     elif draw_mode == 'prism' and prism_plots is not None:
      
-        if ax.name != '3d':  # 2D case.
+        # 2D case
+        if ax.name != '3d':  
             for j in range(nVeh):
                 prism_points = create_prism_points_2d(x[j], y[j], x_v[j], y_v[j], scale=prism_scale)
-                # Assume each prism_plots[j] is a matplotlib.patches.Polygon.
                 prism_plots[j].set_xy(prism_points)
-        else:  # 3D case remains as before.
+        # 3D case
+        else:  
             for j in range(nVeh):
                 prism_points = create_prism_points_3d(x[j], y[j], z[j],
                                                       x_v[j], y_v[j], z_v[j],
@@ -283,20 +284,6 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
                 prism_plots[j].set_verts([prism_points])
 
 
-    '''
-    elif draw_mode == 'prism' and prism_plots is not None:
-
-        #prism_scale = 0.5  
-        for j in range(nVeh):
-            
-            # compute the prism (triangle) points
-            prism_points = create_prism_points_3d(x[j], y[j], z[j],
-                                                  x_v[j], y_v[j], z_v[j],
-                                                  scale=prism_scale)
-            
-            # update the corresponding prism plot object
-            prism_plots[j].set_verts([prism_points])
-    '''
     
     #  update obstacles (common to both modes)
     if showObs >= 1:
