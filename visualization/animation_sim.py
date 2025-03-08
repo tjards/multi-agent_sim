@@ -43,11 +43,11 @@ if plot_quadcopter:
 # Plotting parameters
 # =============================================================================
 numFrames           = 50    # frame rate (bigger = slower)
-tail                = 200    # trailing trajectory length 
+tail                = 500    # trailing trajectory length 
 zoom                = 1     # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
-zoom_axis           = 50    # if zoom mode == 2, sets fixed zoom axis
-zoom_fixed          = 20    # if zoom mode == 3, sets fixed zoom amount
-pan                 = 0     # camera pan toggle
+zoom_axis           = 10    # if zoom mode == 2, sets fixed zoom axis
+zoom_fixed          = 7    # if zoom mode == 3, sets fixed zoom amount
+pan                 = 0     # camera pan toggle (only for 3D)
 connection          = 1     # show connections between agents
 connection_thresh   = 5.1   # threshold for agent connectivity  (default val, gets updates later)
 updated_connections = 1     # use updated connectivity          (default 1)
@@ -56,8 +56,8 @@ pins_overide        = 1     # override colors using pin variable
 showObs             = 1     # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
 agent_shape         = 'prism'  # ['dot', 'prism']
 prism_scale         = 1
-
-
+color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
+color_lattice       = ['grey', 'blue'] # [in range, connected]
 
 # =============================================================================
 # Helper functions 
@@ -214,7 +214,7 @@ def create_prism_points_2d(x, y, vx, vy, scale=1.0):
 def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
                                 lines_dots, lines_tails, lines_heads, lines_targets,
                                 lines_obstacles, nVeh, nObs, ax,
-                                draw_mode='dot', prism_plots=None):
+                                node_colors, draw_mode='dot', prism_plots=None):
 
     # extract position and tail data.
     x = states_all[i*numFrames, 0, :]
@@ -238,6 +238,7 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
     # draw tails
     for j in range(nVeh):
         lines_tails[j].set_data(x_from0[:, j], y_from0[:, j])
+        lines_tails[j].set_color(node_colors[j][0])
         if ax.name == '3d':
             lines_tails[j].set_3d_properties(z_from0[:, j])
 
@@ -245,27 +246,19 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
     if draw_mode == 'dot':
         for j in range(nVeh):
             lines_dots[j].set_data(x[j], y[j])
+            lines_dots[j].set_color(node_colors[j][0])
             if ax.name == '3d':
                 lines_dots[j].set_3d_properties(z[j])
-            
-            #lines_tails[j].set_data(x_from0[:, j], y_from0[:, j])
-            #if ax.name == '3d':
-            #    lines_tails[j].set_3d_properties(z_from0[:, j])
-            
-            x_t = targets_all[i*numFrames, 0, j]
-            y_t = targets_all[i*numFrames, 1, j]
-            z_t = targets_all[i*numFrames, 2, j]
-            lines_targets[j].set_data(x_t, y_t)
-            if ax.name == '3d':
-                lines_targets[j].set_3d_properties(z_t)
-            
+                        
             # Draw a line representing the heading/direction.
             x_point = [x[j], x_head[j]]
             y_point = [y[j], y_head[j]]
             z_point = [z[j], z_head[j]]
             lines_heads[j].set_data(x_point, y_point)
+            lines_heads[j].set_color(node_colors[j][0])
             if ax.name == '3d':
                 lines_heads[j].set_3d_properties(z_point)
+
     
     
     elif draw_mode == 'prism' and prism_plots is not None:
@@ -275,6 +268,9 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
             for j in range(nVeh):
                 prism_points = create_prism_points_2d(x[j], y[j], x_v[j], y_v[j], scale=prism_scale)
                 prism_plots[j].set_xy(prism_points)
+                prism_plots[j].set_color(node_colors[j][0])
+                #facecolors='blue', edgecolors='blue'
+            
         # 3D case
         else:  
             for j in range(nVeh):
@@ -282,6 +278,7 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
                                                       x_v[j], y_v[j], z_v[j],
                                                       scale=prism_scale)
                 prism_plots[j].set_verts([prism_points])
+                prism_plots[j].set_color(node_colors[j][0])
 
 
     
@@ -295,8 +292,17 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
             if ax.name == '3d':
                 lines_obstacles[k].set_3d_properties(z_o[k])
     
+    # draw targets
+    for j in range(nVeh):
+        
+        x_t = targets_all[i*numFrames, 0, j]
+        y_t = targets_all[i*numFrames, 1, j]
+        z_t = targets_all[i*numFrames, 2, j]
+        lines_targets[j].set_data(x_t, y_t)
+        if ax.name == '3d':
+            lines_targets[j].set_3d_properties(z_t)
+     
     return x, y, z, x_from0, y_from0, z_from0
-
 
 
 # update the connections
@@ -326,13 +332,16 @@ def update_connectivity(i, pos, lattices, nVeh, lattices_connections, connectivi
                 
                 # if in range (i.e., via adjanceny matrix), make grey
                 if connectivity[i*numFrames, j, k] > 0:
-                    lattices[j].set_color('gray')
+                    #lattices[j].set_color('gray')
+                    lattices[j].set_color(color_lattice[0])
+                    
                     lattices[j].set_linestyle('--')
                     lattices[j].set_alpha(0.3)
                     
                     # if in range and also within lattice threshold, make blue
                     if dist <= connection_thresh_updated:
-                        lattices[j].set_color('b')
+                        #lattices[j].set_color('b')
+                        lattices[j].set_color(color_lattice[1])
                         lattices[j].set_alpha(0.6)
                     
                     # draw the line between agent j and agent k.
@@ -350,6 +359,7 @@ def update_connectivity(i, pos, lattices, nVeh, lattices_connections, connectivi
         lattices[j].set_data(x_lat[:, j], y_lat[:, j])
         if lattices[j].axes.name == '3d':
             lattices[j].set_3d_properties(z_lat[:, j])
+
 
 
 # =============================================================================
@@ -390,19 +400,21 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         ax = fig.add_subplot(projection='3d')
     else:
         ax = fig.add_subplot()
+        if pan == 1:
+            raise Exception('Panning feature not avail in 2D')
     
     if agent_shape == 'prism' and plot_quadcopter != 1 and dimens == 3:
         prism_plots = []
         from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         for j in range(nVeh):
-            poly = Poly3DCollection([], facecolors='blue', edgecolors='blue', alpha=0.5)
+            poly = Poly3DCollection([], facecolors=color_scheme[0], edgecolors=color_scheme[0], alpha=0.5)
             ax.add_collection3d(poly)
             prism_plots.append(poly)
     elif agent_shape == 'prism' and plot_quadcopter != 1 and dimens == 2:
         prism_plots = []
         from matplotlib.patches import Polygon
         for j in range(nVeh):
-            poly = Polygon([[0, 0]], closed=True, facecolor='blue', edgecolor='blue', alpha=0.5)
+            poly = Polygon([[0, 0]], closed=True, facecolor=color_scheme[0], edgecolor=color_scheme[0], alpha=0.5)
             ax.add_patch(poly)
             prism_plots.append(poly)
     else:
@@ -415,7 +427,7 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
     # Initialize plot elements for quadcopters (if needed)
     # =============================================================================
     if plot_quadcopter:
-        quatColour = 'blue'
+        quatColour = color_scheme[0]
         quat_line1, quat_line2, quat_line3 = [], [], []
         for iVeh in range(nVeh):
             if dimens == 3:
@@ -434,24 +446,35 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
     # Initialize plot elements for agents and obstacles
     # =============================================================================
     lines_dots, lines_tails, lines_heads, lines_targets, lattices = [], [], [], [], []
+    node_colors = []
+    
+    if dimens == 3:
+        centroids, = ax.plot([], [], [], '+', color=color_scheme[5])
+        centroids_line, = ax.plot([], [], [], ':', lw=1, color=color_scheme[5])
+    else:
+        centroids, = ax.plot([], [], '+', color=color_scheme[5])
+        centroids_line, = ax.plot([], [], ':', lw=1, color=color_scheme[5])
+    
+    
     for i in range(nVeh):
         if dimens == 3:
-            dot, = ax.plot([], [], [], 'bo', ms=3)
-            tail, = ax.plot([], [], [], ':', lw=1, color='blue')
-            head_line, = ax.plot([], [], [], '-', lw=1, color='magenta')
-            target, = ax.plot([], [], [], 'gx')
-            lattice_line, = ax.plot([], [], [], ':', lw=1, color='blue')
+            dot, = ax.plot([], [], [], 'o', color=color_scheme[0], ms=3)
+            tail, = ax.plot([], [], [], ':', lw=1, color=color_scheme[0])
+            head_line, = ax.plot([], [], [], '-', lw=1, color=color_scheme[0])
+            target, = ax.plot([], [], [], 'x', color=color_scheme[3])
+            lattice_line, = ax.plot([], [], [], ':', lw=1, color=color_lattice[1])
         else:
-            dot, = ax.plot([], [], 'bo', ms=3)
-            tail, = ax.plot([], [], ':', lw=1, color='blue')
-            head_line, = ax.plot([], [], '-', lw=1, color='magenta')
-            target, = ax.plot([], [], 'gx')
-            lattice_line, = ax.plot([], [], ':', lw=1, color='blue')
+            dot, = ax.plot([], [], 'o', color = color_scheme[0], ms=3)
+            tail, = ax.plot([], [], ':', lw=1, color=color_scheme[0])
+            head_line, = ax.plot([], [], '-', lw=1, color=color_scheme[0])
+            target, = ax.plot([], [], 'x', color = color_scheme[3])
+            lattice_line, = ax.plot([], [], ':', lw=1, color=color_lattice[1])
         lines_dots.append(dot)
         lines_tails.append(tail)
         lines_heads.append(head_line)
         lines_targets.append(target)
         lattices.append(lattice_line)
+        node_colors.append([color_scheme[0]]) # default blue
     
     # initialize obstacles (if required)
     lines_obstacles = []
@@ -459,9 +482,9 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         r_o = obstacles_all[:, 3, :]
         for j in range(nObs):
             if dimens == 3:
-                obstacle_line, = ax.plot([], [], [], 'ro', ms=10*r_o[0, j], markerfacecolor=(1,1,0,0.5))
+                obstacle_line, = ax.plot([], [], [], 'ro', ms=10*r_o[0, j], markerfacecolor=color_scheme[4])
             else:
-                obstacle_line, = ax.plot([], [], 'ro', ms=10*r_o[0, j], markerfacecolor=(1,1,0,0.5))
+                obstacle_line, = ax.plot([], [], 'ro', ms=10*r_o[0, j], markerfacecolor=color_scheme[4])
             lines_obstacles.append(obstacle_line)
     
     # =============================================================================
@@ -546,7 +569,7 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         x, y, z, x_from0, y_from0, z_from0 = update_agents_and_obstacles(
             i, states_all, targets_all, obstacles_all,
             lines_dots, lines_tails, lines_heads, lines_targets, lines_obstacles,
-            nVeh, nObs, ax, agent_shape, prism_plots
+            nVeh, nObs, ax, node_colors, agent_shape, prism_plots
         )
         
         # update quadcopter visuals (if applicable)
@@ -566,8 +589,9 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         cx = centroid_all[i*numFrames, 0, :]
         cy = centroid_all[i*numFrames, 1, :]
         cz = centroid_all[i*numFrames, 2, :]
-        centroids = ax.lines[-2]
-        centroids_line = ax.lines[-1]
+        #centroids = ax.lines[-2]
+        #centroids, = ax.plot(cx, cy, cz, 'x', color=color_scheme[3])
+        #centroids_line = ax.lines[-1]
         centroids.set_data(cx, cy)
         if dimens == 3:
             centroids.set_3d_properties(cz)
@@ -578,6 +602,24 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         centroids_line.set_data(cx_line, cy_line)
         if dimens == 3:
             centroids_line.set_3d_properties(cz_line)
+        
+        # update node colors
+        # ----------------
+        if pins_overide == 1:
+        
+            for j in range(nVeh):    
+        
+                # pins are red
+                if pins_all[i*numFrames,j,j] == 1:
+                    node_colors[j][0] = 'red'
+                    
+                elif pins_all[i*numFrames,j,j] == 2:
+                    node_colors[j][0] = 'cyan'
+                
+                else:
+                    node_colors[j][0] = 'blue'
+                    
+
         
         # update camera (pan/zoom)
         # -------------------------
