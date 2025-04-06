@@ -56,8 +56,11 @@ pins_overide        = 1     # override colors using pin variable
 showObs             = 1     # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
 agent_shape         = 'prism'  # ['dot', 'prism']
 prism_scale         = 1
-color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
+color_scheme        = ['blue', 'cyan', 'black', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
 color_lattice       = ['grey', 'blue'] # [in range, connected]
+color_projection    = ['black', 'black'] # xy, yz
+projection_plot     = True 
+
 
 # =============================================================================
 # Helper functions 
@@ -455,7 +458,22 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         centroids, = ax.plot([], [], '+', color=color_scheme[5])
         centroids_line, = ax.plot([], [], ':', lw=1, color=color_scheme[5])
     
-    
+    # add the planar projections
+    # --------------------------
+    if projection_plot and dimens == 3:
+        
+        projection_lines_xy = []
+        projection_lines_yz = []
+        
+        for j in range(nVeh):
+
+            # XY projection (Z = fixed)
+            proj_xy, = ax.plot([], [], [], lw=0.5, color=color_projection[0] ,alpha=0.7, linestyle='-')
+            projection_lines_xy.append(proj_xy)
+            # YZ projection (X = fixed)
+            proj_yz, = ax.plot([], [], [], lw=0.5, color=color_projection[1], alpha=0.7, linestyle='-')
+            projection_lines_yz.append(proj_yz)
+
     for i in range(nVeh):
         if dimens == 3:
             dot, = ax.plot([], [], [], 'o', color=color_scheme[0], ms=3)
@@ -572,6 +590,7 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
             nVeh, nObs, ax, node_colors, agent_shape, prism_plots
         )
         
+
         # update quadcopter visuals (if applicable)
         # -----------------------------------------
         if plot_quadcopter:
@@ -603,6 +622,26 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         if dimens == 3:
             centroids_line.set_3d_properties(cz_line)
         
+        
+        # add projections
+        # ----------------
+        #frame = i
+        #tail_proj = 500
+        if projection_plot and dimens == 3:
+
+            for j in range(nVeh):
+    
+                lines_tails[j].set_data(x_from0[:, j], y_from0[:, j])            
+    
+                # XY projection
+                projection_lines_xy[j].set_data(x_from0[:, j], y_from0[:, j])
+                projection_lines_xy[j].set_3d_properties(0*z_from0[:, j]+cz+ax.get_xlim()[0])
+
+                # YZ projection
+                projection_lines_yz[j].set_data(0*x_from0[:, j]+cx+ax.get_xlim()[0], y_from0[:, j])
+                projection_lines_yz[j].set_3d_properties(z_from0[:, j])
+        
+        
         # update node colors
         # ----------------
         if pins_overide == 1:
@@ -611,13 +650,13 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         
                 # pins are red
                 if pins_all[i*numFrames,j,j] == 1:
-                    node_colors[j][0] = 'red'
+                    node_colors[j][0] = color_scheme[2] #'red' 
                     
                 elif pins_all[i*numFrames,j,j] == 2:
-                    node_colors[j][0] = 'cyan'
+                    node_colors[j][0] = color_scheme[1] # 'cyan'
                 
                 else:
-                    node_colors[j][0] = 'blue'
+                    node_colors[j][0] = color_scheme[0] #'blue'
                     
 
         
