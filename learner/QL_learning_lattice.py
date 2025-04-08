@@ -36,7 +36,7 @@ nOptions        = 2         # number of action options (evenly spaced between [m
 time_horizon    = 50       # how long to apply action and await reward (eg., 1 sec/0.02 sample per sec = 50)
 time_horizon_v  = 0.1       # optional, max speed constraint to permit new action (higher makes more stable)
 states_grid     = 1         # represent states in Q-table as a grid? 1 = yes, 0 = no
-reward_method   = 'connectivity'
+reward_method   = 'landmarks'
 
     # methods:
     #   'landmarks'     - minimizes distance between landmarks

@@ -459,7 +459,8 @@ class Controller:
             # ******* #
             #  Mixer  #
             # ******* #   
-            
+
+      
             if tactic_type == 'saber':
                 cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
             elif tactic_type == 'reynolds':
@@ -481,7 +482,13 @@ class Controller:
             if self.dimens == 2 and self.cmd[2,:].any() != 0:
                 
                 print('warning, 3D cmds in 2D at node ', k_node)
-                print(self.cmd[2,k_node])    
+                print(self.cmd[2,k_node])
+                
+                # set to zero
+                self.cmd[2, :] = 0
+                
+                
+                
                 
         # update the commands
         self.cmd = copy.deepcopy(cmd_i) 

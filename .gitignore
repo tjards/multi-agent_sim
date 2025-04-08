@@ -1,3 +1,5 @@
 data/data
 visualization/animations
 visualization/plots
+**/__pycache__
+**/*.pyc

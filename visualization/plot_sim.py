@@ -404,6 +404,9 @@ def plotMe(data_file_path):
             plt.ylabel("Agent-Agent Index")
             plt.title("Separation Error Heatmap [m]")
             plt.show()
+            
+            #plt.close(fig)
+
 
           
 

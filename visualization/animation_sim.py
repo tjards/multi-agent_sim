@@ -22,6 +22,9 @@ import os
 import json
 from data import data_manager
 
+
+
+
 # =============================================================================
 # Configuration pulls
 # =============================================================================
@@ -291,9 +294,11 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
         y_o = obstacles_all[i*numFrames, 1, :]
         z_o = obstacles_all[i*numFrames, 2, :]
         for k in range(nObs):
-            lines_obstacles[k].set_data(x_o[k], y_o[k])
+            #lines_obstacles[k].set_data(x_o[k], y_o[k])
+            lines_obstacles[k].set_data([x_o[k]], [y_o[k]])
             if ax.name == '3d':
-                lines_obstacles[k].set_3d_properties(z_o[k])
+                #lines_obstacles[k].set_3d_properties(z_o[k])
+                lines_obstacles[k].set_3d_properties([z_o[k]])
     
     # draw targets
     for j in range(nVeh):
@@ -301,9 +306,11 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
         x_t = targets_all[i*numFrames, 0, j]
         y_t = targets_all[i*numFrames, 1, j]
         z_t = targets_all[i*numFrames, 2, j]
-        lines_targets[j].set_data(x_t, y_t)
+        #lines_targets[j].set_data(x_t, y_t)
+        lines_targets[j].set_data([x_t], [y_t])
         if ax.name == '3d':
-            lines_targets[j].set_3d_properties(z_t)
+            #lines_targets[j].set_3d_properties(z_t)
+            lines_targets[j].set_3d_properties([z_t])
      
     return x, y, z, x_from0, y_from0, z_from0
 
@@ -679,6 +686,9 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
                                   frames=len(t_all[0:-2:numFrames]),
                                   interval=(Ts*100*numFrames))
     
+    #plt.show()
     ani.save('visualization/animations/animation3D.gif')
     plt.show()
+    #plt.close(fig)
+
     return ani

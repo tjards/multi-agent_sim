@@ -55,10 +55,10 @@ Ti      = 0         # initial time
 Tf      = 90        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
 f       = 0         # parameter for future use
-dimens  = 3         # dimension (2 = 2D, 3 = 3D)
+dimens  = 2         # dimension (2 = 2D, 3 = 3D)
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'lemni'
+strategy = 'pinning'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -171,15 +171,6 @@ if verbose == 1:
     print('done.')
     
     
-#%% Produce plots
-# --------------
-import visualization.plot_sim as plot_sim
-
-if verbose == 1:
-    print('building plots.')
-
-plot_sim.plotMe(data_file_path)
-
 #%% Produce animation of simulation
 # --------------------------------- 
 import visualization.animation_sim as animation_sim
@@ -197,6 +188,16 @@ with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
     config_tactic_type = config_agents['tactic_type']
 
 ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
+
+#%% Produce plots
+# --------------
+import visualization.plot_sim as plot_sim
+
+if verbose == 1:
+    print('building plots.')
+
+plot_sim.plotMe(data_file_path)
+
 
 #%% Main
 # ------

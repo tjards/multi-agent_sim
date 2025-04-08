@@ -149,7 +149,7 @@ def velocity_alignment(states_q, states_p, k_node, k_neigh, r, d):
 def navigation(states_q, states_p, targets, targets_v, k_node):
     
     u_navigation = - c1_g*sigma_1(states_q[:,k_node]-targets[:,k_node])-c2_g*(states_p[:,k_node] - targets_v[:,k_node])
-
+    
     return u_navigation
 
 
@@ -246,5 +246,11 @@ def compute_cmd_b(states_q, states_p, obstacles, walls, k_node):
         if dist_b < r_prime and states_q[2,k_node] < maxAlt:
             p_ik = np.dot(P,states_p[:,k_node])
             u_obs[:,k_node] += c1_b*phi_b(states_q[:,k_node], q_ik, d_b)*n_ij(states_q[:,k_node], q_ik) + c2_b*b_ik(states_q[:,k_node], q_ik, d_b)*(p_ik - states_p[:,k_node])
+
+        # safety check (if all in a common plane)
+        #if np.all(states_q[2, :] == states_q[2, 0]) and np.all(obstacles[2, :] == obstacles[2, 0]):
+        #    # i should see no z-component
+        #    u_obs[2,:] = 0
+            
 
         return u_obs[:,k_node] 
