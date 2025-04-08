@@ -1,3 +1,10 @@
 data/data
 visualization/animations
 visualization/plots
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# macOS system files
+.DS_Store
