@@ -30,7 +30,7 @@ import json
 
 #%% hyperparameters
 # -----------------
-nShepherds = 5  # number of shepherds (just herding = 0)
+nShepherds = 30  # number of shepherds (just herding = 0)
 
 # for herding
 r_R = 3         # repulsion radius

@@ -19,9 +19,9 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 12 # 7    # number of agents
+nAgents = 50 # 7    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 20 #20 #80 # 20   # initial spread of agents
+iSpread = 40 #20 #80 # 20   # initial spread of agents
 init_conditions = 'random'   # mesh, random, evenly_spaced
 
 # store the config

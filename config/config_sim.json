@@ -1,1 +1,1 @@
-{"Ti": 0, "Tf": 90, "Ts": 0.02, "dimens": 3, "verbose": 1, "system": "swarm", "strategy": "lemni"}
+{"Ti": 0, "Tf": 200, "Ts": 0.02, "dimens": 2, "verbose": 1, "system": "swarm", "strategy": "shep"}
