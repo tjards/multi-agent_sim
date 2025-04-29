@@ -1,0 +1,35 @@
+{
+    "simulation": {
+        "Ti": 0,
+        "Tf": 30,
+        "Ts": 0.02,
+        "dimens": 2,
+        "verbose": 1,
+        "system": "swarm",
+        "strategy": "shep"
+    },
+    "agents": {
+        "nAgents": 5,
+        "rAgents": 0.5,
+        "initial_spread": 40,
+        "dynamics": "double integrator",
+        "tactic_type": "shep"
+    },
+    "targets": {
+        "tSpeed": 0,
+        "initial_target_positions": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    "obstacles": {
+        "nObs": 0,
+        "nWalls": 1,
+        "oSpread": 30,
+        "vehObs": 0
+    }
+}

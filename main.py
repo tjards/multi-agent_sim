@@ -58,7 +58,7 @@ f       = 0         # parameter for future use
 dimens  = 2         # dimension (2 = 2D, 3 = 3D)
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'pinning'
+strategy = 'shep'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -77,9 +77,23 @@ if dimens == 2 and strategy == 'cao':
 
 # save to config file
 # -------------------
-config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'dimens': dimens, 'verbose': 1, 'system': system, 'strategy': strategy}
-with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
-    json.dump(config_sim, configs_sim)
+# config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'dimens': dimens, 'verbose': 1, 'system': system, 'strategy': strategy}
+# with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
+#     json.dump(config_sim, configs_sim)
+    
+configs= {
+    'simulation': {
+        'Ti': Ti, 
+        'Tf': Tf, 
+        'Ts': Ts, 
+        'dimens': dimens, 
+        'verbose': 1, 
+        'system': system, 
+        'strategy': strategy
+        }
+    }
+with open(os.path.join("config", "configs.json"), 'w') as file:
+    json.dump(configs, file, indent=4, sort_keys=False)
 
 #%% build the system
 # ------------------
@@ -188,13 +202,21 @@ if verbose == 1:
     print('building animation.')
 
 # pull out the relevant configs
-with open(os.path.join("config", "config_sim.json"), 'r') as configs_sim:
+# with open(os.path.join("config", "config_sim.json"), 'r') as configs_sim:
+#     config_sim = json.load(configs_sim)
+#     config_Ts = config_sim['Ts']
+#     config_dimens = config_sim['dimens']
+# with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
+#     config_agents = json.load(configs_agents)
+#     config_tactic_type = config_agents['tactic_type']
+    
+with open(os.path.join("config", "configs.json"), 'r') as configs_sim:
     config_sim = json.load(configs_sim)
-    config_Ts = config_sim['Ts']
-    config_dimens = config_sim['dimens']
-with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
+    config_Ts = config_sim['simulation']['Ts']
+    config_dimens = config_sim['simulation']['dimens']
+with open(os.path.join("config", "configs.json"), 'r') as configs_agents:
     config_agents = json.load(configs_agents)
-    config_tactic_type = config_agents['tactic_type']
+    config_tactic_type = config_agents['agents']['tactic_type']
 
 ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
 

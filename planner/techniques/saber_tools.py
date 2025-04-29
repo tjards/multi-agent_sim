@@ -50,25 +50,63 @@ def return_ranges():
 
 #%% save configs
 # --------------
-config = {}
-with open(os.path.join("config", "config_planner_saber.json"), 'w') as configs:
-    config['a']         = a
-    config['b']         = b
-    config['c']         = c
-    config['eps']       = eps
-    config['h']         = h
-    config['pi']        = pi
-    config['c1_a']      = c1_a
-    config['c2_a']      = c2_a
-    config['c1_b']      = c1_b
-    config['c2_b']      = c2_b
-    config['c1_g']      = c1_g
-    config['c2_g']      = c2_g
-    config['d']         = d
-    config['d_prime']   = d_prime
-    config['r']         = r
-    config['r_prime']   = r_prime
-    json.dump(config, configs)
+#config = {}
+# with open(os.path.join("config", "config_planner_saber.json"), 'w') as configs:
+#     config['a']         = a
+#     config['b']         = b
+#     config['c']         = c
+#     config['eps']       = eps
+#     config['h']         = h
+#     config['pi']        = pi
+#     config['c1_a']      = c1_a
+#     config['c2_a']      = c2_a
+#     config['c1_b']      = c1_b
+#     config['c2_b']      = c2_b
+#     config['c1_g']      = c1_g
+#     config['c2_g']      = c2_g
+#     config['d']         = d
+#     config['d_prime']   = d_prime
+#     config['r']         = r
+#     config['r_prime']   = r_prime
+#     json.dump(config, configs)
+
+# Define config path
+config_path = os.path.join("config", "configs.json")
+
+#Load existing configs
+if os.path.exists(config_path):
+    with open(config_path, 'r') as file:
+        configs = json.load(file)
+else:
+    configs = {}
+
+
+# Now safe to create 'saber' inside 'planner'
+configs['saber'] = {
+    'a': a,
+    'b': b,
+    'c': c,
+    'eps': eps,
+    'h': h,
+    'pi': pi,
+    'c1_a': c1_a,
+    'c2_a': c2_a,
+    'c1_b': c1_b,
+    'c2_b': c2_b,
+    'c1_g': c1_g,
+    'c2_g': c2_g,
+    'd': d,
+    'd_prime': d_prime,
+    'r': r,
+    'r_prime': r_prime
+}
+
+# Save updated configs
+with open(config_path, 'w') as f:
+    json.dump(configs, f, indent=4, sort_keys=False)
+
+
+
 
 #%% Useful functions
 # ------------------

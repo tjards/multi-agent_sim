@@ -13,9 +13,13 @@ import numpy as np
 import os
 import json
 
-with open(os.path.join("config", "config_agents.json"), 'r') as tactic_tests:
+# with open(os.path.join("config", "config_agents.json"), 'r') as tactic_tests:
+#     tactic_test = json.load(tactic_tests)
+#     tactic_type = tactic_test['tactic_type']
+    
+with open(os.path.join("config", "configs.json"), 'r') as tactic_tests:
     tactic_test = json.load(tactic_tests)
-    tactic_type = tactic_test['tactic_type']
+    tactic_type = tactic_test['simulation']['strategy']
     
 if tactic_type == 'circle':
     from .techniques import encirclement_tools as encircle_tools

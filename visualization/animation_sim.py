@@ -25,9 +25,14 @@ from data import data_manager
 # =============================================================================
 # Configuration pulls
 # =============================================================================
-config_path = os.path.join("config", "config_agents.json")
+# config_path = os.path.join("config", "config_agents.json")
+# with open(config_path, 'r') as config_file:
+#     config_agents = json.load(config_file)
+    
+config_path = os.path.join("config", "configs.json")
 with open(config_path, 'r') as config_file:
-    config_agents = json.load(config_file)
+    config = json.load(config_file)
+    config_agents = config['agents']
 
 
 # pull the quadcopter config (if applicable in the config)
