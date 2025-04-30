@@ -96,6 +96,36 @@ def return_ranges():
 def return_desired_sep():
     return d
 
+# update configs
+# --------------
+from config.configs_tools import update_configs  
+configs_entries = [
+    ('d', d),
+    ('r', r),
+    ('cmd_min', cmd_min),
+    ('cmd_max', cmd_max),
+    ('gain_p', gain_p),
+    ('gain_v', gain_v),
+    ('kv', kv),
+    ('ka', ka),
+    ('kr', kr),
+    ('kx', kx),
+    ('d_bar', d_bar),
+    ('i_cont', i_cont),
+    ('gamma_kp', gamma_kp),
+    ('H_min', H_min),
+    ('mode_malicious', mode_malicious),
+    ('mal_type', mal_type),
+    ('mal_kv', mal_kv),
+    ('mal_ka', mal_ka),
+    ('mal_kr', mal_kr),
+    ('mal_kv_hat', mal_kv_hat),
+    ('mal_ka_hat', mal_ka_hat),
+    ('mal_kr_hat', mal_kr_hat)
+]
+update_configs('cao',  configs_entries)
+
+
 #%% CUSTOM CLASS 
 
 class Flock:

@@ -58,7 +58,7 @@ f       = 0         # parameter for future use
 dimens  = 2         # dimension (2 = 2D, 3 = 3D)
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'shep'
+strategy = 'circle'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -76,24 +76,15 @@ if dimens == 2 and strategy == 'cao':
     raise ValueError("Cao not adapted for 2D yet.")
 
 # save to config file
-# -------------------
-# config_sim = {'Ti': Ti, 'Tf': Tf, 'Ts': Ts, 'dimens': dimens, 'verbose': 1, 'system': system, 'strategy': strategy}
-# with open(os.path.join("config", "config_sim.json"), 'w') as configs_sim:
-#     json.dump(config_sim, configs_sim)
-    
-configs= {
-    'simulation': {
-        'Ti': Ti, 
-        'Tf': Tf, 
-        'Ts': Ts, 
-        'dimens': dimens, 
-        'verbose': 1, 
-        'system': system, 
-        'strategy': strategy
-        }
-    }
-with open(os.path.join("config", "configs.json"), 'w') as file:
-    json.dump(configs, file, indent=4, sort_keys=False)
+# -------------------    
+from config.configs_tools import update_configs, initialize_configs
+initialize_configs() 
+configs_entries = [('Ti', Ti), ('Tf', Tf), ('Ts', Ts), ('dimens', dimens), ('verbose', 1), ('system', system), ('strategy', strategy)]
+update_configs('simulation',configs_entries)
+
+# experimental save
+# -----------------
+experimental_save = False
 
 #%% build the system
 # ------------------
@@ -219,6 +210,13 @@ with open(os.path.join("config", "configs.json"), 'r') as configs_agents:
     config_tactic_type = config_agents['agents']['tactic_type']
 
 ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
+
+#%% experimental save
+if experimental_save:
+    from experiments.experiment_manager import save_experiment
+    save_experiment()
+
+
 
 #%% Main
 # ------

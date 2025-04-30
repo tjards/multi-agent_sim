@@ -1,6 +1,7 @@
-data/data
-visualization/animations
-visualization/plots
+data/data/*
+visualization/animations/*
+visualization/plots/*
+experiments/*
 
 # Python cache files
 __pycache__/
@@ -8,3 +9,4 @@ __pycache__/
 
 # macOS system files
 .DS_Store
+

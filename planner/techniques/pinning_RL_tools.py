@@ -52,6 +52,8 @@ import json
 import random 
 import copy
 
+from config.configs_tools import update_configs  
+
 #%% simulation setup
 # ------------------
 
@@ -124,42 +126,20 @@ d_init  = d         # default d (don't mess with this)
 
 #%% save configs
 # --------------
-#config = {}
-# with open(os.path.join("config", "config_planner_pinning.json"), 'w') as configs:
-#     config['hetero_gradient']     = hetero_gradient
-#     config['hetero_lattice']      = hetero_lattice
-#     config['learning']            = learning
-#     #config['directional']         = directional
-#     config['d']                   = d
-#     config['d_min']               = d_min
-#     config['r_max']               = r
-#     json.dump(config, configs)
-
-
-# Load existing configs if they exist
 
 def update_pinning_configs():
-
-    config_path = os.path.join("config", "configs.json")
-    if os.path.exists(config_path):
-        with open(config_path, 'r') as file:
-            configs = json.load(file)
-    else:
-        configs = {}
     
-    configs['planner'] = {}
-    configs['planner'].update({
-        'hetero_gradient': hetero_gradient,
-        'hetero_lattice': hetero_lattice,
-        'learning': learning,
-        'd': d,
-        'd_min': d_min,
-        'r_max': r
-    })
-    with open(config_path, 'w') as f:
-        json.dump(configs, f, indent=4, sort_keys=False)
-
-
+    configs_entries = [
+    ('hetero_gradient', hetero_gradient),
+    ('hetero_lattice', hetero_lattice),
+    ('learning', learning),
+    ('d', d),
+    ('d_min', d_min),
+    ('r_max', r)
+    ]
+    
+    update_configs('pinning',  configs_entries)
+    
 # for externals
 # -------------
 def return_lattice_param():

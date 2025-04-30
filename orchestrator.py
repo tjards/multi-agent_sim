@@ -25,19 +25,12 @@ import json
 # dev!
 import utils.swarmgraph as graphical 
 import config.configs_tools as configs_tools
-config_path=os.path.join("config", "configs.json")
-
-# # read the configs
-# with open(os.path.join("config", "config_sim.json"), 'r') as tactic_tests:
-#     tactic_test = json.load(tactic_tests)
-#     tactic_type = tactic_test['strategy']
-    
+config_path=configs_tools.config_path
 
 # read the configs
 with open(config_path, 'r') as tactic_tests:
     tactic_test = json.load(tactic_tests)
     tactic_type = tactic_test['simulation']['strategy']
-
 
 # load the modules, as appropriate
 if tactic_type == 'circle':
@@ -57,13 +50,9 @@ elif tactic_type == 'shep':
     from planner.techniques import shepherding as shep
 elif tactic_type == 'pinning':
     from planner.techniques import pinning_RL_tools as pinning_tools
-    # with open(os.path.join("config", "config_planner_pinning.json"), 'r') as planner_pinning_tests:
-    #     planner_configs = json.load(planner_pinning_tests)
-    #     lattice_consensus = planner_configs['hetero_lattice']
     pinning_tools.update_pinning_configs()
     with open(config_path, 'r') as planner_pinning_tests:
-        planner_configs = json.load(planner_pinning_tests)
-        lattice_consensus = planner_configs['planner']['hetero_lattice']
+        planner_configs = json.load(planner_pinning_tests)['pinning']['hetero_lattice']
 elif tactic_type == 'cao':
     from planner.techniques import cao_tools
 
@@ -84,6 +73,13 @@ sensor_aperature    = 140
 
 #twoD = True
 
+configs_tools.update_configs('orchestrator', [
+    ('pin_update_rate', pin_update_rate),
+    ('pin_selection_method', pin_selection_method),
+    ('criteria_table', criteria_table),
+    ('sensor_aperature', sensor_aperature)
+] )
+
 #%% Build the system
 # ------------------
 def build_system(system, strategy, dimens, Ts):
@@ -94,19 +90,13 @@ def build_system(system, strategy, dimens, Ts):
         # ------------------------
         import agents.agents as agents
         Agents = agents.Agents(strategy, dimens)
-        # with open(os.path.join("config", "config_agents.json"), 'w') as configs_agents:
-        #     json.dump(Agents.config_agents, configs_agents)
-
         configs_tools.update_orch_configs(config_path, agent_obj=Agents)
 
         
         # instantiate the targets
         # -----------------------
         import targets.targets as targets
-        Targets = targets.Targets(Agents.nAgents, dimens)
-        # with open(os.path.join("config", "config_targets.json"), 'w') as configs_targets:
-        #     json.dump(Targets.config_targets, configs_targets)
-    
+        Targets = targets.Targets(Agents.nAgents, dimens)    
         configs_tools.update_orch_configs(config_path, target_obj=Targets)
     
         # instantiate the planner
@@ -118,10 +108,7 @@ def build_system(system, strategy, dimens, Ts):
         # instantiate the obstacles 
         # -------------------------
         import obstacles.obstacles as obstacles
-        Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets, dimens)
-        # with open(os.path.join("config", "config_obstacles.json"), 'w') as configs_obstacles:
-        #     json.dump(Obstacles.config_obstacles, configs_obstacles)
-            
+        Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets, dimens)     
         configs_tools.update_orch_configs(config_path, obstacle_obj=Obstacles)
         
         
@@ -131,18 +118,17 @@ def build_system(system, strategy, dimens, Ts):
         
         # pinning control case
         if tactic_type == 'pinning':
-            #with open(os.path.join("config", "config_planner_pinning.json"), 'r') as planner_pinning_tests:
-            #    planner_configs = json.load(planner_pinning_tests)
+
             pinning_tools.update_pinning_configs()
             with open(os.path.join("config", "configs.json"), 'r') as planner_pinning_tests:
                 configs = json.load(planner_pinning_tests)
-                planner_configs = configs['planner']
+                planner_configs = configs['pinning']
                 
                 # need one learner to achieve consensus on lattice size
                 lattice_consensus = planner_configs['hetero_lattice']
                 if lattice_consensus == 1:
                     import learner.consensus_lattice as consensus_lattice
-                    #Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['directional'], planner_configs['d_min'], planner_configs['d'])
+
                     Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['d_min'], planner_configs['d'], planner_configs['r_max'])
                     
                     #LOAD

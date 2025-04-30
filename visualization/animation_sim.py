@@ -689,7 +689,7 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
                                   interval=(Ts*100*numFrames))
     
     #plt.show()
-    ani.save('visualization/animations/animation3D.gif')
+    ani.save('visualization/animations/animation.gif')
     plt.show()
     #plt.close(fig)
 

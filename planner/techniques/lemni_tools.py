@@ -43,12 +43,15 @@ quat_0_ = quat.quatjugate(quat_0)               # used to untwist
 
 #%% save configs
 # --------------
-config = {}
-with open(os.path.join("config", "config_planner_lemniscate.json"), 'w') as configs:
-    config['c1_d']      = c1_d
-    config['c2_d']      = c2_d
-    #config['unit_lem']  = list(unit_lem)
-    json.dump(config, configs)
+
+from config.configs_tools import update_configs  
+configs_entries = [
+    ('c1_d', c1_d),
+    ('c2_d', c2_d),
+    # ('unit_lem', list(unit_lem))  # Uncomment if/when needed
+]
+update_configs('lemni', configs_entries)
+
 
 #%% Useful functions 
 

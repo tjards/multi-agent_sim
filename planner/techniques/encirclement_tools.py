@@ -35,17 +35,18 @@ quatern = quat_0                        # uncessary duplicate (legacy code)
 quat_0_ = quat.quatjugate(quat_0)       # used to untwist   
 
 #%% save configs
-# --------------
-config = {}
-with open(os.path.join("config", "config_planner_encirclement.json"), 'w') as configs:
-    config['c1_d']      = c1_d
-    config['c2_d']      = c2_d
-    config['r_max']     = r_max
-    config['r_desired'] = r_desired
-    config['phi_dot_d'] = phi_dot_d
-    config['ref_plane'] = ref_plane
-    config['quat_0']    = list(quat_0)
-    json.dump(config, configs)
+# --------------    
+from config.configs_tools import update_configs  
+configs_entries = [
+    ('c1_d', c1_d),
+    ('c2_d', c2_d),
+    ('r_max', r_max),
+    ('r_desired', r_desired),
+    ('phi_dot_d', phi_dot_d),
+    ('ref_plane', ref_plane),
+    ('quat_0', list(quat_0))
+    ]
+update_configs('circle',  configs_entries)
 
 #%% Useful functions
 # -------------------

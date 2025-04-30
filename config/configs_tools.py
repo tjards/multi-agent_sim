@@ -9,6 +9,41 @@ Created on Mon Apr 28 19:05:28 2025
 import os
 import json
 
+
+config_path = os.path.join("config", "configs.json")
+
+def initialize_configs():
+    
+    with open(config_path, 'w') as file:
+        json.dump({}, file)
+
+
+# generalized way to update configs 
+def update_configs(section, entries=[]):
+    # Load existing config if it exists, else start fresh
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as file:
+            configs = json.load(file)
+    else:
+        configs = {}
+
+    # Build the new section from the entries list
+    section_dict = {}
+    for key, value in entries:
+        section_dict[key] = value
+
+    # Update the configs with the new section
+    configs[section] = section_dict
+
+    # Save updated configs back to file
+    with open(config_path, 'w') as file:
+        json.dump(configs, file, indent=4, sort_keys=False)
+    
+# example:
+#entries = [('Ti', 0), ('Tf', 100), ('Ts', 0.1), ('dimens', 3), ('verbose', 1), ('system', 'multi'), ('strategy', 'shepherd')]
+#update_configs('simulation', entries)
+
+
 def update_orch_configs(config_path, agent_obj=None, target_obj=None, obstacle_obj=None, learner_objs=None):
     """
     Update the master configs.json file with provided objects.

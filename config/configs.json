@@ -6,14 +6,55 @@
         "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "shep"
+        "strategy": "circle"
+    },
+    "circle": {
+        "c1_d": 2,
+        "c2_d": 2.8284271247461903,
+        "r_max": 50,
+        "r_desired": 5,
+        "phi_dot_d": 0.05,
+        "ref_plane": "horizontal",
+        "quat_0": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    "saber": {
+        "a": 5,
+        "b": 5,
+        "c": 0.0,
+        "eps": 0.1,
+        "h": 0.2,
+        "pi": 3.141592653589793,
+        "c1_a": 1,
+        "c2_a": 2.0,
+        "c1_b": 1,
+        "c2_b": 2.0,
+        "c1_g": 2,
+        "c2_g": 4.47213595499958,
+        "d": 10,
+        "d_prime": 6.0,
+        "r": 13.0,
+        "r_prime": 7.800000000000001
+    },
+    "orchestrator": {
+        "pin_update_rate": 10,
+        "pin_selection_method": "degree_leafs",
+        "criteria_table": {
+            "radius": true,
+            "aperature": false
+        },
+        "sensor_aperature": 140
     },
     "agents": {
         "nAgents": 5,
         "rAgents": 0.5,
         "initial_spread": 40,
         "dynamics": "double integrator",
-        "tactic_type": "shep"
+        "tactic_type": "circle"
     },
     "targets": {
         "tSpeed": 0,

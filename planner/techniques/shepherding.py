@@ -79,70 +79,32 @@ cmd_adjust = 0.02
 
 #%% save configs
 # --------------
-# config = {}
-# with open(os.path.join("config", "config_planner_shepherding.json"), 'w') as configs:
-#     config['nShepherds'] = nShepherds
-#     config['r_R'] = r_R
-#     config['r_O'] = r_O
-#     config['r_A'] = r_A
-#     config['r_I'] = r_I
-#     config['a_R'] = a_R
-#     config['a_O'] = a_O
-#     config['a_A'] = a_A
-#     config['a_I'] = a_I
-#     config['a_V'] = a_V
-#     config['r_S'] = r_S
-#     config['r_Oi']      = r_Oi
-#     config['r_Od']      = r_Od
-#     config['r_Or']      = r_Or
-#     config['a_N']       = a_N
-#     config['a_R_s']     = a_R_s
-#     config['a_R_s_v']   = a_R_s_v
-#     config['a_V_s']     = a_V_s
-#     config['type_shepherd'] = type_shepherd
-#     config['type_avoid']    = type_avoid
-#     config['cmd_adjust']    = cmd_adjust
-#     json.dump(config, configs)
     
-    
-# Define config path
-config_path = os.path.join("config", "configs.json")
-
-# Step 1: Load existing configs
-if os.path.exists(config_path):
-    with open(config_path, 'r') as file:
-        configs = json.load(file)
-else:
-    configs = {}
-
-# Step 2: Insert/update 'shepherding' block
-configs['shepherding'] = {
-    'nShepherds': nShepherds,
-    'r_R': r_R,
-    'r_O': r_O,
-    'r_A': r_A,
-    'r_I': r_I,
-    'a_R': a_R,
-    'a_O': a_O,
-    'a_A': a_A,
-    'a_I': a_I,
-    'a_V': a_V,
-    'r_S': r_S,
-    'r_Oi': r_Oi,
-    'r_Od': r_Od,
-    'r_Or': r_Or,
-    'a_N': a_N,
-    'a_R_s': a_R_s,
-    'a_R_s_v': a_R_s_v,
-    'a_V_s': a_V_s,
-    'type_shepherd': type_shepherd,
-    'type_avoid': type_avoid,
-    'cmd_adjust': cmd_adjust
-}
-
-# Step 3: Save back
-with open(config_path, 'w') as f:
-    json.dump(configs, f, indent=4, sort_keys=False)
+from config.configs_tools import update_configs  
+configs_entries = [
+    ('nShepherds', nShepherds),
+    ('r_R', r_R),
+    ('r_O', r_O),
+    ('r_A', r_A),
+    ('r_I', r_I),
+    ('a_R', a_R),
+    ('a_O', a_O),
+    ('a_A', a_A),
+    ('a_I', a_I),
+    ('a_V', a_V),
+    ('r_S', r_S),
+    ('r_Oi', r_Oi),
+    ('r_Od', r_Od),
+    ('r_Or', r_Or),
+    ('a_N', a_N),
+    ('a_R_s', a_R_s),
+    ('a_R_s_v', a_R_s_v),
+    ('a_V_s', a_V_s),
+    ('type_shepherd', type_shepherd),
+    ('type_avoid', type_avoid),
+    ('cmd_adjust', cmd_adjust)
+]
+update_configs('shep',  configs_entries)
 
 #%% obstacle avoidance helpers (shepherds)
 # ---------------------------------------

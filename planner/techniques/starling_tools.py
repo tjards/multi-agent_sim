@@ -45,31 +45,34 @@ sigma_sqr   = np.square(sigma)
 
 #%save configs
 # --------------
-config = {}
-with open(os.path.join("config", "config_planner_starling.json"), 'w') as configs:
-    config['v_o']       = v_o
-    config['m']         = m
-    config['tau']       = tau
-    config['del_u']     = del_u
-    config['s']         = s
-    config['R_max']     = R_max
-    config['n_c']       = n_c
-    config['r_sep']     = r_sep
-    config['r_h']       = r_h
-    config['r_roost']   = r_roost
-    config['w_s']       = w_s
-    config['w_c']       = w_c
-    config['w_a']       = w_a
-    config['w_roost_h'] = w_roost_h
-    config['w_roost_v'] = w_roost_v
-    config['w_rand']    = w_rand
-    config['C_c']       = C_c
-    config['alpha']     = alpha
-    config['eps']       = eps
-    config['sigma']     = sigma
-    config['sigma_sqr'] = sigma_sqr
 
-    json.dump(config, configs)
+from config.configs_tools import update_configs
+
+configs_entries = [
+    ('v_o', v_o),
+    ('m', m),
+    ('tau', tau),
+    ('del_u', del_u),
+    ('s', s),
+    ('R_max', R_max),
+    ('n_c', n_c),
+    ('r_sep', r_sep),
+    ('r_h', r_h),
+    ('r_roost', r_roost),
+    ('w_s', w_s),
+    ('w_c', w_c),
+    ('w_a', w_a),
+    ('w_roost_h', w_roost_h),
+    ('w_roost_v', w_roost_v),
+    ('w_rand', w_rand),
+    ('C_c', C_c),
+    ('alpha', alpha),
+    ('eps', eps),
+    ('sigma', sigma),
+    ('sigma_sqr', sigma_sqr)
+]
+
+update_configs('starling', configs_entries)
 
 
 # Some useful functions
