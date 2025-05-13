@@ -40,6 +40,7 @@ plt.style.use('default')
 import json
 import h5py
 import os
+from datetime import datetime
 
 # define data path
 # ----------------
@@ -58,7 +59,7 @@ f       = 0         # parameter for future use
 dimens  = 2         # dimension (2 = 2D, 3 = 3D)
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'circle'
+strategy = 'pinning'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
@@ -222,7 +223,8 @@ if experimental_save:
 # ------
 
 def main():
-    print("Running simulation... ")
+    sim_time = datetime.now().strftime("%y%m%d-%H%M%S")
+    print(f"m-a_s run at {sim_time}")
 
 if __name__ == "__main__":
     main()

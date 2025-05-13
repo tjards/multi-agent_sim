@@ -20,12 +20,30 @@ from matplotlib.ticker import MaxNLocator
 from data import data_manager
 import os
 
+#%% parameters
+# ------------
+save_plots = True 
+show_plots= False 
+
+
 #%% paths
-# -----
+# --------
 data_directory = 'data'
 data_file_path = os.path.join(data_directory, "data.h5")
 
-# graph analysis
+plots_directory = 'visualization/plots'
+#if save_plots and not os.path.exists(plots_directory):
+#    os.makedirs(plots_directory)
+
+#%% helper
+def handle_plot(fig, name):
+    if save_plots:
+        fig.savefig(os.path.join(plots_directory, f"{name}.png"), dpi=300, bbox_inches='tight')
+        plt.close(fig) if not show_plots else None
+    if show_plots:
+        plt.show()
+
+#%% graph analysis
 # ---------------
 
 # find connected components
@@ -85,7 +103,8 @@ def plotMe(data_file_path):
     #ax.plot([70, 70], [100, 250], '--b', lw=1)
     #ax.hlines(y=5, xmin=Ti, xmax=Tf, linewidth=1, color='r', linestyle='--')
     ax.grid()
-    plt.show()
+    #plt.show()
+    handle_plot(fig, 'proximity')
 
     
     # radii from target
@@ -100,7 +119,8 @@ def plotMe(data_file_path):
     ax.set(xlabel='Time [s]', ylabel='Distance from Target for Each Agent [m]',
             title='Distance from Target')
     #plt.axhline(y = 5, color = 'k', linestyle = '--')
-    plt.show()
+    #plt.show()
+    handle_plot(fig, 'distance_from_target')
     
     #%% radii from obstacles
     if obstacles_all.shape[2] >  0:
@@ -128,7 +148,8 @@ def plotMe(data_file_path):
                 title='Distance from Obstacles')
         #plt.axhline(y = 5, color = 'k', linestyle = '--')
         
-        plt.show()
+        #plt.show()
+        handle_plot(fig, 'obstacles')
             
             
     #%% local k-connectivity
@@ -157,7 +178,8 @@ def plotMe(data_file_path):
         plt.title('k-connectivity')
         plt.xlabel('time [s]')
         plt.ylabel('local k-connectivity [mean +/- max/min]')
-        plt.show()
+        #plt.show()
+        handle_plot(fig, 'k-connectivity')
         
         
     #%% Energy
@@ -207,7 +229,8 @@ def plotMe(data_file_path):
         
         ax.grid()
         #fig.savefig("test.png")
-        plt.show()
+        #plt.show()
+        handle_plot(fig, 'energy')
     
     #%% Spacing
     # ---------
@@ -246,7 +269,8 @@ def plotMe(data_file_path):
         ax.legend(['Connected', 'All'], loc = 'upper left')
         ax.grid()
         #fig.savefig("test.png")
-        plt.show()    
+        #plt.show()
+        handle_plot(fig, 'spacing')
         
     #%% Lattice violation
     # -------------------
@@ -295,7 +319,8 @@ def plotMe(data_file_path):
         ax2.legend(loc = 'upper left')
         ax.grid()
         #fig.savefig("test.png")
-        plt.show() 
+        #plt.show()
+        handle_plot(fig, 'constraints')
 
 
         #%% Heatmap of connections
@@ -403,7 +428,8 @@ def plotMe(data_file_path):
             plt.xlabel("Timestep")
             plt.ylabel("Agent-Agent Index")
             plt.title("Separation Error Heatmap [m]")
-            plt.show()
+            #plt.show()
+            handle_plot(fig, 'heatmap')
             
             #plt.close(fig)
 

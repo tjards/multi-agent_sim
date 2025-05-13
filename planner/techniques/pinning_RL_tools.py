@@ -135,7 +135,8 @@ def update_pinning_configs():
     ('learning', learning),
     ('d', d),
     ('d_min', d_min),
-    ('r_max', r)
+    ('r_max', r),
+    ('flocking_method', flocking_method)
     ]
     
     update_configs('pinning',  configs_entries)

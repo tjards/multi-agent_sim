@@ -65,7 +65,7 @@ color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # 
 color_lattice       = ['grey', 'blue'] # [in range, connected]
 color_projection    = ['black', 'black'] # xy, yz
 projection_plot     = True 
-
+show_plot           = False
 
 # =============================================================================
 # Helper functions 
@@ -690,7 +690,9 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
     
     #plt.show()
     ani.save('visualization/animations/animation.gif')
-    plt.show()
+    
+    if show_plot:
+        plt.show()
     #plt.close(fig)
 
     return ani

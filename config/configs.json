@@ -6,21 +6,7 @@
         "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "circle"
-    },
-    "circle": {
-        "c1_d": 2,
-        "c2_d": 2.8284271247461903,
-        "r_max": 50,
-        "r_desired": 5,
-        "phi_dot_d": 0.05,
-        "ref_plane": "horizontal",
-        "quat_0": [
-            1.0,
-            0.0,
-            0.0,
-            0.0
-        ]
+        "strategy": "pinning"
     },
     "saber": {
         "a": 5,
@@ -40,6 +26,26 @@
         "r": 13.0,
         "r_prime": 7.800000000000001
     },
+    "gradient_parameters": {
+        "LJ_B": 1,
+        "LJ_gain": 1000000,
+        "MORSE_beta": 0.5,
+        "MORSE_D": 1,
+        "gromacs_lambda_val": 0.5,
+        "gromacs_A": 1,
+        "gromacs_B": 2,
+        "gromacs_alpha": 0.5,
+        "gromacs_beta": 1.0
+    },
+    "pinning": {
+        "hetero_gradient": 0,
+        "hetero_lattice": 1,
+        "learning": 0,
+        "d": 10,
+        "d_min": 5,
+        "r_max": 13.0,
+        "flocking_method": "lennard_jones"
+    },
     "orchestrator": {
         "pin_update_rate": 10,
         "pin_selection_method": "degree_leafs",
@@ -54,7 +60,7 @@
         "rAgents": 0.5,
         "initial_spread": 40,
         "dynamics": "double integrator",
-        "tactic_type": "circle"
+        "tactic_type": "pinning"
     },
     "targets": {
         "tSpeed": 0,
@@ -72,5 +78,8 @@
         "nWalls": 1,
         "oSpread": 30,
         "vehObs": 0
+    },
+    "learners": {
+        "consensus_lattice": "Config not available for consensus_lattice"
     }
 }

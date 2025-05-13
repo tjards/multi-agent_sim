@@ -10,8 +10,42 @@ Created on Thu Nov 21 19:00:54 2024
 
 #%% import stuff
 import numpy as np
+from config.configs_tools import update_configs  
+
+#%%  parameters
+
+# lennard-jones
+LJ_gain = 1000000
+LJ_B = 1
+
+# morse
+MORSE_beta = 0.5
+MORSE_D = 1
+
+# gromacs
+gromacs_lambda_val = 0.5
+gromacs_A = 1 
+gromacs_B = 2
+gromacs_alpha= 0.5
+gromacs_beta= 1.0
 
 
+#%% configs load
+
+configs_entries = [
+('LJ_B', LJ_B),
+('LJ_gain', LJ_gain),
+('MORSE_beta', MORSE_beta),
+('MORSE_D', MORSE_D),
+('gromacs_lambda_val', gromacs_lambda_val),
+('gromacs_A', gromacs_A),
+('gromacs_B', gromacs_B),
+('gromacs_alpha', gromacs_alpha),
+('gromacs_beta', gromacs_beta)
+]
+
+update_configs('gradient_parameters',  configs_entries)
+    
 #%% Gradients
 # ----------
 
@@ -19,11 +53,11 @@ import numpy as np
 # (something isn't working here)
 def grad_gromacs_soft_core(states_q, k_node, k_neigh, r_range, d):
     
-    lambda_val = 0.5
-    A = 1 # these need to be tuned for d
-    B = 2
-    alpha= 0.5
-    beta= 1.0
+    lambda_val = gromacs_lambda_val #0.5
+    A = gromacs_A #1 # these need to be tuned for d
+    B = gromacs_B #2
+    alpha = gromacs_alpha #0.5
+    beta = gromacs_beta #1.0
     sigma = r_range #= 0.3
     r = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
      
@@ -62,8 +96,8 @@ def grad_gromacs_soft_core(states_q, k_node, k_neigh, r_range, d):
 
 def grad_morse_gradient(states_q, k_node, k_neigh, r_range, d):
     
-    beta = 0.5
-    D = 1
+    beta = MORSE_beta #0.5
+    D = MORSE_D #1
     r0 = d-1
     
     r = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
@@ -75,8 +109,8 @@ def grad_morse_gradient(states_q, k_node, k_neigh, r_range, d):
 def grad_lennard_jones(states_q, k_node, k_neigh, r_range, d):
     
     # compute A and B
-    gain = 1000000
-    B = 1
+    gain = LJ_gain #1000000
+    B = LJ_B #1
     A = ((d**6)*B)/2
     
     A = gain* A #1 # these need to be tuned for d
