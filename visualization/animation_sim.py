@@ -33,6 +33,10 @@ config_path = os.path.join("config", "configs.json")
 with open(config_path, 'r') as config_file:
     config = json.load(config_file)
     config_agents = config['agents']
+    
+    # pull out a radius (if avail)
+    r_range = config.get('saber', {}).get('r', 0)
+
 
 
 # pull the quadcopter config (if applicable in the config)
@@ -47,7 +51,7 @@ if plot_quadcopter:
 # =============================================================================
 # Plotting parameters
 # =============================================================================
-numFrames           = 50    # frame rate (bigger = slower)
+numFrames           = 10    # frame rate (bigger = slower)
 tail                = 500    # trailing trajectory length 
 zoom                = 1     # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
 zoom_axis           = 10    # if zoom mode == 2, sets fixed zoom axis
@@ -64,8 +68,9 @@ prism_scale         = 1
 color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
 color_lattice       = ['grey', 'blue'] # [in range, connected]
 color_projection    = ['black', 'black'] # xy, yz
-projection_plot     = True 
+projection_plot     = False 
 show_plot           = False
+show_ranges         = True # show sensor ranges
 
 # =============================================================================
 # Helper functions 
@@ -467,6 +472,27 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         centroids, = ax.plot([], [], '+', color=color_scheme[5])
         centroids_line, = ax.plot([], [], ':', lw=1, color=color_scheme[5])
     
+    # for drawing ranges
+    if show_ranges:
+        agent_ranges = []
+    
+        if dimens == 2:
+            from matplotlib.patches import Circle
+            for j in range(nVeh):
+                circ = Circle((0, 0), radius=r_range, fill=False, linestyle='--', edgecolor='gray', linewidth=1, alpha=0.3)
+                ax.add_patch(circ)
+                agent_ranges.append(circ)
+        
+        elif dimens == 3:
+            theta = np.linspace(0, 2*np.pi, 50)
+            for j in range(nVeh):
+                x_ring = r_range * np.cos(theta)
+                y_ring = r_range * np.sin(theta)
+                z_ring = np.zeros_like(theta)
+                ring, = ax.plot(x_ring, y_ring, z_ring, linestyle='--', color='gray', linewidth=1, alpha=0.3)
+                agent_ranges.append(ring)
+    
+    
     # add the planar projections
     # --------------------------
     if projection_plot and dimens == 3:
@@ -649,6 +675,21 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
                 # YZ projection
                 projection_lines_yz[j].set_data(0*x_from0[:, j]+cx+ax.get_xlim()[0], y_from0[:, j])
                 projection_lines_yz[j].set_3d_properties(z_from0[:, j])
+        
+        if show_ranges:
+            # add circles
+            if dimens == 2:
+                for j in range(nVeh):
+                    agent_ranges[j].center = (x[j], y[j])
+            
+            elif dimens == 3:
+                for j in range(nVeh):
+                    x_ring = x[j] + r_range * np.cos(theta)
+                    y_ring = y[j] + r_range * np.sin(theta)
+                    z_ring = np.full_like(theta, z[j])  # horizontal ring at agent altitude
+                    agent_ranges[j].set_data(x_ring, y_ring)
+                    agent_ranges[j].set_3d_properties(z_ring)
+
         
         
         # update node colors

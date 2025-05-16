@@ -18,7 +18,7 @@ class Targets:
 
     def __init__(self, nVeh, dimens):
         
-        self.tSpeed     =   0       # speed of target
+        self.tSpeed     =   0.001       # speed of target
         self.dimens     = dimens
         
         self.targets = 4*(np.random.rand(6,nVeh)-0.5)

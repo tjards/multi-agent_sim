@@ -19,10 +19,14 @@ dynamics = 'double integrator'
     # 'double integrator' 
     # 'quadcopter'
 
-nAgents = 5 # 7    # number of agents
+nAgents = 12 # 7    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 40 #20 #80 # 20   # initial spread of agents
+iSpread = 20 #20 #80 # 20   # initial spread of agents
 init_conditions = 'random'   # mesh, random, evenly_spaced
+        
+# constraints
+vmax = 100
+vmin = -100
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
@@ -295,8 +299,8 @@ class Agents:
     def evolve(self, cmd, pin_matrix, t, Ts):
         
         # constraints
-        vmax = 5
-        vmin = -5
+        #vmax = 5
+        #vmin = -5
 
         if dynamics == 'quadcopter':
             
