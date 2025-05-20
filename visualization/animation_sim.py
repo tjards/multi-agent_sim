@@ -68,9 +68,9 @@ prism_scale         = 1
 color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
 color_lattice       = ['grey', 'blue'] # [in range, connected]
 color_projection    = ['black', 'black'] # xy, yz
-projection_plot     = False 
-show_plot           = False
-show_ranges         = True # show sensor ranges
+projection_plot     = False # show 2D projections
+show_plot           = True # show plot at end?
+show_ranges         = False # show sensor ranges
 
 # =============================================================================
 # Helper functions 

@@ -70,6 +70,7 @@ pin_selection_method = 'degree_leafs'
     # allpins     = all are pins 
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
+learning_ctrl = 'CALA' # None, CALA
 
 #twoD = True
 
@@ -77,7 +78,8 @@ configs_tools.update_configs('orchestrator', [
     ('pin_update_rate', pin_update_rate),
     ('pin_selection_method', pin_selection_method),
     ('criteria_table', criteria_table),
-    ('sensor_aperature', sensor_aperature)
+    ('sensor_aperature', sensor_aperature),
+    ('learning_ctrl', learning_ctrl)
 ] )
 
 #%% Build the system
@@ -116,6 +118,14 @@ def build_system(system, strategy, dimens, Ts):
         # -----------------------
         Learners = {}
         
+        # if using CALA to tune controller parameters
+        if learning_ctrl == 'CALA':
+            from learner import CALA_control
+            CALA = CALA_control.CALA(3*Agents.nAgents)
+            
+            #Load
+            Learners['CALA_ctrl'] = CALA
+              
         # pinning control case
         if tactic_type == 'pinning':
 
@@ -228,8 +238,6 @@ class Controller:
             #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
             self.pin_matrix = np.ones((nAgents,nAgents))
             
-            
-
    
     # integrate learninging agents
     # ----------------------------
@@ -420,8 +428,10 @@ class Controller:
                 
                             
                 # compute command
-                cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
+                #cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
                 
+                _, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
+
                 # update the lattice parameters (note: plots relies on this)
                 if 'consensus_lattice' in self.Learners:
                     self.lattice = self.Learners['consensus_lattice'].d_weighted
@@ -486,7 +496,8 @@ class Controller:
             elif tactic_type == 'starling':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
             elif tactic_type == 'pinning':
-                cmd_i[:,k_node] = cmd_i[:,k_node]
+                #cmd_i[:,k_node] = cmd_i[:,k_node]
+                cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
             elif tactic_type == 'shep':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
             elif tactic_type == 'cao':

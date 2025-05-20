@@ -25,8 +25,9 @@ iSpread = 20 #20 #80 # 20   # initial spread of agents
 init_conditions = 'random'   # mesh, random, evenly_spaced
         
 # constraints
-vmax = 100
-vmin = -100
+vmax = 5
+vmin = -5
+
 
 # store the config
 config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
@@ -124,9 +125,9 @@ class Agents:
             if self.dimens == 2:
                 self.state[2,:] = 0*self.state[2,:]
                 
-            self.state[3,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
-            self.state[4,:] = 0.1*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
-            self.state[5,:] = 0.1*np.random.rand(1,self.nAgents)
+            self.state[3,:] = 0.0001*np.random.rand(1,self.nAgents)                                                       # velocity (vx)
+            self.state[4,:] = 0.0001*np.random.rand(1,self.nAgents)                                                       # velocity (vy)
+            self.state[5,:] = 0.0001*np.random.rand(1,self.nAgents)
             if self.dimens == 2:
                 self.state[5,:] = 0*self.state[5,:]
             
