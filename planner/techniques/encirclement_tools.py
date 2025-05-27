@@ -9,8 +9,8 @@ This module implements dynamic encirclement
 """
 
 import numpy as np
-import os
-import json
+#import os
+#import json
 from .utils import quaternions as quat
 
 # delta_phi_desired = 2Pi/N
@@ -25,14 +25,36 @@ c2_d        = 2*np.sqrt(2)  # velocity (p)
 # parameters of the circle 
 r_max       = 50            # max distance to view neighbors (nominally, set high)
 r_desired   = 5             # desired radius of encirclement [m]
-phi_dot_d   = 0.05           # desired angular speed of encirclement [m/s] 0.05 # 0.12  
+phi_dot_d   = 0.05 #0.05           # desired angular speed of encirclement [m/s] 0.05 # 0.12  
 
 # reference frames
 ref_plane = 'horizontal'                # defines reference plane (default horizontal)
 enc_plane = ref_plane                   # uncessary duplicate (legacy code)
-quat_0 = quat.e2q(np.array([0,0,0]))    # if lemniscate, this has to be all zeros (consider expanding later to rotate the whole swarm)
-quatern = quat_0                        # uncessary duplicate (legacy code)
-quat_0_ = quat.quatjugate(quat_0)       # used to untwist   
+
+
+# acceptable ranges
+#   quat_0 = quat.e2q([a, b, c])
+#   where a in [0, 2pi), b in [0, pi), c in [0, 2pi)
+
+
+
+
+
+#quat_0 = quat.e2q(np.array([0,0,0]))    # if lemniscate, this has to be all zeros (consider expanding later to rotate the whole swarm)
+#quat_0 = quat.e2q(np.array([np.pi/2,0,0]))
+#quat_0 = quat.e2q(np.array([0, np.pi/2, 0]))
+#quat_0 = quat.e2q(np.array([0, np.pi/4, 0]))        # Tilt down 60° along Y-axis
+#quat_0 = quat.e2q(np.array([0,np.pi/3,0]))
+quat_0 = quat.e2q(np.array([np.pi/3,np.pi/6,np.pi]))
+
+quatern = quat_0                        #  duplicate (legacy code)
+
+#quat_0_ = quat.quatjugate(quat_0)       # used to untwist   
+
+# bank of other orientations
+#quat.e2q(np.array([np.pi/2,0,0]))
+#quat.e2q(np.array([0,-np.pi/3,0]))
+
 
 #%% save configs
 # --------------    

@@ -61,7 +61,7 @@ elif tactic_type == 'cao':
 # -----------------
 
 pin_update_rate = 10   # number of timesteps after which we update the pins
-pin_selection_method = 'degree_leafs'
+pin_selection_method = 'nopins'
     # gramian   = [future] // based on controllability gramian
     # degree    = based on degree centrality  
     # between   = [future] // based on betweenness centrality (buggy at nAgents < 3)
@@ -121,7 +121,7 @@ def build_system(system, strategy, dimens, Ts):
         # if using CALA to tune controller parameters
         if learning_ctrl == 'CALA':
             from learner import CALA_control
-            CALA = CALA_control.CALA(3*Agents.nAgents)
+            CALA = CALA_control.CALA(Agents.nAgents) # just one param per agent now (expand latter)
             
             #Load
             Learners['CALA_ctrl'] = CALA
@@ -239,7 +239,7 @@ class Controller:
             self.pin_matrix = np.ones((nAgents,nAgents))
             
    
-    # integrate learninging agents
+    # integrate learninging agents (learning updates happen at the Controller object)
     # ----------------------------
     def learning_agents(self, tactic_type, Learners):
         
@@ -262,6 +262,11 @@ class Controller:
             
             self.Learners['estimator_gradients'] = Learners['estimator_gradients']
             print('Estimating neighbouring gradients enabled')
+    
+        if 'CALA_ctrl' in Learners:
+            
+            self.Learners['CALA_ctrl'] = Learners['CALA_ctrl']
+            
     
         if len(self.Learners) == 0:
             
@@ -322,6 +327,14 @@ class Controller:
             self.Graphs.find_connected_components()
             self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
             self.pin_matrix = self.Graphs.pin_matrix
+
+
+        # ***************** #
+        # LEARNING UPDATES
+        # ***************** #
+        
+        # I think I can do this all at the end.
+
 
         # *************** #
         # COMMAND UPDATES #
@@ -418,7 +431,6 @@ class Controller:
                     self.Learners['estimator_gradients'].C_sum[0:self.dimens, 0:self.nAgents] = np.zeros((self.dimens, self.nAgents)) 
                     kwargs_pinning['pin_matrix'] = self.pin_matrix
                     
-                    
                 
                 # info about graph
                 kwargs_pinning['directional_graph']         = self.Graphs.directional_graph
@@ -485,6 +497,12 @@ class Controller:
             #  Mixer  #
             # ******* #   
             
+            if learning_ctrl == 'CALA':
+                
+                u_int = self.Learners['CALA_ctrl'].action_set[k_node]*u_int
+
+            
+            
             if tactic_type == 'saber':
                 cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
             elif tactic_type == 'reynolds':
@@ -504,6 +522,26 @@ class Controller:
                 cmd_i[:,k_node] = cmd_i[:,k_node]
                 
            
+            # this is very rough, clean up later
+            # if learning control parameters, store the environment variables (nominally, cmds)
+            if learning_ctrl == 'CALA':
+                # update the environment variable
+                #if self.Learners['CALA_ctrl'].reward_mode == 'cmds':
+                
+                # reset env variable
+                if self.Learners['CALA_ctrl'].counter[k_node] < 1:
+                    self.Learners['CALA_ctrl'].environment_vars[k_node] = 0
+                    
+                #self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(cmd_i[:,k_node])
+                self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
+                
+                
+                reward_term = np.abs(self.Learners['CALA_ctrl'].environment_vars[k_node] / (self.Learners['CALA_ctrl'].counter[k_node]+1))
+                #reward = 1/reward_term
+                reward = np.exp(-reward_term)
+                self.Learners['CALA_ctrl'].step(k_node, reward)
+           
+            
             if self.dimens == 2 and self.cmd[2,:].any() != 0:
                 
                 print('warning, 3D cmds in 2D at node ', k_node)

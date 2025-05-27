@@ -1,12 +1,30 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 30,
+        "Tf": 45,
         "Ts": 0.02,
-        "dimens": 2,
+        "dimens": 3,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "pinning"
+        "strategy": "lemni"
+    },
+    "circle": {
+        "c1_d": 2,
+        "c2_d": 2.8284271247461903,
+        "r_max": 50,
+        "r_desired": 5,
+        "phi_dot_d": 0.05,
+        "ref_plane": "horizontal",
+        "quat_0": [
+            0.1294095225512604,
+            -0.22414386804201336,
+            0.4829629131445341,
+            0.8365163037378079
+        ]
+    },
+    "lemni": {
+        "c1_d": 1,
+        "c2_d": 2.0
     },
     "saber": {
         "a": 5,
@@ -26,29 +44,9 @@
         "r": 13.0,
         "r_prime": 7.800000000000001
     },
-    "gradient_parameters": {
-        "LJ_B": 1,
-        "LJ_gain": 1000000,
-        "MORSE_beta": 0.5,
-        "MORSE_D": 1,
-        "gromacs_lambda_val": 0.5,
-        "gromacs_A": 1,
-        "gromacs_B": 2,
-        "gromacs_alpha": 0.5,
-        "gromacs_beta": 1.0
-    },
-    "pinning": {
-        "hetero_gradient": 0,
-        "hetero_lattice": 0,
-        "learning": 0,
-        "d": 10,
-        "d_min": 5,
-        "r_max": 13.0,
-        "flocking_method": "lennard_jones"
-    },
     "orchestrator": {
         "pin_update_rate": 10,
-        "pin_selection_method": "degree_leafs",
+        "pin_selection_method": "nopins",
         "criteria_table": {
             "radius": true,
             "aperature": false
@@ -57,18 +55,18 @@
         "learning_ctrl": "CALA"
     },
     "agents": {
-        "nAgents": 12,
+        "nAgents": 7,
         "rAgents": 0.5,
-        "initial_spread": 20,
+        "initial_spread": 10,
         "dynamics": "double integrator",
-        "tactic_type": "pinning"
+        "tactic_type": "lemni"
     },
     "targets": {
-        "tSpeed": 0.001,
+        "tSpeed": 0,
         "initial_target_positions": [
             0.0,
             0.0,
-            0.0,
+            15.0,
             0.0,
             0.0,
             0.0
@@ -81,10 +79,11 @@
         "vehObs": 0
     },
     "CALA": {
-        "num_states": 36,
+        "num_states": 7,
         "action_min": 0.5,
-        "action_max": 2,
-        "learning_rate": 0.1
+        "action_max": 4,
+        "learning_rate": 0.1,
+        "reward_mode": "centroid"
     },
     "learners": {
         "CALA_ctrl": "Config not available for CALA_ctrl"

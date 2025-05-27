@@ -21,14 +21,14 @@ from . import encirclement_tools as encircle_tools
 # tunable
 c1_d        = 1             # gain for position (q)
 c2_d        = 2*np.sqrt(1)  # gain for velocity (p)
-lemni_type  = 5
+lemni_type  = 0
             
     # // Explcit definition of rotation (https://ieeexplore.ieee.org/document/9931405)
     #   0 = lemniscate of Gerono - surveillance (/^\)
     #   1 = lemniscate of Gerono - rolling (/^\ -> \_/)
     #   2 = lemniscate of Gerono - mobbing (\_/)
         
-    # // Solved indirectly (see https://github.com/tjards/twisted_circles)
+    # // Implicit definition (see https://github.com/tjards/twisted_circles)
     #   3 = lemniscate of Gerono (with shift)
     #   4 = dumbbell curve 
     #   5 = lemniscate of Bernoulli
@@ -37,8 +37,14 @@ lemni_type  = 5
 r_desired, phi_dot_d, ref_plane, quat_0 = encircle_tools.get_params() 
 
 # reference frames
-unit_lem    = np.array([1,0,0]).reshape((3,1))  # sets twist orientation (i.e. orientation of lemniscate along x)
-stretch     = -1*r_desired                      # stretch for lemni type 4 (legacy, remove later)
+#unit_lem    = np.array([1,0,0]).reshape((3,1))  # sets twist orientation (i.e. orientation of lemniscate along x) note: only required for explicit definition
+
+# new
+unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1))) # x-axis reference
+twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1))) # z-axis reference
+
+
+#stretch     = -1*r_desired                      # stretch for lemni type 4 (legacy, remove later)
 quat_0_ = quat.quatjugate(quat_0)               # used to untwist                               
 
 #%% save configs
@@ -61,11 +67,18 @@ def check_targets(targets):
         targets[2,:] += r_desired/2
     return targets
 
+# i'll get rid of this later
 def enforce(tactic_type):
     
     # define vector perpendicular to encirclement plane
     if ref_plane == 'horizontal':
-        twist_perp = np.array([0,0,1]).reshape((3,1))
+        #twist_perp = np.array([0,0,1]).reshape((3,1))
+        
+        # new
+        #twist_perp = quat.rotate(quat_0, np.array([0,0,1]).reshape((3,1)))
+        
+        print('lemni reference place set to horizonatal')
+
     elif tactic_type == 'lemni':
         print('Warning: Set ref_plane to horizontal for lemniscate')
     
@@ -89,7 +102,7 @@ def sigma_1(z):
 
 #%% main functions
 
-twist_perp = enforce('lemni')
+enforce('lemni')
 
 def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
     
@@ -101,31 +114,6 @@ def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
 def lemni_target(lemni_all,state,targets,i,t):
     
     nVeh = state.shape[1]
-    
-    # === for experiments only
-    # global lemni_type
-    # run_experiment = 1
-    # # run a standardized experiment, or "dance"
-    # if run_experiment == 1:
-    #     # circle
-    #     if t <= 10:
-    #         lemni_type = 6
-    #     elif t > 10 and t <= 70:
-    #         lemni_type = 5
-    #     # circle
-    #     elif t > 70 and t <= 80:
-    #         lemni_type = 6
-    #     elif t > 80 and t <= 140:
-    #         lemni_type = 4
-    #     # circle
-    #     elif t > 140 and t <= 150:
-    #         lemni_type = 6
-    #     elif t > 150 and t <= 210:
-    #         lemni_type = 3
-    #     else:
-    #         lemni_type = 3
-        
-    # =======================
          
     # initialize the lemni twist factor
     lemni = np.zeros([1, nVeh])
@@ -139,6 +127,12 @@ def lemni_target(lemni_all,state,targets,i,t):
     # UNTWIST -  each agent has to be untwisted into a common plane
     # -------------------------------------------------------------      
     last_twist = lemni_all[i-1,:] #np.pi*lemni_all[i-1,:]
+    
+    
+    # new - rotate states into quat_0 frame
+    #for n in range(state.shape[1]):
+    #    state[0:3, n] = quat.rotate(quat_0_, state[0:3, n] - targets[0:3, n]) + targets[0:3, n]
+
     state_untwisted = state.copy()
     
     # for each agent 
@@ -184,13 +178,19 @@ def lemni_target(lemni_all,state,targets,i,t):
             untwist_quat[0] = 1
             twist_quat =  untwist_quat
             
-        
+        # normalize
+        #untwist_quat /= np.linalg.norm(untwist_quat)
+
         # pull out states
         states_q_n = state[0:3,n]
+        
         # pull out the targets (for reference frame)
         targets_n = targets[0:3,n] 
+        
         # untwist the agent 
-        state_untwisted[0:3,n] = quat.rotate(untwist_quat,states_q_n - targets_n) + targets_n  
+        state_untwisted[0:3,n] = quat.rotate(untwist_quat,states_q_n - targets_n) + targets_n
+        
+       
  
     # ENCIRCLE -  form a common untwisted circle
     # ------------------------------------------
@@ -204,54 +204,60 @@ def lemni_target(lemni_all,state,targets,i,t):
     # for each agent, we define a unique twist 
     for m in range(0,state.shape[1]):
  
-        # pull out states/targets
-        states_q_i = state[0:3,m]
-        targets_i = targets[0:3,m]
-        target_encircle_i = targets_encircle[0:3,m]
+        # -----------------------
+        # EXPLICITLY DEFINED
+        # -----------------------
         
-        # get the vector of agent position wrt target
-        state_m_shifted = states_q_i - targets_i
-        target_encircle_shifted = target_encircle_i - targets_i
+        # this logic works only for x-y planes
+        # --------------------------------------
+        '''
+        rel_vec = state_untwisted[0:3, m] - targets[0:3, m]
+        rel_vec_plane = quat.rotate(quat_0_, rel_vec.reshape(3, 1)).ravel()
+        m_theta = np.arctan2(rel_vec_plane[1], rel_vec_plane[0])
+        m_theta = np.mod(m_theta, 2*np.pi)
+        '''
         
-        # just give some time to form a circle first
-        if i > 0:
-            
-            # compute the lemni factor
-            # -----------------------
-            
-            # rolling needs to dynamically adjust the lemni factor  
-            if lemni_type == 1: 
-                # compute and store the lemniscate twist factor (tried a bunch of ways to do this)
-                #m_r = np.sqrt((state_untwisted[0,m]-targets[0,m])**2 + (state_untwisted[1,m]-targets[1,m])**2)
-                m_theta = np.arctan2(state_untwisted[1,m]-targets[1,m],state_untwisted[0,m]-targets[0,m]) 
-                m_theta = np.mod(m_theta, 2*np.pi)  #convert to 0 to 2Pi
-                m_shift = - np.pi + 0.1*t
-                lemni[0,m] = m_theta + m_shift
-                
-            # mobbing needs to rotatate by pi (i.e. flip updside down) 
-            if lemni_type == 2: 
-                # compute and store the lemniscate twist factor (tried a bunch of ways to do this)
-                m_r = np.sqrt((state_untwisted[0,m]-targets[0,m])**2 + (state_untwisted[1,m]-targets[1,m])**2)
-                m_theta = np.arctan2(state_untwisted[1,m]-targets[1,m],state_untwisted[0,m]-targets[0,m]) 
-                m_theta = np.mod(m_theta, 2*np.pi)  #convert to 0 to 2Pi
-                lemni[0,m] = m_theta - np.pi
-            
-            # surveillance and others use this
-            else: 
-                # compute and store the lemniscate twist factor (tried a bunch of ways to do this)
-                m_r = np.sqrt((state_untwisted[0,m]-targets[0,m])**2 + (state_untwisted[1,m]-targets[1,m])**2)
-                m_theta = np.arctan2(state_untwisted[1,m]-targets[1,m],state_untwisted[0,m]-targets[0,m]) 
-                m_theta = np.mod(m_theta, 2*np.pi)  #convert to 0 to 2Pi
-                lemni[0,m] = m_theta 
+        # generalize to arbitrary planes
+        # ------------------------------
+        
+        rel_vec = state_untwisted[0:3, m] - targets[0:3, m]
+        # define local orthogonal basis of the embedding plane in world frame
+        x_e = unit_lem.ravel()  
+        x_e /= np.linalg.norm(x_e)
+        z_e = twist_perp.ravel() 
+        z_e /= np.linalg.norm(z_e)                  
+        y_e = np.cross(z_e, x_e)  
+        y_e /= np.linalg.norm(y_e)
+        # project rel_vec into basis plane
+        x_proj = np.dot(rel_vec, x_e)
+        y_proj = np.dot(rel_vec, y_e)
+        m_theta = np.arctan2(y_proj, x_proj)
+        m_theta = np.mod(m_theta, 2*np.pi)
 
-        # twist the trajectory position and load it
-        # note: twist is a misleading var name now; consider changing later
+        
+        # rolling
+        if lemni_type == 1:  
+            m_shift = -np.pi + 0.1 * t
+            lemni[0, m] = m_theta + m_shift
+        
+        # mobbing
+        elif lemni_type == 2:  
+            lemni[0, m] = m_theta - np.pi
+        
+        # surveillance + rest
+        else:
+            lemni[0, m] = m_theta 
+        
         twist = lemni[0,m] 
         
-        # if 3D Gerono:
+        # rotate
         if lemni_type < 3:
             twist_quat = quat.e2q(twist*unit_lem.ravel())
         
+        # ---------------------
+        # IMPLICITLY DEFINED
+        # ---------------------
+            
         # if Gerono (with shift)
         elif lemni_type == 3:
             twist_quat = np.zeros(4)
@@ -273,14 +279,67 @@ def lemni_target(lemni_all,state,targets,i,t):
             twist_quat[0] = -np.sqrt(2)*np.sqrt(np.cos(twist) + 1)/(2*np.sqrt(np.sin(twist)**2 + 1))
             twist_quat[1] = -np.sqrt(2)*np.sqrt(1 - np.cos(twist))/(2*np.sqrt(np.sin(twist)**2 + 1))
    
+    
+        # normalize
+        # ---------
+        #twist_quat /= np.linalg.norm(twist_quat)
+    
+        # twist positions
+        # ---------------
+        
+        # pull out states/targets
+        states_q_i = state[0:3,m]
+        targets_i = targets[0:3,m]
+        target_encircle_i = targets_encircle[0:3,m]
+        
+        # get the vector of agent position wrt target
+        state_m_shifted = states_q_i - targets_i
+        target_encircle_shifted = target_encircle_i - targets_i 
+   
+
         #twist_quat = quat.e2q(twist*unit_lem.ravel())        
-        twist_pos = quat.rotate(twist_quat,target_encircle_shifted)+targets_i  
+        twist_pos = quat.rotate(twist_quat,target_encircle_shifted)+targets_i 
+        
+        # new
+        #twist_pos = quat.rotate(quat_0_, twist_pos - targets_i) + targets_i
+
         targets_encircle[0:3,m] = twist_pos
         
-        # twist the trajectory velocity and load it
-        w_vector = phi_dot_desired_i[0,m]*twist_perp                        # pretwisted
-        w_vector_twisted = quat.rotate(twist_quat,w_vector)                 # twisted 
+        # twist velocities
+        # ----------------
+        
+      
+        # this logic works in the x-y plane
+        # ----------------------------------
+        
+        '''
+        w_vector = phi_dot_desired_i[0,m]*twist_perp 
+        w_vector_twisted =  quat.rotate(twist_quat,w_vector) # this is in embedding plane
+        # find states in the embedding plane
+        #state_m_shifted_rot = quat.rotate(quat_0, state_m_shifted)
+        # now compute velo vector in the embedding plane
         twist_v_vector = np.cross(w_vector_twisted.ravel(),state_m_shifted)
+        # rotate this vector back into the world frame
+        #twist_v_vector = quat.rotate(quat_0_, twist_v_vector)
+        '''
+        
+        # generalize to arbitrary planes
+        # ------------------------------
+        
+        
+        w_vector = phi_dot_desired_i[0,m]*twist_perp 
+        w_vector_twisted =  quat.rotate(twist_quat,w_vector) 
+        
+        # rotate into embedding plane
+        state_m_shifted_emb = quat.rotate(quat_0_, state_m_shifted.reshape(3,1)).ravel()
+        w_vector_emb = quat.rotate(quat_0_, w_vector_twisted).ravel()
+        v_emb = np.cross(w_vector_emb, state_m_shifted_emb)
+        
+        # rotate back
+        twist_v_vector = quat.rotate(quat_0, v_emb.reshape(3,1)).ravel()
+        
+
+
         targets_encircle[3,m] =  - twist_v_vector[0] 
         targets_encircle[4,m] =  - twist_v_vector[1] 
         targets_encircle[5,m] =  - twist_v_vector[2]      

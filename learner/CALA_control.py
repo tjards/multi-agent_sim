@@ -19,19 +19,22 @@ config_path=configs_tools.config_path
 
 #%% Simulations parameters
 # ---------------------
-num_states      = 3             # number of states
+#num_states      = 3             # number of states 
 action_min      = 0.5 #-1            # minimum of action space
-action_max      = 2 # 1             # maximum of action space
+action_max      = 4 # 1             # maximum of action space
 
 # (artificial, just for debugging. would come from env)
-target_actions = np.random.uniform(action_min, action_max, num_states) # randomly assigned target actions
+#target_actions = np.random.uniform(action_min, action_max, num_states) # randomly assigned target actions
 
 #%% Hyperparameters
 # -----------------
 learning_rate   = 0.1       # rate at which policy updates
-variance        = 0.2       # initial variance
+variance        = 0.4       # initial variance
 variance_ratio  = 1         # default 1, permits faster/slower variance updates
 variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
+
+counter_max = 100            # when to stop accumualating experience in a trial
+reward_mode = 'centroid'        # 'cmds' = punish commands (start with this), 'centroid' = distance from centroid
 
 # initial means and variances
 #means = np.random.uniform(action_min, action_max, num_states)
@@ -43,7 +46,7 @@ class CALA:
     
     # initialize
     #def __init__(self, num_states, action_min, action_max, learning_rate, means, variances):
-    def __init__(self, num_states=3):
+    def __init__(self, num_states):
         
         # load parameters into class
         self.num_states     = num_states
@@ -53,6 +56,19 @@ class CALA:
         self.means          = np.random.uniform(action_min, action_max, num_states) #means
         self.variances      = np.full(num_states, variance) #variances
         
+        # initialize actions 
+        self.action_set = np.ones((num_states))
+
+        # counter        
+        self.counter_max    = counter_max 
+        self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
+        #self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
+
+        # store environment variables throughout the trial
+        self.reward_mode      = reward_mode
+        self.environment_vars = np.zeros(num_states)        
+
+
         # store stuff
         self.mean_history       = []
         self.variance_history   = []
@@ -63,7 +79,8 @@ class CALA:
             ('num_states', num_states),
             ('action_min', action_min),
             ('action_max', action_max),
-            ('learning_rate', learning_rate)
+            ('learning_rate', learning_rate),
+            ('reward_mode', reward_mode)
         ] )
 
 
@@ -94,164 +111,131 @@ class CALA:
         # constrain the variance 
         self.variances[state] = max(variance_min, self.variances[state])
 
-    # run the simulation
-    def run(self, num_episodes, environment):
-  
-        # note: 'environment' is a function (substitute with actual environment feedback)      
-  
-        # for the desired number of episodes
-        for _ in range(num_episodes):
-            
-            # initialize local storage 
-            mean_store      = []
-            variance_store  = []
-            reward_store    = []
-            
-            # for each state
-            for state in range(0, self.num_states):
-                
-                # select the action (based on current mean/variance)
-                action = self.select_action(state)
-                
-                # collect reward (based on feedback from environment)
-                reward = environment(state, action)
-                
-                # update the policy (based on reward and hyperparameters)
-                self.update_policy(state, action, reward)
-                
-                # store 
-                mean_store.append(self.means[state])
-                variance_store.append(self.variances[state])
-                reward_store.append(reward)
-            
-            # append local storage to history
-            self.mean_history.append(mean_store)
-            self.variance_history.append(variance_store)
-            self.reward_history.append(reward_store)
+    # ****************************
+    # ASYCHRONOUS EXTERNAL UPDATES
+    # ****************************
 
-    # still plots
-    # -----------
-    def plots(self):
- 
-        time_steps  = len(self.mean_history)
-        fig, axs    = plt.subplots(3, 1, figsize=(10, 12))
+    def step(self, state, reward):
+        """
+        Perform asynchronous update for a single state based on internal counter.
+        Returns True if update occurred, else False.
+        """
+        # Select action for the state
+        action = self.select_action(state)
+
+        # Increment counter
+        self.counter[state] += 1
+
+        # Check if update threshold reached
+        if self.counter[state] >= self.counter_max:
+            self.update_policy(state, action, reward)
+            self.counter[state] = 0  # Reset counter
+
+        # Log history
+        self._log_state(state, action, reward)
         
-        # arrayerize the history lists
-        mean_array      = np.array(self.mean_history)
-        variance_array  = np.array(self.variance_history)
-        reward_array    = np.array(self.reward_history)
-        
-        self.state_colors = []
+        self.action_set[state] = action
 
-        # Means
-        # ----
+        #return action
+
+    def _log_state(self, state, action, reward):
+        """
+        Store current step info into history buffers.
+        """
+        # Expand storage if necessary
+        if len(self.mean_history) <= state:
+            self.mean_history.append([])
+            self.variance_history.append([])
+            self.reward_history.append([])
+
+        # Store data for this state
+        self.mean_history[state].append(self.means[state])
+        self.variance_history[state].append(self.variances[state])
+        self.reward_history[state].append(reward)
+    
+    
+    def plots_set(self):
+        fig, axs = plt.subplots(3, 1, figsize=(10, 12))
+    
+        time_steps = len(self.mean_history[0])
+        self.state_colors = []  # reset in case this is run fresh
+    
         for state in range(self.num_states):
-            # plot the means
-            line, = axs[0].plot(range(time_steps), mean_array[:, state], label=f"state {state}")
-            line_color = line.get_color()
-            self.state_colors.append(line_color)  # Store the color
-            axs[0].axhline(y=target_actions[state], color = line_color, linestyle='--')
-            std_devs = np.sqrt(variance_array[:, state])
-            axs[0].fill_between(np.arange(time_steps), mean_array[:, state] - std_devs, mean_array[:, state] + std_devs, color=line_color, alpha=0.3)
-        # format the plots    
-        axs[0].set_title('Action means over time')
-        axs[0].set_xlabel('Episodes')
-        axs[0].set_ylabel('Mean with standard deviation')
-        axs[0].set_ylim(action_min, action_max)
-        axs[0].legend()
-
-        # Variances
-        # ---------
-        for state in range(self.num_states):
-            axs[1].plot(range(time_steps), variance_array[:, state], label=f"state {state}")
-        axs[1].set_title('Action variance over time')
-        axs[1].set_xlabel('Episodes')
-        axs[1].set_ylabel('Variance')
-        axs[1].legend()
-
-        # Rewards
-        # -------
-        for state in range(self.num_states):
-            axs[2].plot(range(time_steps), reward_array[:, state], label=f"state {state}")
-        axs[2].set_title('Reward over time')
-        axs[2].set_xlabel('Episodes')
-        axs[2].set_ylabel('Reward')
-        axs[2].legend()
-
+            mean_array = np.array(self.mean_history[state])
+            variance_array = np.array(self.variance_history[state])
+            reward_array = np.array(self.reward_history[state])
+            std_devs = np.sqrt(variance_array)
+    
+            # Plot the line first to capture color
+            line, = axs[0].plot(range(time_steps), mean_array, label=f"state {state}")
+            color = line.get_color()
+            self.state_colors.append(color)
+    
+            # Correct color applied to the shaded region
+            axs[0].fill_between(range(time_steps),
+                                mean_array - std_devs,
+                                mean_array + std_devs,
+                                color=color,
+                                alpha=0.3)
+    
+            axs[1].plot(range(time_steps), variance_array, label=f"state {state}", color=color)
+            axs[2].plot(range(time_steps), reward_array, label=f"state {state}", color=color)
+    
+        axs[0].set_title('Mean with Std Dev')
+        axs[1].set_title('Variance')
+        axs[2].set_title('Reward')
+    
+        for ax in axs:
+            ax.set_xlabel("Steps")
+            ax.legend()
+    
         plt.tight_layout()
         plt.show()
-      
-    # plot Gaussian curves (PDFs) 
-    # ---------------------------
-    def plot_distributions_over_time(self, steps_to_plot=[0, 100, 250, 500, 750, 999]):
+
+        
+    def plot_distributions_over_time_set(self, steps_to_plot=[0, 10, 25, 50]):
         from scipy.stats import norm
         x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
-
+    
         fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
-        #plt.subplots_adjust(hspace=0.4)  # Add this line to increase vertical spacing
-
-        mean_array = np.array(self.mean_history)
-        variance_array = np.array(self.variance_history)
-
+    
         for state in range(self.num_states):
             ax = axs[state] if self.num_states > 1 else axs
             color = self.state_colors[state] if hasattr(self, 'state_colors') else None
-
             for idx, step in enumerate(steps_to_plot):
-                mu = mean_array[step, state]
-                var = variance_array[step, state]
+                mu = self.mean_history[state][step]
+                var = self.variance_history[state][step]
                 sigma = np.sqrt(var)
                 y = norm.pdf(x, mu, sigma)
-
-                # Dynamic alpha for temporal fading
                 alpha = 0.1 + 0.8 * (idx / (len(steps_to_plot) - 1))
-
-                # Plot shaded area
                 ax.fill_between(x, y, color=color, alpha=alpha, label=f"step {step}" if idx == len(steps_to_plot)-1 else None)
-
-            ax.set_title(f"State {state} - Action distribution evolution")
+            ax.set_title(f"State {state} Distribution Evolution")
             ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
-            ax.set_xlabel("Action value")
-            ax.set_ylabel("Probability density")
-            #ax.legend(loc='upper right')
-
+    
         plt.tight_layout()
         plt.show()
         
-    # show animation 
-    # ------------------    
-    def animate_distributions(self, interval=50, save_path=None):
-        import matplotlib.pyplot as plt
+    def animate_distributions_set(self, interval=50, save_path=None):
         import matplotlib.animation as animation
         from scipy.stats import norm
-        import numpy as np
     
-        mean_array = np.array(self.mean_history)
-        variance_array = np.array(self.variance_history)
-        time_steps = len(mean_array)
-    
+        time_steps = len(self.mean_history[0])
         x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
     
-        # Compute global max PDF height for consistent y-axis limits
+        # Find global max y for PDF
         y_max = 0
-        for frame in range(time_steps):
-            for state in range(self.num_states):
-                mu = mean_array[frame, state]
-                sigma = np.sqrt(variance_array[frame, state])
-                if sigma > 0:
-                    peak = norm.pdf(mu, mu, sigma)
-                    y_max = max(y_max, peak)
-        y_max *= 1.1  # add 10% headroom
+        for state in range(self.num_states):
+            for t in range(time_steps):
+                sigma = np.sqrt(self.variance_history[state][t])
+                mu = self.mean_history[state][t]
+                y_max = max(y_max, norm.pdf(mu, mu, sigma))
+        y_max *= 1.1
     
         fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
-        plt.subplots_adjust(hspace=0.4)  # Add this line to increase vertical spacing
-        
-        if self.num_states == 1:
-            axs = [axs]
+        plt.subplots_adjust(hspace=0.4)
+        if self.num_states == 1: axs = [axs]
     
-        lines = []
-        fills = []
-    
+        lines, fills = [], []
         for state in range(self.num_states):
             color = self.state_colors[state] if hasattr(self, 'state_colors') else None
             ax = axs[state]
@@ -261,11 +245,8 @@ class CALA:
             fills.append(fill)
             ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
             ax.set_ylim(0, y_max)
-            ax.set_title(f"State {state} - Action Probability Density over Time")
-            #ax.set_xlabel("Action value")
-            #ax.set_ylabel("Probability Density")
+            ax.set_title(f"State {state} - Action PDF over Time")
     
-        # Add time label to the top subplot
         time_text = axs[0].text(0.95, 0.95, '', transform=axs[0].transAxes,
                                 ha='right', va='top', fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
     
@@ -277,50 +258,34 @@ class CALA:
     
         def update(frame):
             for state in range(self.num_states):
-                mu = mean_array[frame, state]
-                sigma = np.sqrt(variance_array[frame, state])
+                mu = self.mean_history[state][frame]
+                sigma = np.sqrt(self.variance_history[state][frame])
                 y = norm.pdf(x, mu, sigma)
                 lines[state].set_data(x, y)
-    
                 fills[state].remove()
                 fills[state] = axs[state].fill_between(x, y, color=self.state_colors[state], alpha=0.3)
-    
             time_text.set_text(f"Time step: {frame}/{time_steps}")
             return lines + fills + [time_text]
     
         ani = animation.FuncAnimation(fig, update, frames=time_steps,
                                       init_func=init, blit=False, interval=interval)
     
-        self.ani = ani
-    
         if save_path:
             ani.save(save_path, writer='pillow', fps=1000 // interval)
-            #ani.save(save_path, writer='ffmpeg', fps=1000 // interval)
         else:
             plt.tight_layout()
             plt.show()
     
         return ani
 
+    def all_plots_set(self):
+        
+        self.plots_set()
+        self.plot_distributions_over_time_set()
+        #anim = self.animate_distributions_set(interval=50, save_path='RL_animation.gif')
+
+    # ******************************************
 
 
 
-
-#%% Example
-# --------
-
-def environment(state, action):
-
-    # reward gets exponentially higher, the closer action is to target action
-    reward = np.exp(-np.abs(target_actions[state] - action))
-    
-    return reward
-
-# run the simulation
-
-'''automata = CALA(num_states, action_min, action_max, learning_rate, means, variances)
-automata.run(num_episodes=1000, environment=environment)
-automata.plots()
-#automata.plot_distributions_over_time()
-anim = automata.animate_distributions(interval=50, save_path='animation.gif')'''
 
