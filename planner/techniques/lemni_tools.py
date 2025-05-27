@@ -40,12 +40,9 @@ r_desired, phi_dot_d, ref_plane, quat_0 = encircle_tools.get_params()
 #unit_lem    = np.array([1,0,0]).reshape((3,1))  # sets twist orientation (i.e. orientation of lemniscate along x) note: only required for explicit definition
 
 # new
-unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1))) # x-axis reference
-twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1))) # z-axis reference
-
-
-#stretch     = -1*r_desired                      # stretch for lemni type 4 (legacy, remove later)
-quat_0_ = quat.quatjugate(quat_0)               # used to untwist                               
+#unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1))) # x-axis reference
+#twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1))) # z-axis reference
+#quat_0_ = quat.quatjugate(quat_0)               # used to untwist                               
 
 #%% save configs
 # --------------
@@ -67,34 +64,6 @@ def check_targets(targets):
         targets[2,:] += r_desired/2
     return targets
 
-# i'll get rid of this later
-def enforce(tactic_type):
-    
-    # define vector perpendicular to encirclement plane
-    if ref_plane == 'horizontal':
-        #twist_perp = np.array([0,0,1]).reshape((3,1))
-        
-        # new
-        #twist_perp = quat.rotate(quat_0, np.array([0,0,1]).reshape((3,1)))
-        
-        print('lemni reference place set to horizonatal')
-
-    elif tactic_type == 'lemni':
-        print('Warning: Set ref_plane to horizontal for lemniscate')
-    
-    # enforce the orientation for lemniscate (later, expand this for the general case)
-    lemni_good = 0
-    if tactic_type == 'lemni':
-        if quat_0[0] == 1:
-            if quat_0[1] == 0:
-                if quat_0[2] == 0:
-                    if quat_0[3] == 0:
-                        lemni_good = 1
-    if tactic_type == 'lemni' and lemni_good == 0:
-        print ('Warning: Set quat_0 to zeros for lemni to work')
-        # travis note for later: you can do this rotation after the fact for the general case
-    
-    return twist_perp
 
 def sigma_1(z):    
     sigma_1 = np.divide(z,np.sqrt(1+z**2))    
@@ -102,7 +71,7 @@ def sigma_1(z):
 
 #%% main functions
 
-enforce('lemni')
+
 
 def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
     
@@ -112,6 +81,12 @@ def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
     return u_enc[:,k_node]
 
 def lemni_target(lemni_all,state,targets,i,t):
+    
+    # load
+    unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1))) # x-axis reference
+    twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1))) # z-axis reference
+    quat_0_ = quat.quatjugate(quat_0)               # used to untwist 
+    
     
     nVeh = state.shape[1]
          
@@ -208,18 +183,7 @@ def lemni_target(lemni_all,state,targets,i,t):
         # EXPLICITLY DEFINED
         # -----------------------
         
-        # this logic works only for x-y planes
-        # --------------------------------------
-        '''
-        rel_vec = state_untwisted[0:3, m] - targets[0:3, m]
-        rel_vec_plane = quat.rotate(quat_0_, rel_vec.reshape(3, 1)).ravel()
-        m_theta = np.arctan2(rel_vec_plane[1], rel_vec_plane[0])
-        m_theta = np.mod(m_theta, 2*np.pi)
-        '''
-        
-        # generalize to arbitrary planes
-        # ------------------------------
-        
+        # generalize to arbitrary planes        
         rel_vec = state_untwisted[0:3, m] - targets[0:3, m]
         # define local orthogonal basis of the embedding plane in world frame
         x_e = unit_lem.ravel()  
@@ -308,33 +272,13 @@ def lemni_target(lemni_all,state,targets,i,t):
         # twist velocities
         # ----------------
         
-      
-        # this logic works in the x-y plane
-        # ----------------------------------
-        
-        '''
-        w_vector = phi_dot_desired_i[0,m]*twist_perp 
-        w_vector_twisted =  quat.rotate(twist_quat,w_vector) # this is in embedding plane
-        # find states in the embedding plane
-        #state_m_shifted_rot = quat.rotate(quat_0, state_m_shifted)
-        # now compute velo vector in the embedding plane
-        twist_v_vector = np.cross(w_vector_twisted.ravel(),state_m_shifted)
-        # rotate this vector back into the world frame
-        #twist_v_vector = quat.rotate(quat_0_, twist_v_vector)
-        '''
-        
         # generalize to arbitrary planes
-        # ------------------------------
-        
-        
         w_vector = phi_dot_desired_i[0,m]*twist_perp 
         w_vector_twisted =  quat.rotate(twist_quat,w_vector) 
-        
         # rotate into embedding plane
         state_m_shifted_emb = quat.rotate(quat_0_, state_m_shifted.reshape(3,1)).ravel()
         w_vector_emb = quat.rotate(quat_0_, w_vector_twisted).ravel()
         v_emb = np.cross(w_vector_emb, state_m_shifted_emb)
-        
         # rotate back
         twist_v_vector = quat.rotate(quat_0, v_emb.reshape(3,1)).ravel()
         

@@ -56,6 +56,7 @@ elif tactic_type == 'pinning':
 elif tactic_type == 'cao':
     from planner.techniques import cao_tools
 
+import learner.conductor
 
 #%% Hyperparameters 
 # -----------------
@@ -111,72 +112,13 @@ def build_system(system, strategy, dimens, Ts):
         # -------------------------
         import obstacles.obstacles as obstacles
         Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets, dimens)     
-        configs_tools.update_orch_configs(config_path, obstacle_obj=Obstacles)
-        
+        configs_tools.update_orch_configs(config_path, obstacle_obj=Obstacles) 
         
         # instatiate any learning
         # -----------------------
-        Learners = {}
+        import learner.conductor
+        Learners = learner.conductor.initialize(Agents, tactic_type, learning_ctrl, Ts)
         
-        # if using CALA to tune controller parameters
-        if learning_ctrl == 'CALA':
-            from learner import CALA_control
-            CALA = CALA_control.CALA(Agents.nAgents) # just one param per agent now (expand latter)
-            
-            #Load
-            Learners['CALA_ctrl'] = CALA
-              
-        # pinning control case
-        if tactic_type == 'pinning':
-
-            pinning_tools.update_pinning_configs()
-            with open(os.path.join("config", "configs.json"), 'r') as planner_pinning_tests:
-                configs = json.load(planner_pinning_tests)
-                planner_configs = configs['pinning']
-                
-                # need one learner to achieve consensus on lattice size
-                lattice_consensus = planner_configs['hetero_lattice']
-                if lattice_consensus == 1:
-                    import learner.consensus_lattice as consensus_lattice
-
-                    Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['d_min'], planner_configs['d'], planner_configs['r_max'])
-                    
-                    #LOAD
-                    Learners['consensus_lattice'] = Consensuser
-                    
-                    # we can also tune these lattice sizes (optional)
-                    lattice_learner = planner_configs['learning']
-                    if lattice_learner == 1:
-                        import learner.QL_learning_lattice as learning_lattice
-                        
-                        # initiate the learning agent
-                        Learning_agent = learning_lattice.q_learning_agent(Consensuser.params_n)
-                        
-                        # ensure parameters match controller
-                        if Consensuser.d_weighted.shape[1] != len(Learning_agent.action):
-                            raise ValueError("Error! Mis-match in dimensions of controller and RL parameters")
-                        
-                        # overide the module-level parameter selection
-                        for i in range(Consensuser.d_weighted.shape[1]):
-                            Learning_agent.match_parameters_i(Consensuser, i)
-                            
-                        # LOAD    
-                        Learners['learning_lattice'] = Learning_agent
-                
-                # see if I have to integrate different potential functions
-                potential_function_learner = planner_configs['hetero_gradient']
-                if potential_function_learner == 1:
-                    
-                    # import the gradient estimator
-                    import learner.gradient_estimator as gradient_estimator
-                    
-                    Gradient_agent = gradient_estimator.GradientEstimator(Agents.nAgents, Agents.dimens, Ts)
-                    
-                    # load
-                    Learners['estimator_gradients'] = Gradient_agent
-      
-    
-        configs_tools.update_orch_configs(config_path,learner_objs=Learners)
                 
     return Agents, Targets, Trajectory, Obstacles, Learners
 
@@ -184,7 +126,7 @@ def build_system(system, strategy, dimens, Ts):
 # -------------------
 class Controller:
     
-    def __init__(self,tactic_type, nAgents, state, dimens):
+    def __init__(self, tactic_type, nAgents, state, dimens):
                 
         # commands
         # --------
@@ -244,33 +186,14 @@ class Controller:
     def learning_agents(self, tactic_type, Learners):
         
         self.Learners = {}
-        
-        # note: may be better to just run through this list, rather than explicitly loading each
-        
-        if tactic_type == 'pinning' and 'consensus_lattice' in Learners:
-            
-             self.Learners['consensus_lattice'] = Learners['consensus_lattice']
-             print('Consensus-based lattice negotiation enabled')
-             
-             if 'learning_lattice' in Learners:
-                 
-                 self.Learners['learning_lattice'] = Learners['learning_lattice']
-                 print('Q-Learning based lattice optimization enabled')
-    
-    
-        if tactic_type == 'pinning' and 'estimator_gradients' in Learners:
-            
-            self.Learners['estimator_gradients'] = Learners['estimator_gradients']
-            print('Estimating neighbouring gradients enabled')
-    
-        if 'CALA_ctrl' in Learners:
-            
-            self.Learners['CALA_ctrl'] = Learners['CALA_ctrl']
-            
-    
-        if len(self.Learners) == 0:
-            
+
+        for name, learner in Learners.items():
+            self.Learners[name] = learner
+
+        if not self.Learners:
             print('Note: controller has no learning agents')
+        
+
         
     # define commands
     # --------------- 
@@ -327,13 +250,6 @@ class Controller:
             self.Graphs.find_connected_components()
             self.Graphs.update_pins(state[0:3,:], r_matrix, pin_selection_method, **kwargs_cmd)
             self.pin_matrix = self.Graphs.pin_matrix
-
-
-        # ***************** #
-        # LEARNING UPDATES
-        # ***************** #
-        
-        # I think I can do this all at the end.
 
 
         # *************** #
@@ -403,7 +319,7 @@ class Controller:
             if tactic_type == 'starling':
                
                 # compute command 
-                cmd_i[:,k_node], Controller.params = starling_tools.compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, self.params, 0.02)
+                cmd_i[:,k_node], self.params = starling_tools.compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, self.params, 0.02)
             
             # Pinning
             # --------
@@ -420,6 +336,10 @@ class Controller:
                     kwargs_pinning['quads_headings'] = kwargs_cmd['quads_headings']
                     
                 # learning stuff (if applicable)
+                
+                kwargs_pinning = learner.conductor.pinning_update_args(self, kwargs_pinning)
+                
+                '''
                 if 'consensus_lattice' in self.Learners:
                     kwargs_pinning['consensus_lattice'] = self.Learners['consensus_lattice']
                     if 'learning_lattice' in self.Learners:
@@ -430,7 +350,7 @@ class Controller:
                     # reset the sum for pins
                     self.Learners['estimator_gradients'].C_sum[0:self.dimens, 0:self.nAgents] = np.zeros((self.dimens, self.nAgents)) 
                     kwargs_pinning['pin_matrix'] = self.pin_matrix
-                    
+                '''    
                 
                 # info about graph
                 kwargs_pinning['directional_graph']         = self.Graphs.directional_graph
@@ -444,6 +364,10 @@ class Controller:
                 
                 _, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
 
+
+                learner.conductor.pinning_update_lattice(self, kwargs_pinning)
+
+                '''
                 # update the lattice parameters (note: plots relies on this)
                 if 'consensus_lattice' in self.Learners:
                     self.lattice = self.Learners['consensus_lattice'].d_weighted
@@ -462,6 +386,7 @@ class Controller:
                         component_index += 1
                         #print(self.Learners['estimator_gradients'].C_sum_bypin)
                     #print(self.Learners['estimator_gradients'].C_sum_bypin[:, :])
+                '''
 
                         
             # Shepherding
@@ -497,11 +422,12 @@ class Controller:
             #  Mixer  #
             # ******* #   
             
+            # TEMP !!!
+            # ====================
             if learning_ctrl == 'CALA':
-                
                 u_int = self.Learners['CALA_ctrl'].action_set[k_node]*u_int
+            # ====================
 
-            
             
             if tactic_type == 'saber':
                 cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
@@ -522,6 +448,8 @@ class Controller:
                 cmd_i[:,k_node] = cmd_i[:,k_node]
                 
            
+           # TEMP !!!
+           # ====================
             # this is very rough, clean up later
             # if learning control parameters, store the environment variables (nominally, cmds)
             if learning_ctrl == 'CALA':
@@ -540,6 +468,7 @@ class Controller:
                 #reward = 1/reward_term
                 reward = np.exp(-reward_term)
                 self.Learners['CALA_ctrl'].step(k_node, reward)
+            # =======================
            
             
             if self.dimens == 2 and self.cmd[2,:].any() != 0:

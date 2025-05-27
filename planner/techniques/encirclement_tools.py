@@ -36,24 +36,14 @@ enc_plane = ref_plane                   # uncessary duplicate (legacy code)
 #   quat_0 = quat.e2q([a, b, c])
 #   where a in [0, 2pi), b in [0, pi), c in [0, 2pi)
 
-
-
-
-
 #quat_0 = quat.e2q(np.array([0,0,0]))    # if lemniscate, this has to be all zeros (consider expanding later to rotate the whole swarm)
 #quat_0 = quat.e2q(np.array([np.pi/2,0,0]))
 #quat_0 = quat.e2q(np.array([0, np.pi/2, 0]))
 #quat_0 = quat.e2q(np.array([0, np.pi/4, 0]))        # Tilt down 60° along Y-axis
 #quat_0 = quat.e2q(np.array([0,np.pi/3,0]))
-quat_0 = quat.e2q(np.array([np.pi/3,np.pi/6,np.pi]))
-
+quat_0 = quat.e2q(np.array([np.pi/3,0,np.pi/2]))
 quatern = quat_0                        #  duplicate (legacy code)
 
-#quat_0_ = quat.quatjugate(quat_0)       # used to untwist   
-
-# bank of other orientations
-#quat.e2q(np.array([np.pi/2,0,0]))
-#quat.e2q(np.array([0,-np.pi/3,0]))
 
 
 #%% save configs
