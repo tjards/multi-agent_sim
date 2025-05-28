@@ -71,7 +71,7 @@ pin_selection_method = 'nopins'
     # allpins     = all are pins 
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
-learning_ctrl = 'CALA' # None, CALA
+learning_ctrl = 'CALA' #'CALA' # None, CALA
 
 #twoD = True
 
@@ -187,13 +187,12 @@ class Controller:
         
         self.Learners = {}
 
-        for name, learner in Learners.items():
-            self.Learners[name] = learner
+        for name, learner_obj in Learners.items():
+            self.Learners[name] = learner_obj
 
         if not self.Learners:
             print('Note: controller has no learning agents')
         
-
         
     # define commands
     # --------------- 
@@ -210,6 +209,8 @@ class Controller:
         # ************* #
         # GRAPH UPDATES #
         # ************* #
+        
+        # note: a lot of this can be consolidated and cleaned up
         
         # update connectivity
         self.counter += 1                    # increment the counter 
@@ -325,70 +326,31 @@ class Controller:
             # --------
             if tactic_type == 'pinning':
                 
+                # arguments (move the graph stuff up later, also, standardize the kwargs across all techniques)
+                # ---------
+                
                 # initialize some custom arguments 
                 kwargs_pinning = {}
-                
                 # pin matrix
                 kwargs_pinning['pin_matrix'] = self.pin_matrix
-                
                 # headings (if applicable)
                 if dynamics_type == 'quadcopter':
                     kwargs_pinning['quads_headings'] = kwargs_cmd['quads_headings']
-                    
-                # learning stuff (if applicable)
                 
+                # pass in args required for learning
                 kwargs_pinning = learner.conductor.pinning_update_args(self, kwargs_pinning)
-                
-                '''
-                if 'consensus_lattice' in self.Learners:
-                    kwargs_pinning['consensus_lattice'] = self.Learners['consensus_lattice']
-                    if 'learning_lattice' in self.Learners:
-                        kwargs_pinning['learning_lattice'] = self.Learners['learning_lattice']
-                
-                if 'estimator_gradients' in self.Learners:
-                    kwargs_pinning['estimator_gradients'] = self.Learners['estimator_gradients']
-                    # reset the sum for pins
-                    self.Learners['estimator_gradients'].C_sum[0:self.dimens, 0:self.nAgents] = np.zeros((self.dimens, self.nAgents)) 
-                    kwargs_pinning['pin_matrix'] = self.pin_matrix
-                '''    
-                
                 # info about graph
                 kwargs_pinning['directional_graph']         = self.Graphs.directional_graph
                 kwargs_pinning['A']                         = self.Graphs.A
                 kwargs_pinning['D']                         = self.Graphs.D
                 kwargs_pinning['local_k_connectivity']      = self.Graphs.local_k_connectivity
                 
-                            
                 # compute command
-                #cmd_i[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
-                
                 _, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
 
-
-                learner.conductor.pinning_update_lattice(self, kwargs_pinning)
-
-                '''
-                # update the lattice parameters (note: plots relies on this)
-                if 'consensus_lattice' in self.Learners:
-                    self.lattice = self.Learners['consensus_lattice'].d_weighted
-                    
-                if 'estimator_gradients' in self.Learners:
-                    # reset the by_pin sums
-                    self.Learners['estimator_gradients'].C_sum_bypin[0:self.dimens, 0:self.nAgents] = np.zeros((self.dimens, self.nAgents)) 
-                    # figure out who the pins are
-                    pins_list = np.where(np.any(self.pin_matrix > 0, axis=1))[0]
-                    # cycle through components
-                    component_index = 0
-                    for each_component in self.Graphs.components:
-                        for each_node in each_component:
-                            # add up all the gradients in this component (and hand to the pin)
-                            self.Learners['estimator_gradients'].C_sum_bypin[0:self.dimens, pins_list[component_index]] += self.Learners['estimator_gradients'].C_sum[0:self.dimens, each_node]
-                        component_index += 1
-                        #print(self.Learners['estimator_gradients'].C_sum_bypin)
-                    #print(self.Learners['estimator_gradients'].C_sum_bypin[:, :])
-                '''
-
-                        
+                # learning update 
+                learner.conductor.pinning_update_lattice(self)
+                       
             # Shepherding
             # ------------
             if tactic_type == 'shep':
@@ -422,10 +384,17 @@ class Controller:
             #  Mixer  #
             # ******* #   
             
-            # TEMP !!!
+            # TEMP !!! - set learned control param
             # ====================
             if learning_ctrl == 'CALA':
+                
+                # apply learned gain to control input
                 u_int = self.Learners['CALA_ctrl'].action_set[k_node]*u_int
+                # compute reward for this step
+                reward = self.Learners['CALA_ctrl'].update_reward_increment(self, k_node, state, centroid)
+                # select action for next step
+                self.Learners['CALA_ctrl'].step(k_node, reward)
+                
             # ====================
 
             
@@ -452,22 +421,29 @@ class Controller:
            # ====================
             # this is very rough, clean up later
             # if learning control parameters, store the environment variables (nominally, cmds)
-            if learning_ctrl == 'CALA':
+            
+            #if learning_ctrl == 'CALA':
+                
+                '''
                 # update the environment variable
                 #if self.Learners['CALA_ctrl'].reward_mode == 'cmds':
-                
                 # reset env variable
                 if self.Learners['CALA_ctrl'].counter[k_node] < 1:
                     self.Learners['CALA_ctrl'].environment_vars[k_node] = 0
                     
                 #self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(cmd_i[:,k_node])
                 self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
-                
-                
                 reward_term = np.abs(self.Learners['CALA_ctrl'].environment_vars[k_node] / (self.Learners['CALA_ctrl'].counter[k_node]+1))
                 #reward = 1/reward_term
                 reward = np.exp(-reward_term)
+                '''
+                
+                '''
+                # update reward (incremental)
+                reward = self.Learners['CALA_ctrl'].update_reward_increment(self, k_node, state, centroid)
+                
                 self.Learners['CALA_ctrl'].step(k_node, reward)
+                '''
             # =======================
            
             

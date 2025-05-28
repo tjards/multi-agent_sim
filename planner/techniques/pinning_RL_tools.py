@@ -66,7 +66,7 @@ learning            = 0     # requires heterolattice, do we want to learn lattic
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
 # future learning parameters default to zero for now
-hetero_gradient     = 0     # (this doesn't work) supports heterogeneous potential functions
+#hetero_gradient     = 0     # (this doesn't work) supports heterogeneous potential functions
 
 # define the method for lattice formation
 flocking_method = 'lennard_jones'
@@ -133,7 +133,7 @@ d_init  = d         # default d (don't mess with this)
 def update_pinning_configs():
     
     configs_entries = [
-    ('hetero_gradient', hetero_gradient),
+    ('hetero_gradient', 0),
     ('hetero_lattice', hetero_lattice),
     ('learning', learning),
     ('d', d),

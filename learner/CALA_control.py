@@ -34,7 +34,9 @@ variance_ratio  = 1         # default 1, permits faster/slower variance updates
 variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
 
 counter_max = 100            # when to stop accumualating experience in a trial
-reward_mode = 'centroid'        # 'cmds' = punish commands (start with this), 'centroid' = distance from centroid
+reward_mode = 'centroid'        # 'cmds' = punish commands (start with this), 
+                                 # 'centroid' = distance from centroid
+                                 # 'obs_avoid' = limit obstacle commands (nominally for lemniscate )
 
 # initial means and variances
 #means = np.random.uniform(action_min, action_max, num_states)
@@ -114,6 +116,26 @@ class CALA:
     # ****************************
     # ASYCHRONOUS EXTERNAL UPDATES
     # ****************************
+
+
+    def update_reward_increment(self, Controller, k_node, state, centroid):
+        
+        if reward_mode == 'centroid':
+            
+            # reset env variable
+            if Controller.Learners['CALA_ctrl'].counter[k_node] < 1:
+                Controller.Learners['CALA_ctrl'].environment_vars[k_node] = 0
+                
+            #self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(cmd_i[:,k_node])
+            Controller.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
+            
+            
+            reward_term = np.abs(Controller.Learners['CALA_ctrl'].environment_vars[k_node] / (Controller.Learners['CALA_ctrl'].counter[k_node]+1))
+            #reward = 1/reward_term
+            reward = np.exp(-reward_term)
+            
+        return reward
+        
 
     def step(self, state, reward):
         """

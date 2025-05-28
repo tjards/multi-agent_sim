@@ -192,15 +192,6 @@ import visualization.animation_sim as animation_sim
 
 if verbose == 1:
     print('building animation.')
-
-# pull out the relevant configs
-# with open(os.path.join("config", "config_sim.json"), 'r') as configs_sim:
-#     config_sim = json.load(configs_sim)
-#     config_Ts = config_sim['Ts']
-#     config_dimens = config_sim['dimens']
-# with open(os.path.join("config", "config_agents.json"), 'r') as configs_agents:
-#     config_agents = json.load(configs_agents)
-#     config_tactic_type = config_agents['tactic_type']
     
 with open(os.path.join("config", "configs.json"), 'r') as configs_sim:
     config_sim = json.load(configs_sim)

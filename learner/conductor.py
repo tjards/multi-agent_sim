@@ -34,14 +34,27 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
         
         #Load
         Learners['CALA_ctrl'] = CALA
-          
+     
+        
+    if tactic_type == 'lemni':
+        with open(config_path, 'r') as planner_lemni_tests:
+            configs = json.load(planner_lemni_tests)
+        if configs['lemni']['learning'] == 'CALA':
+            import learner.CALA_control as lemni_CALA
+            lemni_CALA = lemni_CALA.CALA(Agents.nAgents)
+           
+            # LOAD
+            Learners['lemni_CALA'] = lemni_CALA
+           
+        
     # pinning control case
     if tactic_type == 'pinning':
         
         from planner.techniques import pinning_RL_tools as pinning_tools
         
         pinning_tools.update_pinning_configs()
-        with open(os.path.join("config", "configs.json"), 'r') as planner_pinning_tests:
+        #with open(os.path.join("config", "configs.json"), 'r') as planner_pinning_tests:
+        with open(config_path, 'r') as planner_pinning_tests:
             configs = json.load(planner_pinning_tests)
             planner_configs = configs['pinning']
             
@@ -74,7 +87,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
                     # LOAD    
                     Learners['learning_lattice'] = Learning_agent
             
-            # see if I have to integrate different potential functions
+            # see if I have to integrate different potential functions (legacy - remove)
             potential_function_learner = planner_configs['hetero_gradient']
             if potential_function_learner == 1:
                 
@@ -110,7 +123,7 @@ def pinning_update_args(Controller, kwargs_pinning):
     return kwargs_pinning
 
 
-def pinning_update_lattice(Controller, kwargs_pinning):
+def pinning_update_lattice(Controller):
     
     # update the lattice parameters (note: plots relies on this)
     if 'consensus_lattice' in Controller.Learners:

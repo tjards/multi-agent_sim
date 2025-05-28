@@ -70,7 +70,7 @@ class Trajectory:
         # if encircling
         if tactic_type == 'circle':
             #from .techniques import encirclement_tools as encircle_tools
-            self.trajectory, _ = encircle_tools.encircle_target(targets, state)
+            self.trajectory, _, _ = encircle_tools.encircle_target(targets, state)
         
         # if lemniscating
         elif tactic_type == 'lemni':

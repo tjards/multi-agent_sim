@@ -18,6 +18,9 @@ from . import encirclement_tools as encircle_tools
 #%% Parameters
 # -----------
 
+# learning
+learning = 'CALA'  # None, CALA
+
 # tunable
 c1_d        = 1             # gain for position (q)
 c2_d        = 2*np.sqrt(1)  # gain for velocity (p)
@@ -51,6 +54,7 @@ from config.configs_tools import update_configs
 configs_entries = [
     ('c1_d', c1_d),
     ('c2_d', c2_d),
+    ('learning', learning),
     # ('unit_lem', list(unit_lem))  # Uncomment if/when needed
 ]
 update_configs('lemni', configs_entries)
@@ -171,7 +175,7 @@ def lemni_target(lemni_all,state,targets,i,t):
     # ------------------------------------------
     
     # compute the untwisted trejectory 
-    targets_encircle, phi_dot_desired_i = encircle_tools.encircle_target(targets, state_untwisted)
+    targets_encircle, phi_dot_desired_i, _ = encircle_tools.encircle_target(targets, state_untwisted)
     
     # TWIST - twist the circle
     # ------------------------
