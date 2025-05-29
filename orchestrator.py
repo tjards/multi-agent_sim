@@ -391,7 +391,7 @@ class Controller:
                 # apply learned gain to control input
                 u_int = self.Learners['CALA_ctrl'].action_set[k_node]*u_int
                 # compute reward for this step
-                reward = self.Learners['CALA_ctrl'].update_reward_increment(self, k_node, state, centroid)
+                reward = self.Learners['CALA_ctrl'].update_reward_increment(k_node, state, centroid)
                 # select action for next step
                 self.Learners['CALA_ctrl'].step(k_node, reward)
                 

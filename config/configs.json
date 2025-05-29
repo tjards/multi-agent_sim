@@ -16,10 +16,10 @@
         "phi_dot_d": 0.05,
         "ref_plane": "horizontal",
         "quat_0": [
-            0.6123724356957946,
-            0.35355339059327373,
-            0.3535533905932737,
-            0.6123724356957945
+            1.0,
+            0.0,
+            0.0,
+            0.0
         ]
     },
     "lemni": {
@@ -74,7 +74,7 @@
         ]
     },
     "obstacles": {
-        "nObs": 10,
+        "nObs": 0,
         "nWalls": 1,
         "oSpread": 10,
         "vehObs": 0
@@ -84,7 +84,7 @@
         "action_min": 0.5,
         "action_max": 4,
         "learning_rate": 0.1,
-        "reward_mode": "centroid"
+        "reward_mode": "height"
     },
     "learners": {
         "CALA_ctrl": "Config not available for CALA_ctrl",

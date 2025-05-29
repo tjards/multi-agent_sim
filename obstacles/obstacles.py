@@ -13,7 +13,7 @@ import copy
 
 # parameters
 # ----------
-nObs    = 10
+nObs    = 0
 
 # define the obstacle object
 # --------------------------
