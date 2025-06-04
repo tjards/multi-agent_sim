@@ -33,8 +33,8 @@ class Trajectory:
     def __init__(self, tactic_type, targets, nAgents):
         
         self.trajectory = copy.deepcopy(targets)
-            
         self.lemni = np.zeros([1, nAgents])
+        self.sorted_neighs = list(range(nAgents))
     
     # WARNING: untested code
     def exclude(self, state, targets, lemni_all, exclusion):
@@ -79,7 +79,14 @@ class Trajectory:
             lemni_all = kwargs.get('lemni_all')
             #Agents = kwargs.get('lemni')
             
-            self.trajectory, self.lemni = lemni_tools.lemni_target(lemni_all,state,targets,i,t)
+            if 'lemni_learn_actions' in kwargs:
+                learn_actions = kwargs.get('lemni_learn_actions')
+            else:
+                learn_actions = np.zeros((state.shape[1]))
+                
+            
+            self.trajectory, self.lemni, self.sorted_neighs = lemni_tools.lemni_target(lemni_all,state,targets,i,t,learn_actions)
+            
             
         elif tactic_type == 'cao':
             

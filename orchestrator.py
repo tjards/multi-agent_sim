@@ -71,7 +71,7 @@ pin_selection_method = 'nopins'
     # allpins     = all are pins 
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
-learning_ctrl = 'CALA' #'CALA' # None, CALA
+learning_ctrl = 'None' #'CALA' # None, CALA
 
 #twoD = True
 
@@ -384,8 +384,10 @@ class Controller:
             #  Mixer  #
             # ******* #   
             
-            # TEMP !!! - set learned control param
-            # ====================
+            # Apply controller learning
+            # =========================
+            
+            # controller parameter tuning (untested) 
             if learning_ctrl == 'CALA':
                 
                 # apply learned gain to control input
@@ -394,6 +396,31 @@ class Controller:
                 reward = self.Learners['CALA_ctrl'].update_reward_increment(k_node, state, centroid)
                 # select action for next step
                 self.Learners['CALA_ctrl'].step(k_node, reward)
+            
+            # other planner parameter tuning (working on this now)
+            if 'lemni_CALA' in self.Learners:
+                
+                # apply whatever is being learned
+                # [normally pass in to action here; instead, I will do outside as part of the Trjectory update]
+                
+                # compute reward for this step
+                reward = self.Learners['lemni_CALA'].update_reward_increment(k_node, state, centroid)
+                # select action for next step
+                self.Learners['lemni_CALA'].step(k_node, reward)
+                
+                # negotiate between agents 
+                # ------------------------
+                # pull out sorted neighbourhood
+                neighbourhood = kwargs_cmd['sorted_neighs']                    
+                # get index for this agent 
+                CALA_index = list(neighbourhood).index(k_node)
+                # circular indexing for lagging and leading
+                CALA_lagging = neighbourhood[(CALA_index - 1) % len(neighbourhood)]
+                CALA_leading = neighbourhood[(CALA_index + 1) % len(neighbourhood)]
+                # share rewards with neighbours (consider sharing the actions through consensus later)
+                self.Learners['lemni_CALA'].share_statistics(k_node, [CALA_lagging, CALA_leading], 'actions')
+                
+                #print('we are learning')
                 
             # ====================
 
@@ -417,35 +444,7 @@ class Controller:
                 cmd_i[:,k_node] = cmd_i[:,k_node]
                 
            
-           # TEMP !!!
-           # ====================
-            # this is very rough, clean up later
-            # if learning control parameters, store the environment variables (nominally, cmds)
-            
-            #if learning_ctrl == 'CALA':
-                
-                '''
-                # update the environment variable
-                #if self.Learners['CALA_ctrl'].reward_mode == 'cmds':
-                # reset env variable
-                if self.Learners['CALA_ctrl'].counter[k_node] < 1:
-                    self.Learners['CALA_ctrl'].environment_vars[k_node] = 0
-                    
-                #self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(cmd_i[:,k_node])
-                self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
-                reward_term = np.abs(self.Learners['CALA_ctrl'].environment_vars[k_node] / (self.Learners['CALA_ctrl'].counter[k_node]+1))
-                #reward = 1/reward_term
-                reward = np.exp(-reward_term)
-                '''
-                
-                '''
-                # update reward (incremental)
-                reward = self.Learners['CALA_ctrl'].update_reward_increment(self, k_node, state, centroid)
-                
-                self.Learners['CALA_ctrl'].step(k_node, reward)
-                '''
-            # =======================
-           
+
             
             if self.dimens == 2 and self.cmd[2,:].any() != 0:
                 

@@ -1,7 +1,7 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 45,
+        "Tf": 180,
         "Ts": 0.02,
         "dimens": 3,
         "verbose": 1,
@@ -53,7 +53,7 @@
             "aperature": false
         },
         "sensor_aperature": 140,
-        "learning_ctrl": "CALA"
+        "learning_ctrl": "None"
     },
     "agents": {
         "nAgents": 7,
@@ -81,13 +81,12 @@
     },
     "CALA": {
         "num_states": 7,
-        "action_min": 0.5,
-        "action_max": 4,
-        "learning_rate": 0.1,
+        "action_min": 0,
+        "action_max": 3.141592653589793,
+        "learning_rate": 0.01,
         "reward_mode": "height"
     },
     "learners": {
-        "CALA_ctrl": "Config not available for CALA_ctrl",
         "lemni_CALA": "Config not available for lemni_CALA"
     }
 }

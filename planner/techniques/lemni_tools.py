@@ -84,7 +84,7 @@ def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
     
     return u_enc[:,k_node]
 
-def lemni_target(lemni_all,state,targets,i,t):
+def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     
     # load
     unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1))) # x-axis reference
@@ -175,7 +175,7 @@ def lemni_target(lemni_all,state,targets,i,t):
     # ------------------------------------------
     
     # compute the untwisted trejectory 
-    targets_encircle, phi_dot_desired_i, _ = encircle_tools.encircle_target(targets, state_untwisted)
+    targets_encircle, phi_dot_desired_i, sorted_neighs = encircle_tools.encircle_target(targets, state_untwisted)
     
     # TWIST - twist the circle
     # ------------------------
@@ -203,6 +203,10 @@ def lemni_target(lemni_all,state,targets,i,t):
         m_theta = np.mod(m_theta, 2*np.pi)
 
         
+        # ---------------------------
+        # define the twist parameter
+        # ---------------------------
+
         # rolling
         if lemni_type == 1:  
             m_shift = -np.pi + 0.1 * t
@@ -215,6 +219,13 @@ def lemni_target(lemni_all,state,targets,i,t):
         # surveillance + rest
         else:
             lemni[0, m] = m_theta 
+        
+        
+        # -------------------------- #
+        # offset by learned parameter
+        # -------------------------- # 
+        lemni[0,m] += learn_actions[m]
+        
         
         twist = lemni[0,m] 
         
@@ -292,7 +303,7 @@ def lemni_target(lemni_all,state,targets,i,t):
         targets_encircle[4,m] =  - twist_v_vector[1] 
         targets_encircle[5,m] =  - twist_v_vector[2]      
 
-    return targets_encircle, lemni
+    return targets_encircle, lemni, sorted_neighs
 
 
 

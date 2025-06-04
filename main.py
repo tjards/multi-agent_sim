@@ -53,7 +53,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42+1)
 
 Ti      = 0         # initial time
-Tf      = 45        # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 180        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
 f       = 0         # parameter for future use
 dimens  = 3         # dimension (2 = 2D, 3 = 3D)
@@ -151,6 +151,11 @@ while round(t,3) < Tf:
     if tactic_type == 'lemni':
         # only need to pass last timestep, so reduce this later 
         my_kwargs['lemni_all'] = Database.lemni_all
+        my_kwargs['sorted_neighs'] = Trajectory.sorted_neighs
+        
+        # to include any of the learned parameters
+        if 'lemni_CALA' in Controller.Learners:
+            my_kwargs['lemni_learn_actions'] = Controller.Learners['lemni_CALA'].action_set
         
     Trajectory.update(tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)
                         

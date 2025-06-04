@@ -20,24 +20,25 @@ config_path=configs_tools.config_path
 #%% Simulations parameters
 # ---------------------
 #num_states      = 3             # number of states 
-action_min      = 0.5 #-1            # minimum of action space
-action_max      = 4 # 1             # maximum of action space
+action_min      = 0 # 0.5 #-1            # minimum of action space
+action_max      = np.pi #4 # 1             # maximum of action space
 
 # (artificial, just for debugging. would come from env)
 #target_actions = np.random.uniform(action_min, action_max, num_states) # randomly assigned target actions
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.1       # rate at which policy updates
+learning_rate   = 0.01       # rate at which policy updates
 variance        = 0.4       # initial variance
 variance_ratio  = 1         # default 1, permits faster/slower variance updates
 variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
 
-counter_max = 100            # when to stop accumualating experience in a trial
+counter_max = 100             # when to stop accumualating experience in a trial
 reward_mode = 'height'        # 'cmds' = punish commands (start with this), 
                                  # 'centroid' = distance from centroid
                                  # 'obs_avoid' = limit obstacle commands (nominally for lemniscate )
                                  # 'height' = for testing, want z-component of centroid highest
+                                 # '-height' = for testing, want z-component of centroid lowes
 
 # initial means and variances
 #means = np.random.uniform(action_min, action_max, num_states)
@@ -60,12 +61,12 @@ class CALA:
         self.variances      = np.full(num_states, variance) #variances
         
         # initialize actions 
-        self.action_set = np.ones((num_states))
+        self.action_set = 0*np.ones((num_states))
 
         # counter        
         self.counter_max    = counter_max 
-        self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
-        #self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
+        #self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
+        self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
 
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
@@ -88,14 +89,22 @@ class CALA:
 
 
     # seek consensus between neighbouring rewards (state, list[neighbours])
-    def share_statistics(self, state, neighbours):
+    def share_statistics(self, state, neighbours, which):
         
-        alpha= 0.6 # weight
+        alpha= 0.99 # weight
         
         for neighbour in neighbours:
+            
+            # if shareing rewards
+            if which == 'rewards':
         
-            self.means[state]       = alpha * self.means[state] + (1-alpha)*self.means[neighbour]
-            self.variances[state]   = alpha * self.variances[state] + (1-alpha)*self.variances[neighbour]
+                self.means[state]       = alpha * self.means[state] + (1-alpha)*self.means[neighbour]
+                self.variances[state]   = alpha * self.variances[state] + (1-alpha)*self.variances[neighbour]
+            
+            # if sharing actions (i.e., force a common distributio indirectly through action-level consensus)
+            elif which  == 'actions':
+                
+                self.action_set[state] = alpha * self.action_set[state] + (1-alpha)*self.action_set[neighbour]
            
 
     # select action
@@ -132,7 +141,7 @@ class CALA:
 
     def update_reward_increment(self, k_node, state, centroid):
         
-        if reward_mode == 'centroid':
+        if self.reward_mode == 'centroid':
             
             '''
             # reset env variable
@@ -157,37 +166,56 @@ class CALA:
             reward = np.exp(-reward_term)
             
             
-        if reward_mode == 'height':
+        if self.reward_mode == 'height':
             
             reward = centroid[2,0]
             
-            print('height')
+        if self.reward_mode == '-height':
+                
+            reward = 1/(centroid[2,0])
+            
+            #print('height')
+            
+        # this is where you would negotiate statistics
             
             
             
         return reward
         
 
+    # note: this is very messy, clean up object-oriented approach
     def step(self, state, reward):
         """
         Perform asynchronous update for a single state based on internal counter.
         Returns True if update occurred, else False.
         """
         # Select action for the state
-        action = self.select_action(state)
+        #action = self.select_action(state)
 
         # Increment counter
         self.counter[state] += 1
 
         # Check if update threshold reached
         if self.counter[state] >= self.counter_max:
-            self.update_policy(state, action, reward)
+            #self.update_policy(state, action, reward)
+            self.update_policy(state, self.action_set[state], reward)
             self.counter[state] = 0  # Reset counter
+            
+            #select a new action
+            #action = self.select_action(state)
+            self.action_set[state] = self.select_action(state)
+            
+            #print('new actions selected: ', self.action_set[state] )
 
         # Log history
+        action = self.select_action(state)
         self._log_state(state, action, reward)
         
-        self.action_set[state] = action
+        #self.action_set[state] = action
+        
+        
+        
+        
 
         #return action
 
@@ -340,5 +368,5 @@ class CALA:
     # ******************************************
 
 
-
+# Controller.Learners['lemni_CALA'].animate_distributions_set()
 

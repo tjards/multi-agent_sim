@@ -233,7 +233,7 @@ def encircle_target(targets, state):
         targets_encircle[0:3,:] = new_pos_desired_i[:,:]
         targets_encircle[3:6,:] = -xy_dot_desired_i[:,:] 
 
-    return targets_encircle, phiDot_out, polar_phi_sorted
+    return targets_encircle, phiDot_out, polar_phi_argsort
 
 
 
