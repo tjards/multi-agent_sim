@@ -71,7 +71,7 @@ pin_selection_method = 'nopins'
     # allpins     = all are pins 
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
-learning_ctrl = 'None' #'CALA' # None, CALA
+learning_ctrl = 'None' #'CALA' # None, CALA; CALA unverified for now
 
 #twoD = True
 
@@ -417,8 +417,10 @@ class Controller:
                 # circular indexing for lagging and leading
                 CALA_lagging = neighbourhood[(CALA_index - 1) % len(neighbourhood)]
                 CALA_leading = neighbourhood[(CALA_index + 1) % len(neighbourhood)]
-                # share rewards with neighbours (consider sharing the actions through consensus later)
+                # share actions with neighbours 
                 self.Learners['lemni_CALA'].share_statistics(k_node, [CALA_lagging, CALA_leading], 'actions')
+                # share rewards
+                self.Learners['lemni_CALA'].share_statistics(k_node, [CALA_lagging, CALA_leading], 'rewards')
                 
                 #print('we are learning')
                 

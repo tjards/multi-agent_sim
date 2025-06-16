@@ -1,7 +1,7 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 180,
+        "Tf": 90,
         "Ts": 0.02,
         "dimens": 3,
         "verbose": 1,
@@ -56,7 +56,7 @@
         "learning_ctrl": "None"
     },
     "agents": {
-        "nAgents": 7,
+        "nAgents": 12,
         "rAgents": 0.5,
         "initial_spread": 10,
         "dynamics": "double integrator",
@@ -80,10 +80,10 @@
         "vehObs": 0
     },
     "CALA": {
-        "num_states": 7,
+        "num_states": 12,
         "action_min": 0,
         "action_max": 3.141592653589793,
-        "learning_rate": 0.01,
+        "learning_rate": 0.001,
         "reward_mode": "height"
     },
     "learners": {

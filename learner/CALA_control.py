@@ -28,15 +28,13 @@ action_max      = np.pi #4 # 1             # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.01       # rate at which policy updates
-variance        = 0.4       # initial variance
+learning_rate   = 0.001       # rate at which policy updates
+variance        = 0.2       # initial variance
 variance_ratio  = 1         # default 1, permits faster/slower variance updates
 variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
 
 counter_max = 100             # when to stop accumualating experience in a trial
 reward_mode = 'height'        # 'cmds' = punish commands (start with this), 
-                                 # 'centroid' = distance from centroid
-                                 # 'obs_avoid' = limit obstacle commands (nominally for lemniscate )
                                  # 'height' = for testing, want z-component of centroid highest
                                  # '-height' = for testing, want z-component of centroid lowes
 
@@ -65,8 +63,8 @@ class CALA:
 
         # counter        
         self.counter_max    = counter_max 
-        #self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
-        self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
+        self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
+        #self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
 
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
@@ -91,7 +89,7 @@ class CALA:
     # seek consensus between neighbouring rewards (state, list[neighbours])
     def share_statistics(self, state, neighbours, which):
         
-        alpha= 0.99 # weight
+        alpha= 0.5 # weight
         
         for neighbour in neighbours:
             
@@ -141,17 +139,17 @@ class CALA:
 
     def update_reward_increment(self, k_node, state, centroid):
         
+        '''
         if self.reward_mode == 'centroid':
             
-            '''
             # reset env variable
-            if Controller.Learners['CALA_ctrl'].counter[k_node] < 1:
-                Controller.Learners['CALA_ctrl'].environment_vars[k_node] = 0
+            #if Controller.Learners['CALA_ctrl'].counter[k_node] < 1:
+            #    Controller.Learners['CALA_ctrl'].environment_vars[k_node] = 0
                 
             #self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(cmd_i[:,k_node])
-            Controller.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
-            reward_term = np.abs(Controller.Learners['CALA_ctrl'].environment_vars[k_node] / (Controller.Learners['CALA_ctrl'].counter[k_node]+1))
-            '''
+            #Controller.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
+            #reward_term = np.abs(Controller.Learners['CALA_ctrl'].environment_vars[k_node] / (Controller.Learners['CALA_ctrl'].counter[k_node]+1))
+            
             
             # reset env variable
             if self.counter[k_node] < 1:
@@ -164,15 +162,15 @@ class CALA:
             
             #reward = 1/reward_term
             reward = np.exp(-reward_term)
-            
+        '''    
             
         if self.reward_mode == 'height':
             
-            reward = centroid[2,0]
+            reward = (centroid[2,0])**2
             
         if self.reward_mode == '-height':
                 
-            reward = 1/(centroid[2,0])
+            reward = (25-centroid[2,0])**2
             
             #print('height')
             
@@ -369,4 +367,5 @@ class CALA:
 
 
 # Controller.Learners['lemni_CALA'].animate_distributions_set()
+#Controller.Learners['lemni_CALA'].all_plots_set()
 
