@@ -71,7 +71,7 @@ pin_selection_method = 'nopins'
     # allpins     = all are pins 
 criteria_table = {'radius': True, 'aperature': False} # for graph construction 
 sensor_aperature    = 140
-learning_ctrl = 'None' #'CALA' # None, CALA; CALA unverified for now
+learning_ctrl = None  # None, 'CALA'; CALA unverified for now
 
 #twoD = True
 
@@ -380,53 +380,36 @@ class Controller:
                 #print(self.caoClass.status)
                 #print(self.caoClass.layer)
 
-            # ******* #
-            #  Mixer  #
-            # ******* #   
             
             # Apply controller learning
-            # =========================
-            
-            # controller parameter tuning (untested) 
-            if learning_ctrl == 'CALA':
+            #---------------------------
+     
+            # controller parameter tuning (untested)
+            '''if learning_ctrl == 'CALA':
                 
                 # apply learned gain to control input
                 u_int = self.Learners['CALA_ctrl'].action_set[k_node]*u_int
                 # compute reward for this step
                 reward = self.Learners['CALA_ctrl'].update_reward_increment(k_node, state, centroid)
                 # select action for next step
-                self.Learners['CALA_ctrl'].step(k_node, reward)
+                self.Learners['CALA_ctrl'].step(k_node, reward)'''
             
-            # other planner parameter tuning (working on this now)
+            # lemniscate orientation learn
             if 'lemni_CALA' in self.Learners:
                 
-                # apply whatever is being learned
-                # [normally pass in to action here; instead, I will do outside as part of the Trjectory update]
-                
-                # compute reward for this step
-                reward = self.Learners['lemni_CALA'].update_reward_increment(k_node, state, centroid, targets, obstacles_plus)
-                # select action for next step
-                self.Learners['lemni_CALA'].step(k_node, reward)
-                
-                # negotiate between agents 
-                # ------------------------
-                # pull out sorted neighbourhood
-                neighbourhood = kwargs_cmd['sorted_neighs']                    
-                # get index for this agent 
-                CALA_index = list(neighbourhood).index(k_node)
-                # circular indexing for lagging and leading
-                CALA_lagging = neighbourhood[(CALA_index - 1) % len(neighbourhood)]
-                CALA_leading = neighbourhood[(CALA_index + 1) % len(neighbourhood)]
-                # share actions with neighbours 
-                self.Learners['lemni_CALA'].share_statistics(k_node, [CALA_lagging, CALA_leading], 'actions')
-                # share rewards
-                self.Learners['lemni_CALA'].share_statistics(k_node, [CALA_lagging, CALA_leading], 'rewards')
-                
-                #print('we are learning')
-                
-            # ====================
-
+                self.Learners['lemni_CALA'].learn_lemni(
+                   state=k_node,
+                   state_array=state,
+                   centroid=centroid,
+                   focal=targets,
+                   target=obstacles_plus,
+                   neighbours=kwargs_cmd['sorted_neighs']
+                   )
             
+            # ******* #
+            #  Mixer  #
+            # ******* # 
+
             if tactic_type == 'saber':
                 cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
             elif tactic_type == 'reynolds':
@@ -444,8 +427,6 @@ class Controller:
                 cmd_i[:,k_node] = cmd_i[:,k_node]
             elif tactic_type == 'cao':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
-                
-           
 
             
             if self.dimens == 2 and self.cmd[2,:].any() != 0:

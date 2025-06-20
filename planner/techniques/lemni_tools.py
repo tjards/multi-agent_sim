@@ -19,7 +19,7 @@ from . import encirclement_tools as encircle_tools
 # -----------
 
 # learning
-learning = 'CALA'  # None, CALA
+learning = None # None, CALA
 
 # tunable
 c1_d        = 1             # gain for position (q)
@@ -39,14 +39,7 @@ lemni_type  = 0
 # import some parameters from encirclement_tools
 r_desired, phi_dot_d, ref_plane, quat_0 = encircle_tools.get_params() 
 
-# reference frames
-#unit_lem    = np.array([1,0,0]).reshape((3,1))  # sets twist orientation (i.e. orientation of lemniscate along x) note: only required for explicit definition
-
-# new
-#unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1))) # x-axis reference
-#twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1))) # z-axis reference
-#quat_0_ = quat.quatjugate(quat_0)               # used to untwist                               
-
+                            
 #%% save configs
 # --------------
 
@@ -63,19 +56,17 @@ update_configs('lemni', configs_entries)
 #%% Useful functions 
 
 def check_targets(targets):
+    
     # if mobbing, offset targets back down
     if lemni_type == 2:
         targets[2,:] += r_desired/2
     return targets
-
 
 def sigma_1(z):    
     sigma_1 = np.divide(z,np.sqrt(1+z**2))    
     return sigma_1
 
 #%% main functions
-
-
 
 def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
     
@@ -87,9 +78,9 @@ def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
 def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     
     # load
-    unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1))) # x-axis reference
-    twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1))) # z-axis reference
-    quat_0_ = quat.quatjugate(quat_0)               # used to untwist 
+    unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1)))     # x-axis reference
+    twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1)))    # z-axis reference
+    quat_0_ = quat.quatjugate(quat_0)                                       # used to untwist 
     
     
     nVeh = state.shape[1]
@@ -97,21 +88,12 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     # initialize the lemni twist factor
     lemni = np.zeros([1, nVeh])
     
-    # if mobbing, can offset targets up
-    #if lemni_type == 2:
-    #    targets[2,:] += r_desired/2
-    
+    # if mobbing, can offset targets up    
     targets = check_targets(targets)
 
     # UNTWIST -  each agent has to be untwisted into a common plane
     # -------------------------------------------------------------      
     last_twist = lemni_all[i-1,:] #np.pi*lemni_all[i-1,:]
-    
-    
-    # new - rotate states into quat_0 frame
-    #for n in range(state.shape[1]):
-    #    state[0:3, n] = quat.rotate(quat_0_, state[0:3, n] - targets[0:3, n]) + targets[0:3, n]
-
     state_untwisted = state.copy()
     
     # for each agent 
@@ -169,8 +151,6 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         # untwist the agent 
         state_untwisted[0:3,n] = quat.rotate(untwist_quat,states_q_n - targets_n) + targets_n
         
-       
- 
     # ENCIRCLE -  form a common untwisted circle
     # ------------------------------------------
     
@@ -297,8 +277,6 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         # rotate back
         twist_v_vector = quat.rotate(quat_0, v_emb.reshape(3,1)).ravel()
         
-
-
         targets_encircle[3,m] =  - twist_v_vector[0] 
         targets_encircle[4,m] =  - twist_v_vector[1] 
         targets_encircle[5,m] =  - twist_v_vector[2]      

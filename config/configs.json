@@ -25,7 +25,7 @@
     "lemni": {
         "c1_d": 1,
         "c2_d": 2.0,
-        "learning": "CALA"
+        "learning": null
     },
     "saber": {
         "a": 5,
@@ -53,7 +53,7 @@
             "aperature": false
         },
         "sensor_aperature": 140,
-        "learning_ctrl": "None"
+        "learning_ctrl": null
     },
     "agents": {
         "nAgents": 7,
@@ -78,15 +78,5 @@
         "nWalls": 1,
         "oSpread": 20,
         "vehObs": 0
-    },
-    "CALA": {
-        "num_states": 7,
-        "action_min": 0,
-        "action_max": 5.969026041820607,
-        "learning_rate": 0.005,
-        "reward_mode": "target"
-    },
-    "learners": {
-        "lemni_CALA": "Config not available for lemni_CALA"
     }
 }

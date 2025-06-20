@@ -19,36 +19,25 @@ config_path=configs_tools.config_path
 
 #%% Simulations parameters
 # ---------------------
-#num_states      = 3             # number of states 
-action_min      = 0 #0 # 0.5 #-1            # minimum of action space
-action_max      = 1.9*np.pi #4 # 1             # maximum of action space
 
-# (artificial, just for debugging. would come from env)
-#target_actions = np.random.uniform(action_min, action_max, num_states) # randomly assigned target actions
+action_min      = 0             # minimum of action space
+action_max      = 1.9*np.pi     # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.005       # rate at which policy updates
+learning_rate   = 0.005     # rate at which policy updates
 variance        = 0.2       # initial variance
-variance_ratio  = 10         # default 1, permits faster/slower variance updates
+variance_ratio  = 10        # default 1, permits faster/slower variance updates
 variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
 
 counter_max = 10             # when to stop accumualating experience in a trial
-reward_mode = 'target'        # 'cmds' = punish commands (start with this), 
-                                 # OLD // 'height' = for testing, want z-component of centroid highest
-                                 # OLD // '-height' = for testing, want z-component of centroid lowes
-                                 # 'target' = doesn't work yet, but aimed at target tracking
-
-# initial means and variances
-#means = np.random.uniform(action_min, action_max, num_states)
-#variances = np.full(num_states, variance)
+reward_mode = 'target'       # 'target' = change orientation of swarm to track target 
 
 #%% Learning Class
 # ----------------
 class CALA:
     
     # initialize
-    #def __init__(self, num_states, action_min, action_max, learning_rate, means, variances):
     def __init__(self, num_states):
         
         # load parameters into class
@@ -69,13 +58,12 @@ class CALA:
 
         # counter        
         self.counter_max    = counter_max 
-        #self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
-        self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
+        self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
+        #self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
 
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
         self.environment_vars = np.zeros(num_states)        
-
 
         # store stuff
         self.mean_history       = []
@@ -91,12 +79,26 @@ class CALA:
             ('reward_mode', reward_mode)
         ] )
 
+    # main lemniscate learning
+    def learn_lemni(self, state, state_array, centroid, focal, target, neighbours):
+  
+        reward = self.update_reward_increment(state, state_array, centroid, focal, target)
+        self.step(state, reward)
+    
+        if neighbours is not None and len(neighbours) > 1:
+            idx = list(neighbours).index(state)
+            lag = neighbours[(idx - 1) % len(neighbours)]
+            lead = neighbours[(idx + 1) % len(neighbours)]
+    
+            self.share_statistics(state, [lag, lead], 'actions')
+            self.share_statistics(state, [lag, lead], 'rewards')
+
 
     # seek consensus between neighbouring rewards (state, list[neighbours])
     def share_statistics(self, state, neighbours, which):
         
-        alpha = 0.9  # if 1, don't share #0.9*self.asymmetry[state] 
-        alpha_asym = self.asymmetry[state] # injects asymmetry
+        alpha = 0.9                             # for symetric sharing 
+        alpha_asym = self.asymmetry[state]      # for asymetric sharing
         
         for neighbour in neighbours:
             
@@ -106,12 +108,11 @@ class CALA:
                 self.means[state]       = alpha * self.means[state] + (1-alpha)*self.means[neighbour]
                 self.variances[state]   = alpha * self.variances[state] + (1-alpha)*self.variances[neighbour]
             
-            # if sharing actions (i.e., force a common distributio indirectly through action-level consensus)
+            # if sharing actions (i.e., force a common distribution indirectly through action-level consensus)
             elif which  == 'actions':
                 
                 self.action_set[state] = alpha_asym * self.action_set[state] + (1-alpha_asym)*self.action_set[neighbour]
            
-
     # select action
     def select_action(self, state):
         
@@ -143,141 +144,70 @@ class CALA:
     # ASYCHRONOUS EXTERNAL UPDATES
     # ****************************
 
-
     def update_reward_increment(self, k_node, state, centroid, focal, target):
         
-        '''
-        if self.reward_mode == 'centroid':
-            
-            # reset env variable
-            #if Controller.Learners['CALA_ctrl'].counter[k_node] < 1:
-            #    Controller.Learners['CALA_ctrl'].environment_vars[k_node] = 0
-                
-            #self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(cmd_i[:,k_node])
-            #Controller.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
-            #reward_term = np.abs(Controller.Learners['CALA_ctrl'].environment_vars[k_node] / (Controller.Learners['CALA_ctrl'].counter[k_node]+1))
-            
-            
-            # reset env variable
-            if self.counter[k_node] < 1:
-                self.environment_vars[k_node] = 0
-                
-            #self.Learners['CALA_ctrl'].environment_vars[k_node] += np.linalg.norm(cmd_i[:,k_node])
-            self.environment_vars[k_node] += np.linalg.norm(state[0:3,k_node]-centroid[0:3,0])
-            reward_term = np.abs(self.environment_vars[k_node] / (self.counter[k_node]+1))
-                       
-            
-            #reward = 1/reward_term
-            reward = np.exp(-reward_term)
-        '''    
-        
-        '''
-        if self.reward_mode == 'height':
-            
-            reward = (centroid[2,0])**2
-            
-        if self.reward_mode == '-height':
-                
-            reward = (centroid[2,0]-50)**2
-            
-            #print('height')
-            
-        # this is where you would negotiate statistics
-        
-        '''
-        
+      
         if self.reward_mode == 'target':
             
-            #lambda_tunable = 0.01 # tunable 
-            
-            #lambda_tunable = 0.1
             epsilon=1e-6
-            #d_cutoff = 1.0
             
+            # if there is no target, just chose origin
             if target.shape[1] == 0 :
-                target = centroid
+                target = 0*centroid
             
-            v1 = focal[0:3,k_node]  - centroid[0:3,0]     # centroid → focal
-            v2 = target[0:3,0]  - centroid[0:3,0]     # centroid → target
+            v1 = focal[0:3,k_node]  - centroid[0:3,0]   # centroid → focal
+            v2 = target[0:3,0]  - centroid[0:3,0]       # centroid → target
 
-            # Cosine of the angle between v1 and v2
+            # parametrize angle between v1 and v2
             dot_product = np.dot(v1, v2)
             norms_product = np.linalg.norm(v1) * np.linalg.norm(v2) + epsilon
             cos_theta = dot_product / norms_product
 
-            # Map cosine [-1, 1] → reward [0, 1]
+            # map cosine [-1, 1] to reward [0, 1]
             reward = (cos_theta + 1) / 2
-                
-            '''    
-                # default the origin
-                #reward = np.exp(-lambda_tunable*np.linalg.norm(0*centroid[0:3,0]  - centroid[0:3,0] ))
-                d = np.linalg.norm(centroid[0:3,0])
-                reward = 1 / (1 + np.exp(lambda_tunable * (d - d_cutoff)))
-                
-            else:
-                
-                #reward = np.exp(-lambda_tunable*np.linalg.norm(target[0:3,0] - centroid[0:3,0] ))
-                d = np.linalg.norm(target[0:3,0] - centroid[0:3,0])
-                reward = 1 / (1 + np.exp(lambda_tunable * (d - d_cutoff)))
-            '''
             
         return reward
         
 
     # note: this is very messy, clean up object-oriented approach
     def step(self, state, reward):
-        """
-        Perform asynchronous update for a single state based on internal counter.
-        Returns True if update occurred, else False.
-        """
-        # Select action for the state
-        #action = self.select_action(state)
-
-        # Increment counter
+  
+        # increment counter
         self.counter[state] += 1
 
-        # Check if update threshold reached
+        # check if update threshold reached
         if self.counter[state] >= self.counter_max:
-            #self.update_policy(state, action, reward)
+      
+            # update the policy
             self.update_policy(state, self.action_set[state], reward)
-            self.counter[state] = 0  # Reset counter
-            
+            # reset counter
+            self.counter[state] = 0  
             #select a new action
-            #action = self.select_action(state)
             self.action_set[state] = self.select_action(state)
-            
-            #print('new actions selected: ', self.action_set[state] )
 
-        # Log history
-        #action = self.select_action(state)
-        #self._log_state(state, action, reward)
+        # log history
         self._log_state(state, self.action_set[state], reward)
 
-        
-        #self.action_set[state] = action
-        
-        
-        
-        
-
-        #return action
-
+    # store current step info into history buffers
     def _log_state(self, state, action, reward):
-        """
-        Store current step info into history buffers.
-        """
-        # Expand storage if necessary
+    
+        # expand storage if necessary
         if len(self.mean_history) <= state:
             self.mean_history.append([])
             self.variance_history.append([])
             self.reward_history.append([])
 
-        # Store data for this state
+        # store data for this state
         self.mean_history[state].append(self.means[state])
         self.variance_history[state].append(self.variances[state])
         self.reward_history[state].append(reward)
     
     
+    # ************** #
+    #   PLOTS        #
+    # ************** #
+    
+    # plot results
     def plots_set(self):
         fig, axs = plt.subplots(3, 1, figsize=(10, 12))
     
@@ -290,12 +220,12 @@ class CALA:
             reward_array = np.array(self.reward_history[state])
             std_devs = np.sqrt(variance_array)
     
-            # Plot the line first to capture color
+            # plot the line first to capture color
             line, = axs[0].plot(range(time_steps), mean_array, label=f"state {state}")
             color = line.get_color()
             self.state_colors.append(color)
     
-            # Correct color applied to the shaded region
+            # correct color applied to the shaded region
             axs[0].fill_between(range(time_steps),
                                 mean_array - std_devs,
                                 mean_array + std_devs,
@@ -316,11 +246,23 @@ class CALA:
         plt.tight_layout()
         plt.show()
 
-        
+    # plot the distributions 
     def plot_distributions_over_time_set(self, steps_to_plot=[0, 10, 25, 50]):
         from scipy.stats import norm
         x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
     
+        # Compute a shared y-axis limit (max PDF value over all states and selected steps)
+        y_max = 0
+        for state in range(self.num_states):
+            for step in steps_to_plot:
+                mu = self.mean_history[state][step]
+                sigma = np.sqrt(self.variance_history[state][step])
+                if sigma > 0:
+                    y = norm.pdf(mu, mu, sigma)
+                    y_max = max(y_max, y)
+        y_max *= 1.1  # add some headroom
+    
+        # create the figure
         fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
     
         for state in range(self.num_states):
@@ -333,12 +275,15 @@ class CALA:
                 y = norm.pdf(x, mu, sigma)
                 alpha = 0.1 + 0.8 * (idx / (len(steps_to_plot) - 1))
                 ax.fill_between(x, y, color=color, alpha=alpha, label=f"step {step}" if idx == len(steps_to_plot)-1 else None)
+    
             ax.set_title(f"State {state} Distribution Evolution")
             ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
+            ax.set_ylim(0, y_max)  # ← key fix to match the animation
     
         plt.tight_layout()
         plt.show()
         
+    # animate the distributions
     def animate_distributions_set(self, interval=50, save_path=None):
         import matplotlib.animation as animation
         from scipy.stats import norm
@@ -354,7 +299,7 @@ class CALA:
                 mu = self.mean_history[state][t]
                 y_max = max(y_max, norm.pdf(mu, mu, sigma))
         y_max *= 1.1
-    
+
         fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
         plt.subplots_adjust(hspace=0.4)
         if self.num_states == 1: axs = [axs]
@@ -368,7 +313,8 @@ class CALA:
             lines.append(line)
             fills.append(fill)
             ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
-            ax.set_ylim(0, y_max)
+            #ax.set_ylim(0, y_max)
+            ax.set_ylim(0, 1)
             ax.set_title(f"State {state} - Action PDF over Time")
     
         time_text = axs[0].text(0.95, 0.95, '', transform=axs[0].transAxes,
@@ -386,8 +332,16 @@ class CALA:
                 sigma = np.sqrt(self.variance_history[state][frame])
                 y = norm.pdf(x, mu, sigma)
                 lines[state].set_data(x, y)
-                fills[state].remove()
+                #fills[state].remove()
+                #fills[state] = axs[state].fill_between(x, y, color=self.state_colors[state], alpha=0.3)
+                
+                # remove previous collection from axis
+                for artist in axs[state].collections:
+                    artist.remove()
+
+                # add new one
                 fills[state] = axs[state].fill_between(x, y, color=self.state_colors[state], alpha=0.3)
+                
             time_text.set_text(f"Time step: {frame}/{time_steps}")
             return lines + fills + [time_text]
     
@@ -402,15 +356,16 @@ class CALA:
     
         return ani
 
+    # plots
     def all_plots_set(self):
         
         self.plots_set()
         self.plot_distributions_over_time_set()
         #anim = self.animate_distributions_set(interval=50, save_path='RL_animation.gif')
 
-    # ******************************************
 
-
+# manual calls
+# ------------
 # Controller.Learners['lemni_CALA'].animate_distributions_set()
-#Controller.Learners['lemni_CALA'].all_plots_set()
+# Controller.Learners['lemni_CALA'].all_plots_set()
 
