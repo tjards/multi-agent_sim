@@ -404,7 +404,7 @@ class Controller:
                 # [normally pass in to action here; instead, I will do outside as part of the Trjectory update]
                 
                 # compute reward for this step
-                reward = self.Learners['lemni_CALA'].update_reward_increment(k_node, state, centroid)
+                reward = self.Learners['lemni_CALA'].update_reward_increment(k_node, state, centroid, targets, obstacles_plus)
                 # select action for next step
                 self.Learners['lemni_CALA'].step(k_node, reward)
                 

@@ -56,7 +56,7 @@
         "learning_ctrl": "None"
     },
     "agents": {
-        "nAgents": 12,
+        "nAgents": 7,
         "rAgents": 0.5,
         "initial_spread": 10,
         "dynamics": "double integrator",
@@ -74,17 +74,17 @@
         ]
     },
     "obstacles": {
-        "nObs": 0,
+        "nObs": 1,
         "nWalls": 1,
-        "oSpread": 10,
+        "oSpread": 20,
         "vehObs": 0
     },
     "CALA": {
-        "num_states": 12,
+        "num_states": 7,
         "action_min": 0,
-        "action_max": 3.141592653589793,
-        "learning_rate": 0.001,
-        "reward_mode": "height"
+        "action_max": 5.969026041820607,
+        "learning_rate": 0.005,
+        "reward_mode": "target"
     },
     "learners": {
         "lemni_CALA": "Config not available for lemni_CALA"

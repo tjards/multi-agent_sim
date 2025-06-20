@@ -13,7 +13,7 @@ import copy
 
 # parameters
 # ----------
-nObs    = 0
+nObs    = 1
 
 # define the obstacle object
 # --------------------------
@@ -22,7 +22,7 @@ class Obstacles:
     def __init__(self, tactic_type, targets, dimens):
         
         
-        np.random.seed(42+1)
+        np.random.seed(42)
         
         # note: don't let pass-in of walls yet, as it is a manual process still
         
@@ -43,7 +43,7 @@ class Obstacles:
             self.nObs = 1
 
         self.obstacles = np.zeros((4,self.nObs))
-        oSpread = 10
+        oSpread = 20
 
         # manual (comment out if random)
         # obstacles[0,:] = 0    # position (x)

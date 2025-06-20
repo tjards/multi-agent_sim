@@ -20,23 +20,24 @@ config_path=configs_tools.config_path
 #%% Simulations parameters
 # ---------------------
 #num_states      = 3             # number of states 
-action_min      = 0 # 0.5 #-1            # minimum of action space
-action_max      = np.pi #4 # 1             # maximum of action space
+action_min      = 0 #0 # 0.5 #-1            # minimum of action space
+action_max      = 1.9*np.pi #4 # 1             # maximum of action space
 
 # (artificial, just for debugging. would come from env)
 #target_actions = np.random.uniform(action_min, action_max, num_states) # randomly assigned target actions
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.001       # rate at which policy updates
+learning_rate   = 0.005       # rate at which policy updates
 variance        = 0.2       # initial variance
-variance_ratio  = 1         # default 1, permits faster/slower variance updates
+variance_ratio  = 10         # default 1, permits faster/slower variance updates
 variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
 
-counter_max = 100             # when to stop accumualating experience in a trial
-reward_mode = 'height'        # 'cmds' = punish commands (start with this), 
-                                 # 'height' = for testing, want z-component of centroid highest
-                                 # '-height' = for testing, want z-component of centroid lowes
+counter_max = 10             # when to stop accumualating experience in a trial
+reward_mode = 'target'        # 'cmds' = punish commands (start with this), 
+                                 # OLD // 'height' = for testing, want z-component of centroid highest
+                                 # OLD // '-height' = for testing, want z-component of centroid lowes
+                                 # 'target' = doesn't work yet, but aimed at target tracking
 
 # initial means and variances
 #means = np.random.uniform(action_min, action_max, num_states)
@@ -58,13 +59,18 @@ class CALA:
         self.means          = np.random.uniform(action_min, action_max, num_states) #means
         self.variances      = np.full(num_states, variance) #variances
         
+        # Dirichlet distribution with a = 1 , 
+        #    inject non-uniform influence or bias across states 
+        self.asymmetry  = np.random.rand(num_states)
+        self.asymmetry  /= np.sum(self.asymmetry)  # Normalize to sum to 1
+        
         # initialize actions 
         self.action_set = 0*np.ones((num_states))
 
         # counter        
         self.counter_max    = counter_max 
-        self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
-        #self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
+        #self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
+        self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
 
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
@@ -89,7 +95,8 @@ class CALA:
     # seek consensus between neighbouring rewards (state, list[neighbours])
     def share_statistics(self, state, neighbours, which):
         
-        alpha= 0.5 # weight
+        alpha = 0.9  # if 1, don't share #0.9*self.asymmetry[state] 
+        alpha_asym = self.asymmetry[state] # injects asymmetry
         
         for neighbour in neighbours:
             
@@ -102,7 +109,7 @@ class CALA:
             # if sharing actions (i.e., force a common distributio indirectly through action-level consensus)
             elif which  == 'actions':
                 
-                self.action_set[state] = alpha * self.action_set[state] + (1-alpha)*self.action_set[neighbour]
+                self.action_set[state] = alpha_asym * self.action_set[state] + (1-alpha_asym)*self.action_set[neighbour]
            
 
     # select action
@@ -137,7 +144,7 @@ class CALA:
     # ****************************
 
 
-    def update_reward_increment(self, k_node, state, centroid):
+    def update_reward_increment(self, k_node, state, centroid, focal, target):
         
         '''
         if self.reward_mode == 'centroid':
@@ -163,20 +170,56 @@ class CALA:
             #reward = 1/reward_term
             reward = np.exp(-reward_term)
         '''    
-            
+        
+        '''
         if self.reward_mode == 'height':
             
             reward = (centroid[2,0])**2
             
         if self.reward_mode == '-height':
                 
-            reward = (25-centroid[2,0])**2
+            reward = (centroid[2,0]-50)**2
             
             #print('height')
             
         # this is where you would negotiate statistics
+        
+        '''
+        
+        if self.reward_mode == 'target':
             
+            #lambda_tunable = 0.01 # tunable 
             
+            #lambda_tunable = 0.1
+            epsilon=1e-6
+            #d_cutoff = 1.0
+            
+            if target.shape[1] == 0 :
+                target = centroid
+            
+            v1 = focal[0:3,k_node]  - centroid[0:3,0]     # centroid → focal
+            v2 = target[0:3,0]  - centroid[0:3,0]     # centroid → target
+
+            # Cosine of the angle between v1 and v2
+            dot_product = np.dot(v1, v2)
+            norms_product = np.linalg.norm(v1) * np.linalg.norm(v2) + epsilon
+            cos_theta = dot_product / norms_product
+
+            # Map cosine [-1, 1] → reward [0, 1]
+            reward = (cos_theta + 1) / 2
+                
+            '''    
+                # default the origin
+                #reward = np.exp(-lambda_tunable*np.linalg.norm(0*centroid[0:3,0]  - centroid[0:3,0] ))
+                d = np.linalg.norm(centroid[0:3,0])
+                reward = 1 / (1 + np.exp(lambda_tunable * (d - d_cutoff)))
+                
+            else:
+                
+                #reward = np.exp(-lambda_tunable*np.linalg.norm(target[0:3,0] - centroid[0:3,0] ))
+                d = np.linalg.norm(target[0:3,0] - centroid[0:3,0])
+                reward = 1 / (1 + np.exp(lambda_tunable * (d - d_cutoff)))
+            '''
             
         return reward
         
@@ -206,8 +249,10 @@ class CALA:
             #print('new actions selected: ', self.action_set[state] )
 
         # Log history
-        action = self.select_action(state)
-        self._log_state(state, action, reward)
+        #action = self.select_action(state)
+        #self._log_state(state, action, reward)
+        self._log_state(state, self.action_set[state], reward)
+
         
         #self.action_set[state] = action
         
