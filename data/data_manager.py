@@ -128,7 +128,8 @@ class History:
         self.obstacles_all       = np.zeros([nSteps, len(Obstacles.obstacles), Obstacles.nObs])
         self.centroid_all        = np.zeros([nSteps, len(Agents.centroid), 1])
         self.f_all               = np.ones(nSteps)
-        self.lemni_all           = np.zeros([nSteps, Agents.nAgents])
+        #self.lemni_all           = np.zeros([nSteps, Agents.nAgents])
+        self.lemni_all           = np.zeros([nSteps, 2, Agents.nAgents]) # now supports 2-axis
         # metrics_order_all   = np.zeros((nSteps,7))
         # metrics_order       = np.zeros((1,7))
         nMetrics            = 12 # there are 11 positions being used.    
@@ -161,7 +162,8 @@ class History:
         self.f_all[0]                = f
         self.metrics_order_all[0,:]  = self.metrics_order
         #self.lemni                   = np.zeros([1, Agents.nAgents])
-        self.lemni_all[0,:]          = Trajectory.lemni
+        #self.lemni_all[0,:]          = Trajectory.lemni
+        self.lemni_all[0,:,:]          = Trajectory.lemni       # now supports 2-axis
         self.pins_all[0,:,:]         = Controller.pin_matrix  
         self.connectivity[0,:,:]     = Controller.Graphs.A
         self.local_k_connectivity[0] =list(Controller.Graphs.local_k_connectivity.values())
@@ -199,7 +201,8 @@ class History:
         self.obstacles_all[i,:,:]    = Obstacles.obstacles
         self.centroid_all[i,:,:]     = Agents.centroid
         self.f_all[i]                = f
-        self.lemni_all[i,:]          = Trajectory.lemni
+        #self.lemni_all[i,:]          = Trajectory.lemni
+        self.lemni_all[i,:,:]          = Trajectory.lemni         # now supports 2-axis
         self.pins_all[i,:,:]         = Controller.pin_matrix 
         self.connectivity[i,:,:]     = Controller.Graphs.A
         self.local_k_connectivity[i] =list(Controller.Graphs.local_k_connectivity.values())

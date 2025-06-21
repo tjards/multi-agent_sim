@@ -25,7 +25,7 @@
     "lemni": {
         "c1_d": 1,
         "c2_d": 2.0,
-        "learning": null
+        "learning": "CALA"
     },
     "saber": {
         "a": 5,
@@ -78,5 +78,16 @@
         "nWalls": 1,
         "oSpread": 20,
         "vehObs": 0
+    },
+    "CALA": {
+        "num_states": 7,
+        "action_min": 0,
+        "action_max": 5.969026041820607,
+        "learning_rate": 0.005,
+        "reward_mode": "target"
+    },
+    "learners": {
+        "lemni_CALA_x": "Config not available for lemni_CALA_x",
+        "lemni_CALA_z": "Config not available for lemni_CALA_z"
     }
 }

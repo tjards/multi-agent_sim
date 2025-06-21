@@ -27,7 +27,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
     
     Learners = {}
     
-    # if using CALA to tune controller parameters
+    # if using CALA to tune controller parameters (placeholder for future dev)
     if learning_ctrl == 'CALA':
         from learner import CALA_control
         CALA = CALA_control.CALA(Agents.nAgents) # just one param per agent now (expand latter)
@@ -41,10 +41,19 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
             configs = json.load(planner_lemni_tests)
         if configs['lemni']['learning'] == 'CALA':
             import learner.CALA_control as lemni_CALA
-            lemni_CALA = lemni_CALA.CALA(Agents.nAgents)
-           
+            
+            # CASE 1: just one direction (prototype)
+            '''lemni_CALA = lemni_CALA.CALA(Agents.nAgents)
             # LOAD
-            Learners['lemni_CALA'] = lemni_CALA
+            Learners['lemni_CALA'] = lemni_CALA'''
+            
+            # CASE 2: bidirectional
+            lemni_CALA_x = lemni_CALA.CALA(Agents.nAgents)
+            lemni_CALA_z = lemni_CALA.CALA(Agents.nAgents)
+            # LOAD
+            Learners['lemni_CALA_x'] = lemni_CALA_x
+            Learners['lemni_CALA_z'] = lemni_CALA_z
+            
            
         
     # pinning control case

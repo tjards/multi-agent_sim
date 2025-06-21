@@ -395,9 +395,34 @@ class Controller:
                 self.Learners['CALA_ctrl'].step(k_node, reward)'''
             
             # lemniscate orientation learn
-            if 'lemni_CALA' in self.Learners:
+            
+            # CASE 1: just one direction (prototype)
+            '''if 'lemni_CALA' in self.Learners:'''
                 
-                self.Learners['lemni_CALA'].learn_lemni(
+            # CASE 2: bidirectional
+            if 'lemni_CALA_x' in self.Learners and 'lemni_CALA_z' in self.Learners:
+                
+                # CASE 1: just one direction (prototype)
+                '''self.Learners['lemni_CALA'].learn_lemni(
+                   state=k_node,
+                   state_array=state,
+                   centroid=centroid,
+                   focal=targets,
+                   target=obstacles_plus,
+                   neighbours=kwargs_cmd['sorted_neighs']
+                   )'''
+                
+                # CASE 2: bidirectional
+                self.Learners['lemni_CALA_x'].learn_lemni(
+                   state=k_node,
+                   state_array=state,
+                   centroid=centroid,
+                   focal=targets,
+                   target=obstacles_plus,
+                   neighbours=kwargs_cmd['sorted_neighs']
+                   )
+                
+                self.Learners['lemni_CALA_z'].learn_lemni(
                    state=k_node,
                    state_array=state,
                    centroid=centroid,

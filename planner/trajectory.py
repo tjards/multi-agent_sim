@@ -33,10 +33,12 @@ class Trajectory:
     def __init__(self, tactic_type, targets, nAgents):
         
         self.trajectory = copy.deepcopy(targets)
-        self.lemni = np.zeros([1, nAgents])
+        #self.lemni = np.zeros([1, nAgents])
+        self.lemni = np.zeros([2, nAgents])
         self.sorted_neighs = list(range(nAgents))
     
     # WARNING: untested code
+    '''
     def exclude(self, state, targets, lemni_all, exclusion):
         
         # [LEGACY] create a temp exlusionary set
@@ -45,8 +47,10 @@ class Trajectory:
         lemni_all_ = np.delete(lemni_all, [exclusion], axis = 1)
         
         return state_, targets_, lemni_all_
+    '''
     
     # WARNING: untested code
+    '''
     def unexclude(self, trajectory, targets, lemni, lemni_all, pins_all, i, exclusion):
         
         # [LEGACY] add exluded back in
@@ -59,6 +63,7 @@ class Trajectory:
             pins_all[i-1,ii,ii] = 1  
             
             return trajectory, lemni, pins_all
+    '''
     
     #def update(self, Agents, Targets, History, t, i):
     def update(self, tactic_type, state, targets, t, i, **kwargs):
@@ -82,7 +87,10 @@ class Trajectory:
             if 'lemni_learn_actions' in kwargs:
                 learn_actions = kwargs.get('lemni_learn_actions')
             else:
-                learn_actions = np.zeros((state.shape[1]))
+                learn_actions = {
+                   'x': np.zeros((state.shape[1])),
+                   'z': np.zeros((state.shape[1]))
+                   }
                 
             
             self.trajectory, self.lemni, self.sorted_neighs = lemni_tools.lemni_target(lemni_all,state,targets,i,t,learn_actions)
