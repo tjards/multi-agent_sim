@@ -39,6 +39,8 @@ def quat_mult(q1, q2):
     z = w1*z2 + z1*w2 + x1*y2 - y1*x2
     return np.array([w, x, y, z])
 
+    #y = w1*y2 - x1*z2 + y1*w2 + z1*x2  #  corrected
+    #z = w1*z2 + x1*y2 - y1*x2 + z1*w2   #  corrected
 
 # euler to quaternion
 # --------------------
@@ -75,6 +77,18 @@ def q2e(quat):
     psi = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
  
     return np.array([phi, theta, psi])
+
+
+# for single axis rotations (new)
+def axis_angle_to_quat(v):
+    theta = np.linalg.norm(v)
+    if theta < 1e-8:
+        return np.array([1.0, 0.0, 0.0, 0.0])
+    axis = v / theta
+    return np.array([
+        np.cos(theta / 2),
+        *(np.sin(theta / 2) * axis)
+    ])
 
 
 

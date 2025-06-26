@@ -14,6 +14,7 @@ import copy
 # parameters
 # ----------
 nObs    = 1
+manual = True
 
 # define the obstacle object
 # --------------------------
@@ -45,21 +46,26 @@ class Obstacles:
         self.obstacles = np.zeros((4,self.nObs))
         oSpread = 20
 
-        # manual (comment out if random)
-        # obstacles[0,:] = 0    # position (x)
-        # obstacles[1,:] = 0    # position (y)
-        # obstacles[2,:] = 0    # position (z)
-        # obstacles[3,:] = 0
 
-        #random (comment this out if manual)
-        if self.nObs != 0:
-            self.obstacles[0,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[0,0]                   # position (x)
-            self.obstacles[1,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[1,0]                   # position (y)
-            self.obstacles[2,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[2,0]                  # position (z)
-            #obstacles[2,:] = np.maximum(oSpread*(np.random.rand(1,nObs)-0.5),14)     # position (z)
-            self.obstacles[3,:] = np.random.rand(1,self.nObs)+1 # radii of obstacle(s)
-            if self.dimens == 2:
-                self.obstacles[2,:] = 0*self.obstacles[2,:]
+        if manual:
+
+            # manual (comment out if random)
+            self.obstacles[0,:] =  1   # position (x)
+            self.obstacles[1,:] = -4    # position (y)
+            self.obstacles[2,:] = 12    # position (z)
+            self.obstacles[3,:] = 1
+            
+        else:
+
+            #random (comment this out if manual)
+            if self.nObs != 0:
+                self.obstacles[0,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[0,0]                   # position (x)
+                self.obstacles[1,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[1,0]                   # position (y)
+                self.obstacles[2,:] = oSpread*(np.random.rand(1,self.nObs)-0.5)+targets[2,0]                  # position (z)
+                #obstacles[2,:] = np.maximum(oSpread*(np.random.rand(1,nObs)-0.5),14)     # position (z)
+                self.obstacles[3,:] = np.random.rand(1,self.nObs)+1 # radii of obstacle(s)
+                if self.dimens == 2:
+                    self.obstacles[2,:] = 0*self.obstacles[2,:]
                 
 
         # manually make the first target an obstacle

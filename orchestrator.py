@@ -400,7 +400,7 @@ class Controller:
             '''if 'lemni_CALA' in self.Learners:'''
                 
             # CASE 2: bidirectional
-            if 'lemni_CALA_x' in self.Learners and 'lemni_CALA_z' in self.Learners:
+            if 'lemni_CALA_x' in self.Learners and 'lemni_CALA_y' in self.Learners:
                 
                 # CASE 1: just one direction (prototype)
                 '''self.Learners['lemni_CALA'].learn_lemni(
@@ -411,24 +411,66 @@ class Controller:
                    target=obstacles_plus,
                    neighbours=kwargs_cmd['sorted_neighs']
                    )'''
+    
+    
+                # prototyping (manual target)
                 
+                allow_ext_reward = True # True = externally defined (world ref) False = internally defined
+                
+                my_target = obstacles_plus
+                
+                #my_target = np.zeros((3,1))
+                #my_target[0,:] = 1    # position (x)
+                #my_target[1,:] = -3    # position (y)
+                #my_target[2,:] = 25    # position (z)
+     
+                # compute a consolidate reward
+                multi_reward = self.Learners['lemni_CALA_x'].compute_multi_reward( 
+                    target = my_target, 
+                    centroid = centroid,
+                    focal = targets[0:3,k_node])
+    
+                '''reward_x = self.Learners['lemni_CALA_x'].update_reward_increment(
+                    k_node = k_node, 
+                    state=state, 
+                    centroid=centroid, 
+                    focal=targets[0:3,k_node], 
+                    target=my_target, 
+                    mode = 'x')
+                
+                reward_z = self.Learners['lemni_CALA_z'].update_reward_increment(
+                    k_node = k_node, 
+                    state=state, 
+                    centroid=centroid, 
+                    focal=targets[0:3,k_node], 
+                    target=my_target, 
+                    mode = 'z')
+    
+                multi_reward = 0.5*reward_x + 0.5*reward_z'''
+    
                 # CASE 2: bidirectional
                 self.Learners['lemni_CALA_x'].learn_lemni(
                    state=k_node,
                    state_array=state,
                    centroid=centroid,
-                   focal=targets,
-                   target=obstacles_plus,
-                   neighbours=kwargs_cmd['sorted_neighs']
+                   focal=targets[0:3,k_node],
+                   target=my_target,
+                   neighbours=kwargs_cmd['sorted_neighs'],
+                   mode = 'x',
+                   allow_ext_reward = allow_ext_reward, 
+                   ext_reward = multi_reward
                    )
                 
-                self.Learners['lemni_CALA_z'].learn_lemni(
+                self.Learners['lemni_CALA_y'].learn_lemni(
                    state=k_node,
                    state_array=state,
                    centroid=centroid,
-                   focal=targets,
-                   target=obstacles_plus,
-                   neighbours=kwargs_cmd['sorted_neighs']
+                   focal=targets[0:3,k_node],
+                   target=my_target,
+                   neighbours=kwargs_cmd['sorted_neighs'],
+                   mode = 'y', 
+                   allow_ext_reward = allow_ext_reward,
+                   ext_reward = multi_reward
                    )
             
             # ******* #

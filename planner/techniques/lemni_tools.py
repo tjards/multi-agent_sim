@@ -4,6 +4,11 @@
 This module implements lemniscatic trajectories
 Note: encirclement_tools and quaternions are dependencies 
 
+Notes: 
+    - always perform the rotations around x (regardless of learning)
+    - Explicit learns along x and/or z
+    - Implicit only allows learning around x (structural constraint)
+
 Created on Thu Feb 18 14:20:17 2021
 
 @author: tjards
@@ -19,8 +24,18 @@ from . import encirclement_tools as encircle_tools
 # -----------
 
 # learning
-learning = 'CALA'# None, CALA
-learning_axes = 'x' # options: 'x', 'z', 'xz'
+learning = 'CALA'      # None, 'CALA'
+learning_axes = 'xy'     # options: 'x', 'z', 'xy'
+
+
+
+if learning == 'CALA':
+    if 'x' not in learning_axes and 'y' not in learning_axes: 
+        raise Exception('warning: no learning axis defined') 
+else:
+    # force no axis if not learning (redundant)
+    learning_axes = ''
+        
 
 # tunable
 c1_d        = 1             # gain for position (q)
@@ -81,10 +96,9 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     
     # load
     unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1)))     # x-axis reference
+    tilt_perp = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1)))    # y-axis (called as z)
     twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1)))    # z-axis reference
     quat_0_ = quat.quatjugate(quat_0)                                       # used to untwist 
-    
-    
     nVeh = state.shape[1]
          
     # initialize the lemni twist factor
@@ -97,19 +111,20 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     # UNTWIST -  each agent has to be untwisted into a common plane
     # -------------------------------------------------------------      
     #last_twist = lemni_all[i-1,:] #np.pi*lemni_all[i-1,:]
-    
     #last_twist = lemni_all[i-1,0,:]
-    if 'x' in learning_axes:
-        last_twist_x = lemni_all[i-1, 0, :]
-    else:
-        last_twist_x = np.zeros(state.shape[1])  # fallback
-
-    if 'z' in learning_axes:
-        last_twist_z = lemni_all[i-1, 1, :]
-    else:
-        last_twist_z = np.zeros(state.shape[1])  # fallback
     
+    # always do stuff around x, learning or not learning
+    #if learning is None or 'x' in learning_axes:
+    last_twist_x = lemni_all[i-1, 0, :]
+    #else:
+    #    last_twist_x = np.zeros(state.shape[1])  # fallback
 
+    # for now, z is only a learned parameter
+    if 'y' in learning_axes:
+        last_twist_y = lemni_all[i-1, 1, :]
+    else:
+        last_twist_y = np.zeros(state.shape[1])  # fallback
+    
     state_untwisted = state.copy()
     
     # for each agent 
@@ -123,7 +138,10 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         if lemni_type < 3:
             # untwist_quat = quat.quatjugate(quat.e2q(untwist*unit_lem.ravel()))
             qx = quat.e2q(last_twist_x[n] * unit_lem.ravel())
-            qz = quat.e2q(last_twist_z[n] * twist_perp.ravel())
+            #qz = quat.e2q(last_twist_z[n] * twist_perp.ravel())
+            #qz =  quat.axis_angle_to_quat(last_twist_z[n] * twist_perp.ravel())
+            qz = quat.e2q(last_twist_y[n] * tilt_perp.ravel())
+            
             untwist_quat = quat.quatjugate(quat.quat_mult(qz, qx))
         
         # if gerono (with shift)
@@ -200,7 +218,7 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         x_proj = np.dot(rel_vec, x_e)
         y_proj = np.dot(rel_vec, y_e)
         m_theta = np.arctan2(y_proj, x_proj)
-        m_theta = np.mod(m_theta, 2*np.pi)
+        #m_theta = np.mod(m_theta, 2*np.pi)
 
         
         # ---------------------------
@@ -221,9 +239,8 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         # surveillance + rest
         else:
             #lemni[0, m] = m_theta
-            base_theta = m_theta
+            base_theta = m_theta 
             
-        
         
         # -------------------------- #
         # offset by learned parameter
@@ -237,9 +254,23 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         '''if lemni_type >= 3:
             lemni[0, m] += learn_actions['x'][m]  # only one direction available
             twist = lemni[0, m]'''
-        lemni[0, m] = base_theta + learn_actions.get('x', np.zeros(nVeh))[m]
-        lemni[1, m] = learn_actions.get('z', np.zeros(nVeh))[m]
         
+        lemni[0, m] = base_theta  
+        
+        if 'x' in learning_axes:
+        
+            lemni[0, m] += learn_actions.get('x', np.zeros(nVeh))[m]
+        #lemni[0, m] = np.mod(lemni[0, m], 2 * np.pi)
+        lemni[0, m] = (lemni[0, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
+        
+        if 'y' in learning_axes:
+        
+            lemni[1, m] = learn_actions.get('y', np.zeros(nVeh))[m]
+        
+        #lemni[1, m] = np.mod(lemni[1, m], 2 * np.pi)
+        lemni[1, m] = (lemni[1, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
+        
+        twist = lemni[0, m] # only along x (for implicit cases)
         # rotate
         
         # ---------------------
@@ -258,11 +289,28 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
             qz = quat.e2q(theta_z * twist_perp.ravel())     # z-axis basis
 
             twist_quat = quat.quat_mult(qz, qx)  # Apply Z * X rotation order'''
-            qx = quat.e2q(lemni[0, m] * unit_lem.ravel()) if 'x' in learning_axes else quat.e2q(0 * unit_lem.ravel())
+            
+            '''qx = quat.e2q(lemni[0, m] * unit_lem.ravel()) if 'x' in learning_axes else quat.e2q(0 * unit_lem.ravel())
             qz = quat.e2q(lemni[1, m] * twist_perp.ravel()) if 'z' in learning_axes else quat.e2q(0 * twist_perp.ravel())
-            twist_quat = quat.quat_mult(qz, qx)
+            twist_quat = quat.quat_mult(qz, qx)'''
+            
+            
+            # Always apply x-axis phase twist (learned or not)
+            qx = quat.e2q(lemni[0, m] * unit_lem.ravel())
 
+            # Only apply z-axis twist if learning it
+            if 'y' in learning_axes:
+                #qz = quat.e2q(lemni[1, m] * twist_perp.ravel())
+                #qz = quat.axis_angle_to_quat(lemni[1, m] * twist_perp.ravel())
+                qz = quat.e2q(lemni[1, m] * tilt_perp.ravel())
 
+                twist_quat = quat.quat_mult(qz, qx)
+            else:
+                twist_quat = qx
+            
+            
+
+            
  
         # ---------------------
         # IMPLICITLY DEFINED

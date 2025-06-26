@@ -89,7 +89,7 @@ class Trajectory:
             else:
                 learn_actions = {
                    'x': np.zeros((state.shape[1])),
-                   'z': np.zeros((state.shape[1]))
+                   'y': np.zeros((state.shape[1]))
                    }
                 
             

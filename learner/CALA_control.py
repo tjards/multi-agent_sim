@@ -15,20 +15,27 @@ This program implements Continuous Action Learning Automata (CALA) to learn
 import numpy as np
 import matplotlib.pyplot as plt
 import config.configs_tools as configs_tools
+from planner.techniques.utils import quaternions as quat
 config_path=configs_tools.config_path
 
 #%% Simulations parameters
 # ---------------------
 
-action_min      = 0             # minimum of action space
-action_max      = 1.9*np.pi     # maximum of action space
+actions_range = 'angular'       # 'linear', 'angular' (impacts clipping)
+
+#action_min      = 0             # minimum of action space
+#action_max      = 2*np.pi     # maximum of action space
+
+action_min      = -np.pi             # minimum of action space
+action_max      = np.pi     # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.005     # rate at which policy updates
+learning_rate   = 0.001     # rate at which policy updates
 variance        = 0.2       # initial variance
 variance_ratio  = 10        # default 1, permits faster/slower variance updates
-variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
+variance_min    = 0.1     # default 0.001, makes sure variance doesn't go too low
+epsilon         = 1e-8
 
 counter_max = 10             # when to stop accumualating experience in a trial
 reward_mode = 'target'       # 'target' = change orientation of swarm to track target 
@@ -58,8 +65,8 @@ class CALA:
 
         # counter        
         self.counter_max    = counter_max 
-        self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) # all agents start at differnt places
-        #self.counter        = np.zeros(num_states) # all in synch now, but do asynch (above) later
+        self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) - 500 # all agents start at differnt places
+        #self.counter        = np.zeros(num_states) - 750# all in synch now, but do asynch (above) later
 
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
@@ -79,10 +86,53 @@ class CALA:
             ('reward_mode', reward_mode)
         ] )
 
+    
+    def compute_multi_reward(self, target, centroid, focal):
+        
+        approach = 'turret'  # turret 
+        
+        if self.reward_mode == 'target':
+                
+            # use origin if no target provided
+            if target.shape[1] == 0:
+                target_vec = -centroid[0:3, 0]
+            else:
+                target_vec = target[0:3, 0] - centroid[0:3, 0]
+        
+            # current 
+            focal_vec = focal[0:3] - centroid[0:3,0]
+        
+            # Normalize
+            target_vec /= (np.linalg.norm(target_vec) + epsilon)
+            focal_vec /= (np.linalg.norm(focal_vec) + epsilon)
+            
+            if approach == 'turret':
+            
+                # get cosine similarity 
+                multi_reward = (np.dot(focal_vec, target_vec) + 1) / 2
+                            
+        else:
+            
+            multi_reward = 0.0
+            
+        return multi_reward
+        
+        
+
     # main lemniscate learning
-    def learn_lemni(self, state, state_array, centroid, focal, target, neighbours):
+    def learn_lemni(self, state, state_array, centroid, focal, target, neighbours, mode, allow_ext_reward, ext_reward = 0):
   
-        reward = self.update_reward_increment(state, state_array, centroid, focal, target)
+        
+        # if multiple rewards to consider
+        if allow_ext_reward:
+            
+            reward = ext_reward
+            
+        # if not, update yourself    
+        else:
+  
+            reward = self.update_reward_increment(state, state_array, centroid, focal, target, mode)
+        
         self.step(state, reward)
     
         if neighbours is not None and len(neighbours) > 1:
@@ -124,7 +174,14 @@ class CALA:
         action = np.random.normal(mean, np.sqrt(variance))
         
         # return the action, onstrained using clip()
-        return np.clip(action, self.action_min, self.action_max)
+        if actions_range == 'linear':
+        
+            return np.clip(action, self.action_min, self.action_max)
+        
+        elif actions_range == 'angular':
+            
+            #return np.mod(action, 2 * np.pi)
+            return (action + np.pi) % (2 * np.pi) - np.pi
     
     # update policy 
     def update_policy(self, state, action, reward):
@@ -144,28 +201,22 @@ class CALA:
     # ASYCHRONOUS EXTERNAL UPDATES
     # ****************************
 
-    def update_reward_increment(self, k_node, state, centroid, focal, target):
+
+    def update_reward_increment(self, k_node, state, centroid, focal, target, mode):
         
       
         if self.reward_mode == 'target':
             
-            epsilon=1e-6
+            reference = 'local'
             
-            # if there is no target, just chose origin
-            if target.shape[1] == 0 :
-                target = 0*centroid
+            if reference == 'local':
             
-            v1 = focal[0:3,k_node]  - centroid[0:3,0]   # centroid → focal
-            v2 = target[0:3,0]  - centroid[0:3,0]       # centroid → target
-
-            # parametrize angle between v1 and v2
-            dot_product = np.dot(v1, v2)
-            norms_product = np.linalg.norm(v1) * np.linalg.norm(v2) + epsilon
-            cos_theta = dot_product / norms_product
-
-            # map cosine [-1, 1] to reward [0, 1]
-            reward = (cos_theta + 1) / 2
-            
+                # get action for this mode
+                action = self.action_set[k_node]
+        
+                reward = 0
+                print('need to add local frames')
+        
         return reward
         
 
@@ -363,9 +414,46 @@ class CALA:
         self.plot_distributions_over_time_set()
         #anim = self.animate_distributions_set(interval=50, save_path='RL_animation.gif')
 
+    '''def plot_reward_surface_set(self, reward_fn, xlim=(-3.5, 3.5), num_points=200):
+        """
+        Plot reward surfaces for all states, using latest mean and variance.
+        """
+        import matplotlib.pyplot as plt
+        import numpy as np
+    
+        n_states = len(self.mean_history[-1])
+        fig, axs = plt.subplots(n_states, 1, figsize=(8, 1.8 * n_states), sharex=True)
+    
+        x = np.linspace(xlim[0], xlim[1], num_points)
+    
+        for i in range(n_states):
+            mu = self.mean_history[-1][i]
+            sigma = np.sqrt(self.variance_history[-1][i])
+    
+            rewards = []
+            for xi in x:
+                state = np.zeros(n_states)
+                state[i] = xi
+                rewards.append(reward_fn(state))
+    
+            axs[i].plot(x, rewards, label='Reward')
+            axs[i].axvline(mu, color='red', linestyle='--', label='Mean')
+            axs[i].fill_between(
+                x, 0, max(rewards),
+                where=((x > mu - sigma) & (x < mu + sigma)),
+                color='red', alpha=0.1, label='1σ'
+            )
+            axs[i].set_title(f'State {i} Reward Surface')
+            axs[i].grid(True)
+            axs[i].legend()
+    
+        plt.tight_layout()
+        plt.show()'''
+
 
 # manual calls
 # ------------
 # Controller.Learners['lemni_CALA'].animate_distributions_set()
 # Controller.Learners['lemni_CALA'].all_plots_set()
+#Controller.Learners['lemni_CALA'].plot_reward_surface_set(reward_fn=compute_reward)
 

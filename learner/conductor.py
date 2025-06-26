@@ -52,7 +52,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
             lemni_CALA_z = lemni_CALA.CALA(Agents.nAgents)
             # LOAD
             Learners['lemni_CALA_x'] = lemni_CALA_x
-            Learners['lemni_CALA_z'] = lemni_CALA_z
+            Learners['lemni_CALA_y'] = lemni_CALA_z
             
            
         

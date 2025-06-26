@@ -81,13 +81,13 @@
     },
     "CALA": {
         "num_states": 7,
-        "action_min": 0,
-        "action_max": 5.969026041820607,
-        "learning_rate": 0.005,
+        "action_min": -3.141592653589793,
+        "action_max": 3.141592653589793,
+        "learning_rate": 0.001,
         "reward_mode": "target"
     },
     "learners": {
         "lemni_CALA_x": "Config not available for lemni_CALA_x",
-        "lemni_CALA_z": "Config not available for lemni_CALA_z"
+        "lemni_CALA_y": "Config not available for lemni_CALA_y"
     }
 }
