@@ -50,9 +50,11 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
             # CASE 2: bidirectional
             lemni_CALA_x = lemni_CALA.CALA(Agents.nAgents)
             lemni_CALA_z = lemni_CALA.CALA(Agents.nAgents)
+            # delay the z counter
+            #lemni_CALA_z.counter -= 500
             # LOAD
             Learners['lemni_CALA_x'] = lemni_CALA_x
-            Learners['lemni_CALA_y'] = lemni_CALA_z
+            Learners['lemni_CALA_z'] = lemni_CALA_z
             
            
         

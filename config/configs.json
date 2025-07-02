@@ -1,7 +1,7 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 90,
+        "Tf": 300,
         "Ts": 0.02,
         "dimens": 3,
         "verbose": 1,
@@ -36,8 +36,8 @@
         "pi": 3.141592653589793,
         "c1_a": 1,
         "c2_a": 2.0,
-        "c1_b": 1,
-        "c2_b": 2.0,
+        "c1_b": 0,
+        "c2_b": 0.0,
         "c1_g": 2,
         "c2_g": 4.47213595499958,
         "d": 10,
@@ -83,11 +83,11 @@
         "num_states": 7,
         "action_min": -3.141592653589793,
         "action_max": 3.141592653589793,
-        "learning_rate": 0.001,
+        "learning_rate": 0.5,
         "reward_mode": "target"
     },
     "learners": {
         "lemni_CALA_x": "Config not available for lemni_CALA_x",
-        "lemni_CALA_y": "Config not available for lemni_CALA_y"
+        "lemni_CALA_z": "Config not available for lemni_CALA_z"
     }
 }

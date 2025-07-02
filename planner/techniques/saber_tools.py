@@ -30,8 +30,8 @@ pi  = 3.141592653589793
 # gains
 c1_a = 1               # cohesion
 c2_a = 2*np.sqrt(1)
-c1_b = 1             # obstacles 
-c2_b = 2*np.sqrt(1)
+c1_b = 0*1             # obstacles 
+c2_b = 0*2*np.sqrt(1)
 c1_g = 2               # tracking (for the pins)
 c2_g = 2*np.sqrt(5)
 

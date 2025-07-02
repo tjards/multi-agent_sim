@@ -53,7 +53,7 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42+1)
 
 Ti      = 0         # initial time
-Tf      = 90        # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 300        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
 f       = 0         # parameter for future use
 dimens  = 3         # dimension (2 = 2D, 3 = 3D)
@@ -159,7 +159,7 @@ while round(t,3) < Tf:
         '''if 'lemni_CALA' in Controller.Learners:'''
             
         # CASE 2: bidirectional
-        if 'lemni_CALA_x' in Controller.Learners and 'lemni_CALA_y' in Controller.Learners:
+        if 'lemni_CALA_x' in Controller.Learners and 'lemni_CALA_z' in Controller.Learners:
             
             # CASE 1: just one direction (prototype)
             '''my_kwargs['lemni_learn_actions'] = Controller.Learners['lemni_CALA'].action_set'''
@@ -167,7 +167,7 @@ while round(t,3) < Tf:
             # CASE 2: bidirectional
             my_kwargs['lemni_learn_actions'] = {
                 'x': Controller.Learners['lemni_CALA_x'].action_set,
-                'y': Controller.Learners['lemni_CALA_y'].action_set
+                'z': Controller.Learners['lemni_CALA_z'].action_set
                 }
         
     Trajectory.update(tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)
@@ -176,12 +176,7 @@ while round(t,3) < Tf:
     # --------------------------------  
     if tactic_type == 'pinning' and dynamics == 'quadcopter':
         my_kwargs['quads_headings'] = Agents.quads_headings
-                
-    # EXPERIMENT - add an artificial perturbation
-    #if t > 10 and t < 11:    
-        # agent 0 tries to go too far, notice others ignore the update
-    #    Controller.Learners['consensus_lattice'].d_weighted[0,:] = 15
-           
+                       
     Controller.commands(Agents.state, tactic_type, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, dynamics, **my_kwargs) 
     
 #%% Save data

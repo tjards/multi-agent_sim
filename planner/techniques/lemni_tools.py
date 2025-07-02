@@ -25,12 +25,12 @@ from . import encirclement_tools as encircle_tools
 
 # learning
 learning = 'CALA'      # None, 'CALA'
-learning_axes = 'xy'     # options: 'x', 'z', 'xy'
+learning_axes = 'xz'     # options: 'x', 'xz', 
 
 
 
 if learning == 'CALA':
-    if 'x' not in learning_axes and 'y' not in learning_axes: 
+    if 'x' not in learning_axes and 'z' not in learning_axes: 
         raise Exception('warning: no learning axis defined') 
 else:
     # force no axis if not learning (redundant)
@@ -96,7 +96,7 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     
     # load
     unit_lem = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1)))     # x-axis reference
-    tilt_perp = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1)))    # y-axis (called as z)
+    #tilt_perp = quat.rotate(quat_0, np.array([1, 0, 0]).reshape((3, 1)))    # y-axis 
     twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1)))    # z-axis reference
     quat_0_ = quat.quatjugate(quat_0)                                       # used to untwist 
     nVeh = state.shape[1]
@@ -120,10 +120,10 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     #    last_twist_x = np.zeros(state.shape[1])  # fallback
 
     # for now, z is only a learned parameter
-    if 'y' in learning_axes:
-        last_twist_y = lemni_all[i-1, 1, :]
+    if 'z' in learning_axes:
+        last_twist_z = lemni_all[i-1, 1, :]
     else:
-        last_twist_y = np.zeros(state.shape[1])  # fallback
+        last_twist_z = np.zeros(state.shape[1])  # fallback
     
     state_untwisted = state.copy()
     
@@ -138,10 +138,10 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         if lemni_type < 3:
             # untwist_quat = quat.quatjugate(quat.e2q(untwist*unit_lem.ravel()))
             qx = quat.e2q(last_twist_x[n] * unit_lem.ravel())
-            #qz = quat.e2q(last_twist_z[n] * twist_perp.ravel())
+            qz = quat.e2q(last_twist_z[n] * twist_perp.ravel())
             #qz =  quat.axis_angle_to_quat(last_twist_z[n] * twist_perp.ravel())
-            qz = quat.e2q(last_twist_y[n] * tilt_perp.ravel())
-            
+            #qz = quat.e2q(last_twist_z[n] * tilt_perp.ravel())
+    
             untwist_quat = quat.quatjugate(quat.quat_mult(qz, qx))
         
         # if gerono (with shift)
@@ -239,7 +239,7 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         # surveillance + rest
         else:
             #lemni[0, m] = m_theta
-            base_theta = m_theta 
+            base_theta = m_theta #- np.pi/2
             
         
         # -------------------------- #
@@ -263,9 +263,11 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         #lemni[0, m] = np.mod(lemni[0, m], 2 * np.pi)
         lemni[0, m] = (lemni[0, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
         
-        if 'y' in learning_axes:
+        #print(base_theta - lemni[0,m])
         
-            lemni[1, m] = learn_actions.get('y', np.zeros(nVeh))[m]
+        if 'z' in learning_axes:
+        
+            lemni[1, m] = learn_actions.get('z', np.zeros(nVeh))[m]
         
         #lemni[1, m] = np.mod(lemni[1, m], 2 * np.pi)
         lemni[1, m] = (lemni[1, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
@@ -299,10 +301,10 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
             qx = quat.e2q(lemni[0, m] * unit_lem.ravel())
 
             # Only apply z-axis twist if learning it
-            if 'y' in learning_axes:
-                #qz = quat.e2q(lemni[1, m] * twist_perp.ravel())
+            if 'z' in learning_axes:
+                qz = quat.e2q(lemni[1, m] * twist_perp.ravel())
                 #qz = quat.axis_angle_to_quat(lemni[1, m] * twist_perp.ravel())
-                qz = quat.e2q(lemni[1, m] * tilt_perp.ravel())
+                #qz = quat.e2q(lemni[1, m] * tilt_perp.ravel())
 
                 twist_quat = quat.quat_mult(qz, qx)
             else:
