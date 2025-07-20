@@ -24,23 +24,14 @@ from . import encirclement_tools as encircle_tools
 # -----------
 
 # learning
-learning = 'CALA'      # None, 'CALA'
-learning_axes = 'xz'     # options: 'x', 'xz', 
-
-
-
-if learning == 'CALA':
-    if 'x' not in learning_axes and 'z' not in learning_axes: 
-        raise Exception('warning: no learning axis defined') 
-else:
-    # force no axis if not learning (redundant)
-    learning_axes = ''
-        
-
+learning            = 'CALA'    # None, 'CALA'
+learning_coupling   = True      # options: True (default), else unlikely to work
+learning_axes       = 'xz'      # options: 'x' (prototype only), 'xz' (default)
+      
 # tunable
 c1_d        = 1             # gain for position (q)
 c2_d        = 2*np.sqrt(1)  # gain for velocity (p)
-lemni_type  = 0
+lemni_type  = 0             # CALA learning needs 0
             
     # // Explcit definition of rotation (https://ieeexplore.ieee.org/document/9931405)
     #   0 = lemniscate of Gerono - surveillance (/^\)
@@ -54,6 +45,20 @@ lemni_type  = 0
 
 # import some parameters from encirclement_tools
 r_desired, phi_dot_d, ref_plane, quat_0 = encircle_tools.get_params() 
+
+
+#%% safety checks
+# ---------------
+if learning == 'CALA':
+    if 'x' not in learning_axes and 'z' not in learning_axes:
+        raise Exception('warning: no learning axis defined')
+    if learning_coupling and learning_axes != 'xz':
+        raise Exception('warning: coupling only supported for xz-axis')
+    if lemni_type != 0:
+        raise Exception('warning: CALA learning only supported for type-0 curves')
+else:
+    # force no axis if not learning (redundant)
+    learning_axes = ''
 
                             
 #%% save configs
@@ -91,7 +96,7 @@ def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
     
     return u_enc[:,k_node]
 
-def lemni_target(lemni_all,state,targets,i,t, learn_actions):
+def lemni_target(lemni_all,state,targets,i,t, learn_actions_coupled):
     
     
     # load
@@ -100,7 +105,18 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
     twist_perp = quat.rotate(quat_0, np.array([0, 0, 1]).reshape((3,1)))    # z-axis reference
     quat_0_ = quat.quatjugate(quat_0)                                       # used to untwist 
     nVeh = state.shape[1]
-         
+    
+    # breakout x and z directions
+    if learning_coupling:
+        
+        learn_actions = {
+           'x': learn_actions_coupled['xz'][0:state.shape[1]],
+           'z': learn_actions_coupled['xz'][state.shape[1]::]
+           }      
+    else:
+        learn_actions = learn_actions_coupled
+        
+           
     # initialize the lemni twist factor
     #lemni = np.zeros([1, nVeh])
     lemni = np.zeros([2, nVeh])
@@ -246,31 +262,18 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         # offset by learned parameter
         # -------------------------- #
         
-        # CASE 1: just one direction (prototype)
-        #lemni[0,m] += learn_actions['x'][m]
-        #twist = lemni[0,m]
-        
-        # CASE 2: bidirectional
-        '''if lemni_type >= 3:
-            lemni[0, m] += learn_actions['x'][m]  # only one direction available
-            twist = lemni[0, m]'''
-        
         lemni[0, m] = base_theta  
         
         if 'x' in learning_axes:
-        
             lemni[0, m] += learn_actions.get('x', np.zeros(nVeh))[m]
         #lemni[0, m] = np.mod(lemni[0, m], 2 * np.pi)
-        lemni[0, m] = (lemni[0, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
-        
-        #print(base_theta - lemni[0,m])
-        
+        #lemni[0, m] = (lemni[0, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
+         
         if 'z' in learning_axes:
         
             lemni[1, m] = learn_actions.get('z', np.zeros(nVeh))[m]
-        
         #lemni[1, m] = np.mod(lemni[1, m], 2 * np.pi)
-        lemni[1, m] = (lemni[1, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
+        #lemni[1, m] = (lemni[1, m] + np.pi) % (2 * np.pi) - np.pi # wrap -pi to pi
         
         twist = lemni[0, m] # only along x (for implicit cases)
         # rotate
@@ -280,23 +283,6 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
         # ---------------------
         if lemni_type < 3:
             
-            # CASE 1: just one direction (prototype)
-            #twist_quat = quat.e2q(twist*unit_lem.ravel())
-        
-            # CASE 2: bidirectional
-            '''theta_x = learn_actions['x'][m]  # rotation around x-axis
-            theta_z = learn_actions['z'][m]  # rotation around z-axis
-
-            qx = quat.e2q(theta_x * unit_lem.ravel())       # x-axis basis
-            qz = quat.e2q(theta_z * twist_perp.ravel())     # z-axis basis
-
-            twist_quat = quat.quat_mult(qz, qx)  # Apply Z * X rotation order'''
-            
-            '''qx = quat.e2q(lemni[0, m] * unit_lem.ravel()) if 'x' in learning_axes else quat.e2q(0 * unit_lem.ravel())
-            qz = quat.e2q(lemni[1, m] * twist_perp.ravel()) if 'z' in learning_axes else quat.e2q(0 * twist_perp.ravel())
-            twist_quat = quat.quat_mult(qz, qx)'''
-            
-            
             # Always apply x-axis phase twist (learned or not)
             qx = quat.e2q(lemni[0, m] * unit_lem.ravel())
 
@@ -305,13 +291,9 @@ def lemni_target(lemni_all,state,targets,i,t, learn_actions):
                 qz = quat.e2q(lemni[1, m] * twist_perp.ravel())
                 #qz = quat.axis_angle_to_quat(lemni[1, m] * twist_perp.ravel())
                 #qz = quat.e2q(lemni[1, m] * tilt_perp.ravel())
-
                 twist_quat = quat.quat_mult(qz, qx)
             else:
                 twist_quat = qx
-            
-            
-
             
  
         # ---------------------

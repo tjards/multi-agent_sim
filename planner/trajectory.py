@@ -87,12 +87,14 @@ class Trajectory:
             if 'lemni_learn_actions' in kwargs:
                 learn_actions = kwargs.get('lemni_learn_actions')
             else:
-                learn_actions = {
+                '''learn_actions = {
                    'x': np.zeros((state.shape[1])),
                    'z': np.zeros((state.shape[1]))
+                   }'''
+                learn_actions = {
+                   'xz': np.zeros((2*state.shape[1]))
                    }
                 
-            
             self.trajectory, self.lemni, self.sorted_neighs = lemni_tools.lemni_target(lemni_all,state,targets,i,t,learn_actions)
             
             

@@ -149,25 +149,26 @@ while round(t,3) < Tf:
 
     # we'll need the record of lemni parameters  
     if tactic_type == 'lemni':
+        
         # only need to pass last timestep, so reduce this later 
         my_kwargs['lemni_all'] = Database.lemni_all
         my_kwargs['sorted_neighs'] = Trajectory.sorted_neighs
         
-        # to include any of the learned parameters
-        
-        # CASE 1: just one direction (prototype)
-        '''if 'lemni_CALA' in Controller.Learners:'''
-            
-        # CASE 2: bidirectional
-        if 'lemni_CALA_x' in Controller.Learners and 'lemni_CALA_z' in Controller.Learners:
-            
-            # CASE 1: just one direction (prototype)
-            '''my_kwargs['lemni_learn_actions'] = Controller.Learners['lemni_CALA'].action_set'''
+        # bidrirectional controller
+        '''if 'lemni_CALA_x' in Controller.Learners and 'lemni_CALA_z' in Controller.Learners:
             
             # CASE 2: bidirectional
             my_kwargs['lemni_learn_actions'] = {
                 'x': Controller.Learners['lemni_CALA_x'].action_set,
                 'z': Controller.Learners['lemni_CALA_z'].action_set
+                }'''
+        
+        # new bidrirectional controller
+        if 'lemni_CALA_xz' in Controller.Learners:
+            
+            # CASE 2: bidirectional
+            my_kwargs['lemni_learn_actions'] = {
+                'xz': Controller.Learners['lemni_CALA_xz'].action_set,
                 }
         
     Trajectory.update(tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)

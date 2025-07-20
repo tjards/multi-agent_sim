@@ -80,14 +80,13 @@
         "vehObs": 0
     },
     "CALA": {
-        "num_states": 7,
-        "action_min": -3.141592653589793,
-        "action_max": 3.141592653589793,
-        "learning_rate": 0.5,
+        "num_states": 14,
+        "action_min": -1.5707963267948966,
+        "action_max": 1.5707963267948966,
+        "learning_rate": 0.4,
         "reward_mode": "target"
     },
     "learners": {
-        "lemni_CALA_x": "Config not available for lemni_CALA_x",
-        "lemni_CALA_z": "Config not available for lemni_CALA_z"
+        "lemni_CALA_xz": "Config not available for lemni_CALA_xz"
     }
 }

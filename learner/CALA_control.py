@@ -26,22 +26,22 @@ actions_range = 'angular'       # 'linear', 'angular' (impacts clipping)
 #action_min      = 0             # minimum of action space
 #action_max      = 2*np.pi     # maximum of action space
 
-action_min      = -np.pi             # minimum of action space
-action_max      = np.pi     # maximum of action space
+action_min      = -np.pi/2             # minimum of action space
+action_max      = np.pi/2     # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.5     # rate at which policy updates
+learning_rate   = 0.4     # rate at which policy updates
 variance        = 0.2       # initial variance
-variance_ratio  = 1      # default 1, permits faster/slower variance updates
+variance_ratio  = 1      # default 1, permits faster (>1) /slower variance (<1) updates
 variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
 variance_max    = 10         # highest variance 
 epsilon         = 1e-8
 
-counter_max = 100             # when to stop accumualating experience in a trial
-reward_mode = 'target'       # 'target' = change orientation of swarm to track target 
+counter_max = 200               # when to stop accumualating experience in a trial
+reward_mode = 'target'          # 'target' = change orientation of swarm to track target 
+reward_coupling = 2             # how many coupled states? (nominally 2, x and z direction)
 
-        
 leader_follower = True # true = define a leader; false = consensus-based
 leader = 0
 
@@ -50,10 +50,13 @@ leader = 0
 class CALA:
     
     # initialize
-    def __init__(self, num_states):
+    def __init__(self, num_agents):
+        
+        num_states = num_agents * reward_coupling
         
         # load parameters into class
-        self.num_states     = num_states
+        self.num_agents     = num_agents
+        self.num_states     = num_states 
         self.action_min     = action_min
         self.action_max     = action_max
         self.learning_rate  = learning_rate
@@ -72,7 +75,7 @@ class CALA:
         # counter        
         self.counter_max    = counter_max 
         #self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) - 500 # all agents start at differnt places
-        self.counter        = np.zeros(num_states) -500 # all in synch now, but do asynch (above) later
+        self.counter        = np.zeros(num_states) -700 # all in synch now, but do asynch (above) later
 
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
@@ -104,8 +107,8 @@ class CALA:
     def reward_func_angle(self, psi, psi_s):
         
         # hyperparameters
-        k = 3 # tunable 
-        clip = False
+        k = 1 # tunable 
+        clip =False
 
         # get difference between angles 
         delta = psi - psi_s # actual angle - sight angle (desired)
@@ -131,70 +134,70 @@ class CALA:
 
         
     # uses global frame
-    def compute_multi_reward(self, target, centroid, focal):
+    # def compute_multi_reward(self, target, centroid, focal):
         
-        approach = 'turret'  # turret 
+    #     approach = 'turret'  # turret 
         
-        if self.reward_mode == 'target':
+    #     if self.reward_mode == 'target':
                 
-            # use origin if no target provided
-            if target.shape[1] == 0:
-                target_vec = -centroid[0:3, 0]
-            else:
-                target_vec = target[0:3, 0] - centroid[0:3, 0]
+    #         # use origin if no target provided
+    #         if target.shape[1] == 0:
+    #             target_vec = -centroid[0:3, 0]
+    #         else:
+    #             target_vec = target[0:3, 0] - centroid[0:3, 0]
         
-            # current 
-            focal_vec = focal[0:3] - centroid[0:3,0]
+    #         # current 
+    #         focal_vec = focal[0:3] - centroid[0:3,0]
         
-            # Normalize
-            target_vec /= (np.linalg.norm(target_vec) + epsilon)
-            focal_vec /= (np.linalg.norm(focal_vec) + epsilon)
+    #         # Normalize
+    #         target_vec /= (np.linalg.norm(target_vec) + epsilon)
+    #         focal_vec /= (np.linalg.norm(focal_vec) + epsilon)
             
-            if approach == 'turret':
+    #         if approach == 'turret':
             
-                # get cosine similarity 
-                #multi_reward = (np.dot(focal_vec, target_vec) + 1) / 2
+    #             # get cosine similarity 
+    #             #multi_reward = (np.dot(focal_vec, target_vec) + 1) / 2
                 
-                multi_reward_xy = 0
-                multi_reward_xz = 0
-                multi_reward_yz = 0
+    #             multi_reward_xy = 0
+    #             multi_reward_xz = 0
+    #             multi_reward_yz = 0
                 
-                #x-y plane
-                focal_xy = np.arctan2(focal_vec[1], focal_vec[0])
-                target_xy = np.arctan2(target_vec[1], target_vec[0])
+    #             #x-y plane
+    #             focal_xy = np.arctan2(focal_vec[1], focal_vec[0])
+    #             target_xy = np.arctan2(target_vec[1], target_vec[0])
                 
-                multi_reward_xy = self.reward_func_angle(focal_xy, target_xy)
+    #             multi_reward_xy = self.reward_func_angle(focal_xy, target_xy)
                 
-                #x-z plane
-                '''
-                focal_xz = np.arctan2(focal_vec[0], focal_vec[2])
-                target_xz = np.arctan2(target_vec[0], target_vec[2])
+    #             #x-z plane
+    #             '''
+    #             focal_xz = np.arctan2(focal_vec[0], focal_vec[2])
+    #             target_xz = np.arctan2(target_vec[0], target_vec[2])
                 
-                multi_reward_xz = self.reward_func_angle(focal_xz, target_xz)
+    #             multi_reward_xz = self.reward_func_angle(focal_xz, target_xz)
     
                 
-                #y-z plane
-                focal_yz = np.arctan2(focal_vec[1], focal_vec[2])
-                target_yz = np.arctan2(target_vec[1], target_vec[2])
+    #             #y-z plane
+    #             focal_yz = np.arctan2(focal_vec[1], focal_vec[2])
+    #             target_yz = np.arctan2(target_vec[1], target_vec[2])
                 
-                multi_reward_yz = self.reward_func_angle(focal_yz, target_yz)
-                '''
+    #             multi_reward_yz = self.reward_func_angle(focal_yz, target_yz)
+    #             '''
     
                 
-                multi_reward = multi_reward_xy + multi_reward_xz + multi_reward_yz
-                #multi_reward =  np.divide(multi_reward_xy +  multi_reward_xz +  multi_reward_yz, 3)          
+    #             multi_reward = multi_reward_xy + multi_reward_xz + multi_reward_yz
+    #             #multi_reward =  np.divide(multi_reward_xy +  multi_reward_xz +  multi_reward_yz, 3)          
             
-            # if not turret or ... etc
-            else:
+    #         # if not turret or ... etc
+    #         else:
                 
-                multi_reward = 0.0
+    #             multi_reward = 0.0
           
-        # if not  target tracking        
-        else:
+    #     # if not  target tracking        
+    #     else:
             
-            multi_reward = 0.0
+    #         multi_reward = 0.0
             
-        return multi_reward
+    #     return multi_reward
         
         
 
@@ -212,29 +215,40 @@ class CALA:
             reward = self.update_reward_increment(state, state_array, centroid, focal, target, mode)
         
         self.step(state, reward)
+        if reward_coupling == 2:
+            self.step(state + self.num_agents, reward)
+            
     
         # if doing leader
         if leader_follower:
             
-            lag     = leader
-            lead    = leader
+            self.share_statistics(state, [None, None], 'actions')
+            self.share_statistics(state, [None, None], 'rewards')
+            if reward_coupling == 2:
+                self.share_statistics(state + self.num_agents, [None, None], 'actions', leader + self.num_agents)
+                self.share_statistics(state + self.num_agents, [None, None], 'rewards', leader + self.num_agents)
     
         elif neighbours is not None and len(neighbours) > 1:
             idx = list(neighbours).index(state)
             lag = neighbours[(idx - 1) % len(neighbours)]
             lead = neighbours[(idx + 1) % len(neighbours)]
-    
-        self.share_statistics(state, [lag, lead], 'actions')
-        self.share_statistics(state, [lag, lead], 'rewards')
+            self.share_statistics(state, [lag, lead], 'actions')
+            self.share_statistics(state, [lag, lead], 'rewards')
+            if reward_coupling == 2:
+                state += self.num_agents
+                lag += self.num_agents
+                lead += self.num_agents
+                self.share_statistics(state, [lag, lead], 'actions')
+                self.share_statistics(state, [lag, lead], 'rewards')
 
 
     # seek consensus between neighbouring rewards (state, list[neighbours])
-    def share_statistics(self, state, neighbours, which):
+    def share_statistics(self, state, neighbours, which, leader_node = leader):
         
         # if doing leader
         if leader_follower:
-            if state != leader:
-                source = neighbours[0]
+            if state != leader_node:
+                source = leader_node
                 if which == 'actions':
                     self.action_set[state] = self.action_set[source]
                 elif which == 'rewards':
@@ -297,138 +311,116 @@ class CALA:
         # constrain the variance 
         self.variances[state] = max(variance_min, self.variances[state])
         self.variances[state] = min(self.variances[state], variance_max)
+        
 
     # ****************************
     # ASYCHRONOUS EXTERNAL UPDATES
     # ****************************
 
-
-    # NOT WORKING YET!
     def update_reward_increment(self, k_node, state, centroid, focal, target, mode):
         
-      
         if self.reward_mode == 'target':
             
-            reference = 'local'
+            reference   = 'global'      # 'local', 'global'
+            reward_form = 'dot'         # 'dot', 'angle'
             
-            if reference == 'local':
+            # compute the heading vector (centered on centroid)
+            v_centroid      = centroid[0:3, 0]
+            v_focal         = focal[0:3]
+            v_heading       =  v_centroid - v_focal
             
-                # compute the heading vector (centered on centroid)
-                v_centroid      = centroid[0:3, 0]
-                v_focal         = focal[0:3]
-                #v_heading       = v_focal - v_centroid
-                v_heading       =  v_centroid - v_focal
+            # compute the target vector (centered on centroid)
+            if target.shape[1] == 0:
+                v_target = - v_focal
+            else:
+                v_target = target[0:3, 0] - v_focal
+            
+            # =============
+            # when coupled
+            # =============
+            
+            if reward_coupling == 2:
                 
-                # compute the target vector (centered on centroid)
-                if target.shape[1] == 0:
-                    #v_target = -v_centroid
-                    v_target = - v_focal
-                else:
-                    #v_target = target[0:3, 0] - v_centroid
-                    v_target = target[0:3, 0] - v_focal
+                if reference == 'global':
+                    
+                    v1 = v_heading
+                    v2 = v_target
+                    
+                    if reward_form == 'dot':
+        
+                        v1 /= (np.linalg.norm(v1) + epsilon)
+                        v2 /= (np.linalg.norm(v2) + epsilon)
+                        reward = (np.dot(v1, v2) + 1) / 2
+    
+                    elif reward_form == 'angle':
+                        
+                        print('not done yet')
+                
+                elif reference == 'local':
+                        
+                        print('not done yet')
+                       
+            # ===============
+            # when decoupled
+            # ===============
+            
+            # if this is just one axis (i.e., not representing coupled axes)
+            elif reward_coupling == 1:
+            
+                if reference == 'local':
+                    
+                    # define world axis 
+                    unit_lem = np.array([1, 0, 0]).reshape((3, 1))  # x-dir
+                    twist_perp = np.array([0, 0, 1]).reshape((3,1)) # z-dir
+                    
+                    if mode == 'x':
+                    
+                        qx = quat.e2q(self.action_set[k_node] * unit_lem.ravel())
+                        qz = quat.e2q(self.reference[k_node] * twist_perp.ravel())
+                        plane_indices = [1, 2] # not sure about this yet
+                        
+                    if mode == 'z':
+                        
+                        qx = quat.e2q(self.reference[k_node] * unit_lem.ravel())
+                        qz = quat.e2q(self.action_set[k_node] * twist_perp.ravel())
+                        plane_indices = [0, 1] # not sure about this yet
+                
+                    # compute the total rotation
+                    q_total = quat.quat_mult(qz, qx)
+                    q_total_ = quat.quatjugate(q_total) # inverse
+                    
+                    # rotate both on swarm's local frame
+                    v_heading_local = quat.rotate(q_total_, v_heading.reshape(3, 1)).ravel()
+                    v_target_local  = quat.rotate(q_total_, v_target.reshape(3, 1)).ravel()
+                    
+                    # project into relevant 2D plane
+                    v1 = v_heading_local[plane_indices]
+                    v2 = v_target_local[plane_indices]
+            
+    
+                elif reference == 'global':
+                    
+                    if mode == 'x':
+                        v1 = v_heading[[1, 2]]  # project onto y-z plane
+                        v2 = v_target[[1, 2]]
+                    elif mode == 'z':
+                        v1 = v_heading[[0, 1]]  # project onto x-y plane
+                        v2 = v_target[[0, 1]]
                 
                     
-                # define world axis 
-                unit_lem = np.array([1, 0, 0]).reshape((3, 1))  # x-dir
-                twist_perp = np.array([0, 0, 1]).reshape((3,1)) # z-dir
-                
-                if mode == 'x':
-                
-                    qx = quat.e2q(self.action_set[k_node] * unit_lem.ravel())
-                    qz = quat.e2q(self.reference[k_node] * twist_perp.ravel())
-                    plane_indices = [1, 2] # not sure about this yet
+                if reward_form == 'dot':
+                    # normalize
+                    v1 /= (np.linalg.norm(v1) + epsilon)
+                    v2 /= (np.linalg.norm(v2) + epsilon)
+                    reward = (np.dot(v1, v2) + 1) / 2
                     
-                if mode == 'z':
+                elif reward_form == 'angle':
                     
-                    qx = quat.e2q(self.reference[k_node] * unit_lem.ravel())
-                    qz = quat.e2q(self.action_set[k_node] * twist_perp.ravel())
-                    plane_indices = [0, 1] # not sure about this yet
-            
-                # compute the total rotation
-                q_total = quat.quat_mult(qz, qx)
-                q_total_ = quat.quatjugate(q_total) # inverse
-                
-                # rotate both on swarm's local frame
-                v_heading_local = quat.rotate(q_total_, v_heading.reshape(3, 1)).ravel()
-                v_target_local  = quat.rotate(q_total_, v_target.reshape(3, 1)).ravel()
-                
-                # project into relevant 2D plane
-                v1 = v_heading_local[plane_indices]
-                v2 = v_target_local[plane_indices]
-        
-                # normalize
-                v1 /= (np.linalg.norm(v1) + epsilon)
-                v2 /= (np.linalg.norm(v2) + epsilon)
-                
-                #angle           = np.arctan2(v1[1], v1[0])          # focal vector angle
-                #angle_desired   = np.arctan2(v2[1], v2[0])          # target vector angle
-                
-                #reward = self.reward_func_angle(angle, angle_desired)
-                reward = (np.dot(v1, v2) + 1) / 2
-
-                reward = np.exp(-1 * reward)
-
-
-            
-                '''
-                # get action for this mode
-                #action = self.action_set[k_node]
-                #frame = self.base_set[k_node] # + self.action_set[k_node]
-                #action = (action + np.pi) % (2 * np.pi) - np.pi
-                #frame = self.action_set[k_node]
-                frame_shift = self.reference[k_node]
-                
-                # rotation axis
-                if mode == 'x':
-                    #axis_vec = np.array([1.0, 0.0, 0.0])
-                    axis_vec = np.array([0.0, 0.0, 1.0])
-                    #axis_vec = np.array([0.0, 1, 0])
-                    #plane_indices = [1, 2]
-                    plane_indices = [1, 2]
-                elif mode == 'z':
-                    #axis_vec = np.array([0.0, 0.0, 1.0])
-                    #axis_vec = np.array([0, 0.0, 1])
-                    axis_vec = np.array([1.0, 0.0, 0.0])
-                    #plane_indices = [0, 2]  
-                    plane_indices = [0, 1]   
-
-                else:
-                    raise ValueError("Invalid mode: must be 'x' or 'z'")
-        
-                # Build quaternion for rotating into local frame
-                #q = quat.e2q(frame * axis_vec)
-                q = quat.e2q(frame_shift * axis_vec)
-                q_inv = quat.quatjugate(q)
-        
-        
-                # Compute world-frame vectors
-                centroid_vec = centroid[0:3, 0]
-                focal_vec_world = focal[0:3] - centroid_vec
-                
-                if target.shape[1] == 0:
-                    target_vec_world = -centroid_vec
-                else:
-                    target_vec_world = target[0:3, 0] - centroid_vec
-        
-                # Rotate both vectors into agent's local frame
-                focal_vec_local = quat.rotate(q_inv, focal_vec_world.reshape(3, 1)).ravel()
-                target_vec_local = quat.rotate(q_inv, target_vec_world.reshape(3, 1)).ravel()
-        
-                # Project into relevant 2D plane
-                v1 = focal_vec_local[plane_indices]
-                v2 = target_vec_local[plane_indices]
-        
-                # Normalize
-                v1 /= (np.linalg.norm(v1) + epsilon)
-                v2 /= (np.linalg.norm(v2) + epsilon)
-                
-                angle = np.arctan2(v1[1], v1[0])         # focal vector angle
-                angle_desired = np.arctan2(v2[1], v2[0]) # target vector angle
-                
-                reward = self.reward_func_angle(angle, angle_desired)
-                '''
-        
-        return reward
+                    angle           = np.arctan2(v1[1], v1[0])          # focal vector angle
+                    angle_desired   = np.arctan2(v2[1], v2[0])          # target vector angle
+                    reward = self.reward_func_angle(angle, angle_desired)
+    
+            return reward
         
 
     # note: this is very messy, clean up object-oriented approach
@@ -454,7 +446,7 @@ class CALA:
     def _log_state(self, state, action, reward):
     
         # expand storage if necessary
-        if len(self.mean_history) <= state:
+        while len(self.mean_history) <= state:
             self.mean_history.append([])
             self.variance_history.append([])
             self.reward_history.append([])
