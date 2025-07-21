@@ -31,18 +31,18 @@ action_max      = np.pi/2     # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.4     # rate at which policy updates
-variance        = 0.2       # initial variance
-variance_ratio  = 1      # default 1, permits faster (>1) /slower variance (<1) updates
-variance_min    = 0.001     # default 0.001, makes sure variance doesn't go too low
-variance_max    = 10         # highest variance 
-epsilon         = 1e-8
+learning_rate   = 0.1     # rate at which policy updates
+variance        = 0.1     # initial variance
+variance_ratio  = 2       # default 1, permits faster (>1) /slower variance (<1) updates
+variance_min    = 0.05    # default 0.001, makes sure variance doesn't go too low
+variance_max    = 10      # highest variance 
+epsilon         = 1e-6
 
-counter_max = 200               # when to stop accumualating experience in a trial
+counter_max = 100               # when to stop accumualating experience in a trial
 reward_mode = 'target'          # 'target' = change orientation of swarm to track target 
-reward_coupling = 2             # how many coupled states? (nominally 2, x and z direction)
+reward_coupling = 2             # default = 2 (onlt 2 works right now) 
 
-leader_follower = True # true = define a leader; false = consensus-based
+leader_follower = True          # true = define a leader; false = consensus-based (not working yet)
 leader = 0
 
 #%% Learning Class
@@ -62,6 +62,7 @@ class CALA:
         self.learning_rate  = learning_rate
         self.means          = np.random.uniform(action_min, action_max, num_states) #means
         self.variances      = np.full(num_states, variance) #variances
+        self.prev_update    = np.zeros(num_states) # previous update (used for momentum)
         
         # Dirichlet distribution with a = 1 , 
         #    inject non-uniform influence or bias across states 
@@ -75,7 +76,7 @@ class CALA:
         # counter        
         self.counter_max    = counter_max 
         #self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) - 500 # all agents start at differnt places
-        self.counter        = np.zeros(num_states) -700 # all in synch now, but do asynch (above) later
+        self.counter        = np.zeros(num_states) - 500 # all in synch now, but do asynch (above) later
 
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
@@ -95,19 +96,19 @@ class CALA:
             ('reward_mode', reward_mode)
         ] )
 
-    
-    
+    #%% helper functions
+    # ----------------
+
+    # wrap to -pi and pi
     def wrap2pi(self, angle):
-        
         wrapped_angle = (angle + np.pi) % (2 * np.pi) - np.pi
-        
         return wrapped_angle
-              
-    
+      
+    # angular exponential reward function (experimental - do not use yet)        
     def reward_func_angle(self, psi, psi_s):
         
         # hyperparameters
-        k = 1 # tunable 
+        k = 1           # tunable 
         clip =False
 
         # get difference between angles 
@@ -131,95 +132,32 @@ class CALA:
         else:
             return reward
    
-
-        
-    # uses global frame
-    # def compute_multi_reward(self, target, centroid, focal):
-        
-    #     approach = 'turret'  # turret 
-        
-    #     if self.reward_mode == 'target':
-                
-    #         # use origin if no target provided
-    #         if target.shape[1] == 0:
-    #             target_vec = -centroid[0:3, 0]
-    #         else:
-    #             target_vec = target[0:3, 0] - centroid[0:3, 0]
-        
-    #         # current 
-    #         focal_vec = focal[0:3] - centroid[0:3,0]
-        
-    #         # Normalize
-    #         target_vec /= (np.linalg.norm(target_vec) + epsilon)
-    #         focal_vec /= (np.linalg.norm(focal_vec) + epsilon)
-            
-    #         if approach == 'turret':
-            
-    #             # get cosine similarity 
-    #             #multi_reward = (np.dot(focal_vec, target_vec) + 1) / 2
-                
-    #             multi_reward_xy = 0
-    #             multi_reward_xz = 0
-    #             multi_reward_yz = 0
-                
-    #             #x-y plane
-    #             focal_xy = np.arctan2(focal_vec[1], focal_vec[0])
-    #             target_xy = np.arctan2(target_vec[1], target_vec[0])
-                
-    #             multi_reward_xy = self.reward_func_angle(focal_xy, target_xy)
-                
-    #             #x-z plane
-    #             '''
-    #             focal_xz = np.arctan2(focal_vec[0], focal_vec[2])
-    #             target_xz = np.arctan2(target_vec[0], target_vec[2])
-                
-    #             multi_reward_xz = self.reward_func_angle(focal_xz, target_xz)
     
-                
-    #             #y-z plane
-    #             focal_yz = np.arctan2(focal_vec[1], focal_vec[2])
-    #             target_yz = np.arctan2(target_vec[1], target_vec[2])
-                
-    #             multi_reward_yz = self.reward_func_angle(focal_yz, target_yz)
-    #             '''
+    #%% main lemniscate learning
+    # --------------------------
     
-                
-    #             multi_reward = multi_reward_xy + multi_reward_xz + multi_reward_yz
-    #             #multi_reward =  np.divide(multi_reward_xy +  multi_reward_xz +  multi_reward_yz, 3)          
-            
-    #         # if not turret or ... etc
-    #         else:
-                
-    #             multi_reward = 0.0
-          
-    #     # if not  target tracking        
-    #     else:
-            
-    #         multi_reward = 0.0
-            
-    #     return multi_reward
-        
-        
-
-    # main lemniscate learning
     def learn_lemni(self, state, state_array, centroid, focal, target, neighbours, mode, allow_ext_reward, ext_reward = 0):
   
-        # if multiple rewards to consider
+        # if permitting external reward
         if allow_ext_reward:
-            
             reward = ext_reward
             
-        # if not, update yourself    
+        # define reward internally (default)   
         else:
-  
             reward = self.update_reward_increment(state, state_array, centroid, focal, target, mode)
         
+        # update the policy
         self.step(state, reward)
         if reward_coupling == 2:
             self.step(state + self.num_agents, reward)
             
+        # negotiate with neighbours
+        self.negotiate_with_neighbours(state, neighbours)
     
-        # if doing leader
+    # inter-agent negotiation
+    def negotiate_with_neighbours(self, state, neighbours):
+        
+        # leader/follower negotiation
         if leader_follower:
             
             self.share_statistics(state, [None, None], 'actions')
@@ -228,6 +166,7 @@ class CALA:
                 self.share_statistics(state + self.num_agents, [None, None], 'actions', leader + self.num_agents)
                 self.share_statistics(state + self.num_agents, [None, None], 'rewards', leader + self.num_agents)
     
+        # consensus negotation
         elif neighbours is not None and len(neighbours) > 1:
             idx = list(neighbours).index(state)
             lag = neighbours[(idx - 1) % len(neighbours)]
@@ -240,12 +179,11 @@ class CALA:
                 lead += self.num_agents
                 self.share_statistics(state, [lag, lead], 'actions')
                 self.share_statistics(state, [lag, lead], 'rewards')
-
-
+        
     # seek consensus between neighbouring rewards (state, list[neighbours])
     def share_statistics(self, state, neighbours, which, leader_node = leader):
         
-        # if doing leader
+        # share leader statistics
         if leader_follower:
             if state != leader_node:
                 source = leader_node
@@ -256,6 +194,7 @@ class CALA:
                     self.variances[state] = self.variances[source]
             return 
                 
+        # share through consensus 
         alpha_rewards  = self.asymmetry[state]                             
         alpha_actions  = self.asymmetry[state] 
         
@@ -299,13 +238,23 @@ class CALA:
     
     # update policy 
     def update_policy(self, state, action, reward):
+        
+        momentum    = True          # if using momentum 
+        momentum_beta= 0.8          # beta param for momentum (0 to 1)
  
         # pull mean and variance for given state
         mean        = self.means[state]
         variance    = self.variances[state]
         
         # update mean and variance based on reward signal
-        self.means[state]       += self.learning_rate * reward * (action - mean)
+        if momentum:
+            delta                   = reward * (action - mean)
+            delta                   = momentum_beta * self.prev_update[state] + (1 - momentum_beta) * delta
+            self.prev_update[state] = delta
+            self.means[state]       += self.learning_rate * delta
+        else:
+            self.means[state]       += self.learning_rate * reward * (action - mean)
+        
         self.variances[state]   += variance_ratio * self.learning_rate * reward * ((action - mean) ** 2 - variance)
         
         # constrain the variance 
@@ -321,8 +270,8 @@ class CALA:
         
         if self.reward_mode == 'target':
             
-            reference   = 'global'      # 'local', 'global'
-            reward_form = 'dot'         # 'dot', 'angle'
+            reference   = 'global'      # 'global' (default),   'local' (not working yet)
+            reward_form = 'dot'         # 'dot'(default),       'angle' (not working yet)
             
             # compute the heading vector (centered on centroid)
             v_centroid      = centroid[0:3, 0]
@@ -345,6 +294,7 @@ class CALA:
                     
                     v1 = v_heading
                     v2 = v_target
+     
                     
                     if reward_form == 'dot':
         
@@ -423,7 +373,7 @@ class CALA:
             return reward
         
 
-    # note: this is very messy, clean up object-oriented approach
+    # step counter forward 
     def step(self, state, reward):
   
         # increment counter
@@ -456,28 +406,77 @@ class CALA:
         self.variance_history[state].append(self.variances[state])
         self.reward_history[state].append(reward)
     
-    
     # ************** #
     #   PLOTS        #
     # ************** #
     
     # plot results
-    def plots_set(self):
+    # def plots_set(self):
+    #     fig, axs = plt.subplots(3, 1, figsize=(10, 12))
+    
+    #     time_steps = len(self.mean_history[0])
+    #     self.state_colors = []  # reset in case this is run fresh
+    
+    #     for state in range(self.num_states):
+    #         mean_array = np.array(self.mean_history[state])
+    #         variance_array = np.array(self.variance_history[state])
+    #         reward_array = np.array(self.reward_history[state])
+    #         std_devs = np.sqrt(variance_array)
+    
+    #         # plot the line first to capture color
+    #         line, = axs[0].plot(range(time_steps), mean_array, label=f"state {state}")
+    #         color = line.get_color()
+    #         self.state_colors.append(color)
+    
+    #         # correct color applied to the shaded region
+    #         axs[0].fill_between(range(time_steps),
+    #                             mean_array - std_devs,
+    #                             mean_array + std_devs,
+    #                             color=color,
+    #                             alpha=0.3)
+    
+    #         axs[1].plot(range(time_steps), variance_array, label=f"state {state}", color=color)
+    #         axs[2].plot(range(time_steps), reward_array, label=f"state {state}", color=color)
+    
+    #     axs[0].set_title('Mean with Std Dev')
+    #     axs[1].set_title('Variance')
+    #     axs[2].set_title('Reward')
+    
+    #     for ax in axs:
+    #         ax.set_xlabel("Steps")
+    #         ax.legend()
+    
+    #     plt.tight_layout()
+    #     plt.show()
+        
+    def plots_set(self, just_leader = True):
+        
         fig, axs = plt.subplots(3, 1, figsize=(10, 12))
     
         time_steps = len(self.mean_history[0])
-        self.state_colors = []  # reset in case this is run fresh
+        #self.state_colors = []  # reset in case this is run fresh
+        self.state_color_map = {} 
     
-        for state in range(self.num_states):
+        # Choose states to plot
+        if just_leader:
+            states_to_plot = [leader, leader + self.num_agents]
+        else:
+            states_to_plot = list(range(self.num_states))
+    
+        for state in states_to_plot:
             mean_array = np.array(self.mean_history[state])
             variance_array = np.array(self.variance_history[state])
             reward_array = np.array(self.reward_history[state])
             std_devs = np.sqrt(variance_array)
     
             # plot the line first to capture color
-            line, = axs[0].plot(range(time_steps), mean_array, label=f"state {state}")
+            if just_leader:
+                line, = axs[0].plot(range(time_steps), mean_array)
+            else:
+                line, = axs[0].plot(range(time_steps), mean_array, label=f"state {state}")
             color = line.get_color()
-            self.state_colors.append(color)
+            #self.state_colors.append(color)
+            self.state_color_map[state] = color  # <- keyed by actual state index
     
             # correct color applied to the shaded region
             axs[0].fill_between(range(time_steps),
@@ -486,8 +485,14 @@ class CALA:
                                 color=color,
                                 alpha=0.3)
     
-            axs[1].plot(range(time_steps), variance_array, label=f"state {state}", color=color)
-            axs[2].plot(range(time_steps), reward_array, label=f"state {state}", color=color)
+            if just_leader:
+                
+                axs[1].plot(range(time_steps), variance_array, color=color)
+                axs[2].plot(range(time_steps), reward_array, color='green')
+                
+            else:    
+                axs[1].plot(range(time_steps), variance_array, label=f"state {state}", color=color)
+                axs[2].plot(range(time_steps), reward_array, label=f"state {state}", color=color)
     
         axs[0].set_title('Mean with Std Dev')
         axs[1].set_title('Variance')
@@ -495,81 +500,100 @@ class CALA:
     
         for ax in axs:
             ax.set_xlabel("Steps")
-            ax.legend()
+            if not just_leader:
+                ax.legend()
     
         plt.tight_layout()
         plt.show()
 
-    # plot the distributions 
-    def plot_distributions_over_time_set(self, steps_to_plot=[0, 10, 25, 50]):
-        from scipy.stats import norm
-        x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
-    
-        # Compute a shared y-axis limit (max PDF value over all states and selected steps)
-        y_max = 0
-        for state in range(self.num_states):
-            for step in steps_to_plot:
-                mu = self.mean_history[state][step]
-                sigma = np.sqrt(self.variance_history[state][step])
-                if sigma > 0:
-                    y = norm.pdf(mu, mu, sigma)
-                    y_max = max(y_max, y)
-        y_max *= 1.1  # add some headroom
-    
-        # create the figure
-        fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
-    
-        for state in range(self.num_states):
-            ax = axs[state] if self.num_states > 1 else axs
-            color = self.state_colors[state] if hasattr(self, 'state_colors') else None
-            for idx, step in enumerate(steps_to_plot):
-                mu = self.mean_history[state][step]
-                var = self.variance_history[state][step]
-                sigma = np.sqrt(var)
-                y = norm.pdf(x, mu, sigma)
-                alpha = 0.1 + 0.8 * (idx / (len(steps_to_plot) - 1))
-                ax.fill_between(x, y, color=color, alpha=alpha, label=f"step {step}" if idx == len(steps_to_plot)-1 else None)
-    
-            ax.set_title(f"State {state} Distribution Evolution")
-            ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
-            ax.set_ylim(0, y_max)  # ← key fix to match the animation
-    
-        plt.tight_layout()
-        plt.show()
         
-    # animate the distributions
-    def animate_distributions_set(self, interval=50, save_path=None):
+    # plot the distributions 
+    # def plot_distributions_over_time_set(self, steps_to_plot=[0, 10, 25, 50]):
+        
+    #     from scipy.stats import norm
+    #     x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
+    
+    #     # Compute a shared y-axis limit (max PDF value over all states and selected steps)
+    #     y_max = 0
+    #     for state in range(self.num_states):
+    #         for step in steps_to_plot:
+    #             mu = self.mean_history[state][step]
+    #             sigma = np.sqrt(self.variance_history[state][step])
+    #             if sigma > 0:
+    #                 y = norm.pdf(mu, mu, sigma)
+    #                 y_max = max(y_max, y)
+    #     y_max *= 1.1  # add some headroom
+    
+    #     # create the figure
+    #     fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
+    
+    #     for state in range(self.num_states):
+    #         ax = axs[state] if self.num_states > 1 else axs
+    #         color = self.state_colors[state] if hasattr(self, 'state_colors') else None
+    #         for idx, step in enumerate(steps_to_plot):
+    #             mu = self.mean_history[state][step]
+    #             var = self.variance_history[state][step]
+    #             sigma = np.sqrt(var)
+    #             y = norm.pdf(x, mu, sigma)
+    #             alpha = 0.1 + 0.8 * (idx / (len(steps_to_plot) - 1))
+    #             ax.fill_between(x, y, color=color, alpha=alpha, label=f"step {step}" if idx == len(steps_to_plot)-1 else None)
+    
+    #         ax.set_title(f"State {state} Distribution Evolution")
+    #         ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
+    #         ax.set_ylim(0, y_max)  # ← key fix to match the animation
+    
+    #     plt.tight_layout()
+    #     plt.show()
+        
+    
+    def animate_distributions_set(self, interval=50, save_path=None, just_leader = True):
+        
         import matplotlib.animation as animation
         from scipy.stats import norm
     
         time_steps = len(self.mean_history[0])
         x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
     
+        # Choose which states to animate
+        if just_leader:
+            states_to_plot = [leader, leader+self.num_agents]
+        else:
+            states_to_plot = list(range(self.num_states))
+    
         # Find global max y for PDF
         y_max = 0
-        for state in range(self.num_states):
+        for state in states_to_plot:
             for t in range(time_steps):
                 sigma = np.sqrt(self.variance_history[state][t])
                 mu = self.mean_history[state][t]
                 y_max = max(y_max, norm.pdf(mu, mu, sigma))
         y_max *= 1.1
-
-        fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
+    
+        fig, axs = plt.subplots(len(states_to_plot), 1, figsize=(10, 3 * len(states_to_plot)))
         plt.subplots_adjust(hspace=0.4)
-        if self.num_states == 1: axs = [axs]
+        if len(states_to_plot) == 1:
+            axs = [axs]
     
         lines, fills = [], []
-        for state in range(self.num_states):
-            color = self.state_colors[state] if hasattr(self, 'state_colors') else None
-            ax = axs[state]
+        for idx, state in enumerate(states_to_plot):
+            #color = self.state_colors[state] if hasattr(self, 'state_colors') else None
+            color = self.state_color_map.get(state, None) if hasattr(self, 'state_color_map') else None
+
+            ax = axs[idx]
             line, = ax.plot([], [], color=color)
             fill = ax.fill_between(x, np.zeros_like(x), np.zeros_like(x), color=color, alpha=0.3)
             lines.append(line)
             fills.append(fill)
             ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
-            #ax.set_ylim(0, y_max)
-            ax.set_ylim(0, 1)
-            ax.set_title(f"State {state} - Action PDF over Time")
+            ax.set_ylim(0, y_max)
+            
+            if just_leader:
+                
+                ax.set_title(f"Action PDF over Time (leader)")
+                
+            else:
+            
+                ax.set_title(f"State {state} - Action PDF over Time")
     
         time_text = axs[0].text(0.95, 0.95, '', transform=axs[0].transAxes,
                                 ha='right', va='top', fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
@@ -581,25 +605,28 @@ class CALA:
             return lines + [time_text]
     
         def update(frame):
-            for state in range(self.num_states):
+            for idx, state in enumerate(states_to_plot):
                 mu = self.mean_history[state][frame]
                 sigma = np.sqrt(self.variance_history[state][frame])
                 y = norm.pdf(x, mu, sigma)
-                lines[state].set_data(x, y)
-                #fills[state].remove()
-                #fills[state] = axs[state].fill_between(x, y, color=self.state_colors[state], alpha=0.3)
-                
+                lines[idx].set_data(x, y)
+    
                 # remove previous collection from axis
-                for artist in axs[state].collections:
+                for artist in axs[idx].collections:
                     artist.remove()
-
+    
                 # add new one
-                fills[state] = axs[state].fill_between(x, y, color=self.state_colors[state], alpha=0.3)
-                
+                #fills[idx] = axs[idx].fill_between(x, y, color=self.state_colors[state], alpha=0.3)
+                fills[idx] = axs[idx].fill_between(x, y, color=self.state_color_map.get(state, None), alpha=0.3)
+
+    
             time_text.set_text(f"Time step: {frame}/{time_steps}")
             return lines + fills + [time_text]
     
-        ani = animation.FuncAnimation(fig, update, frames=time_steps,
+        frame_skip = 100
+        frames=range(0, time_steps, frame_skip)
+    
+        ani = animation.FuncAnimation(fig, update, frames,
                                       init_func=init, blit=False, interval=interval)
     
         if save_path:
@@ -610,51 +637,19 @@ class CALA:
     
         return ani
 
+
+
+
     # plots
-    def all_plots_set(self):
+    def all_plots_set(self, just_leader = True):
         
-        self.plots_set()
-        self.plot_distributions_over_time_set()
+        self.plots_set(just_leader = just_leader)
+        #self.plot_distributions_over_time_set()
+        self.animate_distributions_set(save_path='visualization/animations/RL_animation.gif', just_leader = just_leader)
         #anim = self.animate_distributions_set(interval=50, save_path='RL_animation.gif')
 
-    '''def plot_reward_surface_set(self, reward_fn, xlim=(-3.5, 3.5), num_points=200):
-        """
-        Plot reward surfaces for all states, using latest mean and variance.
-        """
-        import matplotlib.pyplot as plt
-        import numpy as np
-    
-        n_states = len(self.mean_history[-1])
-        fig, axs = plt.subplots(n_states, 1, figsize=(8, 1.8 * n_states), sharex=True)
-    
-        x = np.linspace(xlim[0], xlim[1], num_points)
-    
-        for i in range(n_states):
-            mu = self.mean_history[-1][i]
-            sigma = np.sqrt(self.variance_history[-1][i])
-    
-            rewards = []
-            for xi in x:
-                state = np.zeros(n_states)
-                state[i] = xi
-                rewards.append(reward_fn(state))
-    
-            axs[i].plot(x, rewards, label='Reward')
-            axs[i].axvline(mu, color='red', linestyle='--', label='Mean')
-            axs[i].fill_between(
-                x, 0, max(rewards),
-                where=((x > mu - sigma) & (x < mu + sigma)),
-                color='red', alpha=0.1, label='1σ'
-            )
-            axs[i].set_title(f'State {i} Reward Surface')
-            axs[i].grid(True)
-            axs[i].legend()
-    
-        plt.tight_layout()
-        plt.show()'''
 
-
-# manual calls
+#%% manual calls
 # ------------
 # Controller.Learners['lemni_CALA'].animate_distributions_set()
 # Controller.Learners['lemni_CALA'].all_plots_set()

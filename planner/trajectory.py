@@ -79,21 +79,9 @@ class Trajectory:
         
         # if lemniscating
         elif tactic_type == 'lemni':
-            #from .techniques import lemni_tools
             
             lemni_all = kwargs.get('lemni_all')
-            #Agents = kwargs.get('lemni')
-            
-            if 'lemni_learn_actions' in kwargs:
-                learn_actions = kwargs.get('lemni_learn_actions')
-            else:
-                '''learn_actions = {
-                   'x': np.zeros((state.shape[1])),
-                   'z': np.zeros((state.shape[1]))
-                   }'''
-                learn_actions = {
-                   'xz': np.zeros((2*state.shape[1]))
-                   }
+            learn_actions = kwargs.get('lemni_learn_actions')
                 
             self.trajectory, self.lemni, self.sorted_neighs = lemni_tools.lemni_target(lemni_all,state,targets,i,t,learn_actions)
             
@@ -102,6 +90,28 @@ class Trajectory:
             
             self.trajectory = targets.copy()
             
+# helpers
+def update_trajectory_args(Database, Agents, Trajectory, Controller, tactic_type, my_kwargs):
+    
+    # we'll need the record of lemni parameters  
+    if tactic_type == 'lemni':
+        
+        # only need to pass last timestep, so reduce this later 
+        my_kwargs['lemni_all'] = Database.lemni_all
+        my_kwargs['sorted_neighs'] = Trajectory.sorted_neighs
+        
+        # new bidrirectional controller
+        if 'lemni_CALA_xz' in Controller.Learners:
             
+            # CASE 2: bidirectional
+            my_kwargs['lemni_learn_actions'] = {
+                'xz': Controller.Learners['lemni_CALA_xz'].action_set,
+                }
+        else:
+            my_kwargs['lemni_learn_actions'] = {
+               'xz': np.zeros((2*Agents.state.shape[1]))
+               }
+            
+    return my_kwargs            
             
             

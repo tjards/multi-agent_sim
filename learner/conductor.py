@@ -24,7 +24,6 @@ config_path=configs_tools.config_path
 
 def initialize(Agents, tactic_type, learning_ctrl, Ts):
     
-    
     Learners = {}
     
     # if using CALA to tune controller parameters (placeholder for future dev)
@@ -35,33 +34,15 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
         #Load
         Learners['CALA_ctrl'] = CALA
      
-        
     if tactic_type == 'lemni':
         with open(config_path, 'r') as planner_lemni_tests:
             configs = json.load(planner_lemni_tests)
         if configs['lemni']['learning'] == 'CALA':
             import learner.CALA_control as lemni_CALA
-            
-            # CASE 1: just one direction (prototype)
-            '''lemni_CALA = lemni_CALA.CALA(Agents.nAgents)
-            # LOAD
-            Learners['lemni_CALA'] = lemni_CALA'''
-            
-            # CASE 2: bidirectional
-            #lemni_CALA_x = lemni_CALA.CALA(Agents.nAgents)
-            #lemni_CALA_z = lemni_CALA.CALA(Agents.nAgents)
-            
-            # CASE 2: new bidirectional
             lemni_CALA_xz = lemni_CALA.CALA(Agents.nAgents)
-            # delay the z counter
-            #lemni_CALA_z.counter -= 500
-            # LOAD
-            #Learners['lemni_CALA_x'] = lemni_CALA_x
-            #Learners['lemni_CALA_z'] = lemni_CALA_z
+            # Load
             Learners['lemni_CALA_xz'] = lemni_CALA_xz
-            
-           
-        
+             
     # pinning control case
     if tactic_type == 'pinning':
         
@@ -119,7 +100,8 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
         
     return Learners
         
-        
+
+      
 def pinning_update_args(Controller, kwargs_pinning):
     
         

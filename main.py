@@ -90,6 +90,8 @@ experimental_save = False
 #%% build the system
 # ------------------
 import orchestrator
+import planner.trajectory
+
 Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens, Ts)
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state, dimens)
 Controller.learning_agents(Agents.tactic_type, Learners)
@@ -147,30 +149,7 @@ while round(t,3) < Tf:
     # Compute Trajectory
     # --------------------
 
-    # we'll need the record of lemni parameters  
-    if tactic_type == 'lemni':
-        
-        # only need to pass last timestep, so reduce this later 
-        my_kwargs['lemni_all'] = Database.lemni_all
-        my_kwargs['sorted_neighs'] = Trajectory.sorted_neighs
-        
-        # bidrirectional controller
-        '''if 'lemni_CALA_x' in Controller.Learners and 'lemni_CALA_z' in Controller.Learners:
-            
-            # CASE 2: bidirectional
-            my_kwargs['lemni_learn_actions'] = {
-                'x': Controller.Learners['lemni_CALA_x'].action_set,
-                'z': Controller.Learners['lemni_CALA_z'].action_set
-                }'''
-        
-        # new bidrirectional controller
-        if 'lemni_CALA_xz' in Controller.Learners:
-            
-            # CASE 2: bidirectional
-            my_kwargs['lemni_learn_actions'] = {
-                'xz': Controller.Learners['lemni_CALA_xz'].action_set,
-                }
-        
+    my_kwargs = planner.trajectory.update_trajectory_args(Database, Agents, Trajectory, Controller, tactic_type, my_kwargs)     
     Trajectory.update(tactic_type, Agents.state, Targets.targets, t, i, **my_kwargs)
                         
     # Compute the commads (next step)
