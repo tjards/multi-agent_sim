@@ -1,7 +1,7 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 300,
+        "Tf": 200,
         "Ts": 0.02,
         "dimens": 3,
         "verbose": 1,
@@ -83,7 +83,7 @@
         "num_states": 14,
         "action_min": -1.5707963267948966,
         "action_max": 1.5707963267948966,
-        "learning_rate": 0.1,
+        "learning_rate": 0.3,
         "reward_mode": "target"
     },
     "learners": {

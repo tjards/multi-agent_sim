@@ -51,26 +51,26 @@ if plot_quadcopter:
 # =============================================================================
 # Plotting parameters
 # =============================================================================
-numFrames           = 10    # frame rate (bigger = slower)
-tail                = 500    # trailing trajectory length 
-zoom                = 0     # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
-zoom_axis           = 10    # if zoom mode == 2, sets fixed zoom axis
-zoom_fixed          = 7    # if zoom mode == 3, sets fixed zoom amount
-pan                 = 0     # camera pan toggle (only for 3D)
-connection          = 1     # show connections between agents
-connection_thresh   = 5.1   # threshold for agent connectivity  (default val, gets updates later)
-updated_connections = 1     # use updated connectivity          (default 1)
-head                = 5 * 0.2  # size of the directional head
-pins_overide        = 1     # override colors using pin variable
-showObs             = 1     # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
-agent_shape         = 'prism'  # ['dot', 'prism']
-prism_scale         = 1
+numFrames           = 10            # frame rate (bigger = slower)
+tail                = 500           # trailing trajectory length 
+zoom                = 0             # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
+zoom_axis           = 10            # if zoom mode == 2, sets fixed zoom axis
+zoom_fixed          = 7             # if zoom mode == 3, sets fixed zoom amount
+pan                 = 0             # camera pan toggle (only for 3D)
+connection          = 1             # show connections between agents
+connection_thresh   = 5.1           # threshold for agent connectivity  (default val, gets updates later)
+updated_connections = 1             # use updated connectivity          (default 1)
+head                = 5 * 0.2       # size of the directional head
+pins_overide        = 1             # override colors using pin variable
+showObs             = 1             # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
+agent_shape         = 'prism'       # ['dot', 'prism']
+prism_scale         = 0.4
 color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
-color_lattice       = ['grey', 'blue'] # [in range, connected]
-color_projection    = ['black', 'black'] # xy, yz
-projection_plot     = True # show 2D projections
-show_plot           = True # show plot at end?
-show_ranges         = False # show sensor ranges
+color_lattice       = ['grey', 'blue']      # [in range, connected]
+color_projection    = ['black', 'black']    # xy, yz
+projection_plot     = True                  # show 2D projections
+show_plot           = True                  # show plot at end?
+show_ranges         = False                 # show sensor ranges
 
 # =============================================================================
 # Helper functions 

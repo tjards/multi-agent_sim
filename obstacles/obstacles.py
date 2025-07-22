@@ -23,7 +23,7 @@ class Obstacles:
     def __init__(self, tactic_type, targets, dimens):
         
         
-        np.random.seed(42)
+        #np.random.seed(42)
         
         # note: don't let pass-in of walls yet, as it is a manual process still
         
@@ -50,9 +50,9 @@ class Obstacles:
         if manual:
 
             # manual (comment out if random)
-            self.obstacles[0,:] = -5  #2   # position (x)
-            self.obstacles[1,:] = 4 # -2.5    # position (y)
-            self.obstacles[2,:] = 20    # position (z)
+            self.obstacles[0,:] =  -2 #2   # position (x)
+            self.obstacles[1,:] = 2.2 # -2.5    # position (y)
+            self.obstacles[2,:] = 19    # position (z)
             self.obstacles[3,:] = 1
             
         else:

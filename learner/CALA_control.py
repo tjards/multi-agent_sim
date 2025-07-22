@@ -23,17 +23,17 @@ config_path=configs_tools.config_path
 
 actions_range = 'angular'       # 'linear', 'angular' (impacts clipping)
 
-#action_min      = 0             # minimum of action space
-#action_max      = 2*np.pi     # maximum of action space
+#action_min      = 0            # minimum of action space
+#action_max      = 2*np.pi      # maximum of action space
 
-action_min      = -np.pi/2             # minimum of action space
-action_max      = np.pi/2     # maximum of action space
+action_min      = -np.pi/2      # minimum of action space
+action_max      = np.pi/2       # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.1     # rate at which policy updates
-variance        = 0.1     # initial variance
-variance_ratio  = 2       # default 1, permits faster (>1) /slower variance (<1) updates
+learning_rate   = 0.3     # rate at which policy updates
+variance        = 0.5     # initial variance
+variance_ratio  = 0.8     # default 1, permits faster (>1) /slower (<1)  variance updates
 variance_min    = 0.05    # default 0.001, makes sure variance doesn't go too low
 variance_max    = 10      # highest variance 
 epsilon         = 1e-6
@@ -60,9 +60,10 @@ class CALA:
         self.action_min     = action_min
         self.action_max     = action_max
         self.learning_rate  = learning_rate
-        self.means          = np.random.uniform(action_min, action_max, num_states) #means
+        self.means          = 0.75*np.random.uniform(action_min, action_max, num_states) #means
         self.variances      = np.full(num_states, variance) #variances
         self.prev_update    = np.zeros(num_states) # previous update (used for momentum)
+        self.prev_reward    = np.zeros(num_states) # previous reward (used for kicking)
         
         # Dirichlet distribution with a = 1 , 
         #    inject non-uniform influence or bias across states 
@@ -239,9 +240,21 @@ class CALA:
     # update policy 
     def update_policy(self, state, action, reward):
         
-        momentum    = True          # if using momentum 
-        momentum_beta= 0.8          # beta param for momentum (0 to 1)
- 
+        momentum            = True          # if using momentum 
+        momentum_beta       = 0.8           # beta param for momentum (0 to 1)
+        annealing           = False         # anneal variance down with time?
+        annealing_rate      = 0.99          # nominally around 0.99
+        kicking             = False          # if kicking (stops reward chasing down)
+        kicking_factor      = 1.3           # slighly greater than 1
+        
+        if kicking:
+            if reward < self.prev_reward[state]-0.05:
+                self.variances[state] *= kicking_factor
+            self.prev_reward[state] = reward
+        
+        if annealing:
+            self.variances[state] *= annealing_rate
+
         # pull mean and variance for given state
         mean        = self.means[state]
         variance    = self.variances[state]
@@ -302,9 +315,14 @@ class CALA:
                         v2 /= (np.linalg.norm(v2) + epsilon)
                         reward = (np.dot(v1, v2) + 1) / 2
     
+    
                     elif reward_form == 'angle':
                         
-                        print('not done yet')
+                        reward_sigma = 0.5
+                        v1 /= (np.linalg.norm(v1) + epsilon)
+                        v2 /= (np.linalg.norm(v2) + epsilon)
+                        angle_diff = np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
+                        reward = np.exp(-angle_diff**2 / reward_sigma**2)  # Gaussian bump at 0
                 
                 elif reference == 'local':
                         
@@ -410,44 +428,6 @@ class CALA:
     #   PLOTS        #
     # ************** #
     
-    # plot results
-    # def plots_set(self):
-    #     fig, axs = plt.subplots(3, 1, figsize=(10, 12))
-    
-    #     time_steps = len(self.mean_history[0])
-    #     self.state_colors = []  # reset in case this is run fresh
-    
-    #     for state in range(self.num_states):
-    #         mean_array = np.array(self.mean_history[state])
-    #         variance_array = np.array(self.variance_history[state])
-    #         reward_array = np.array(self.reward_history[state])
-    #         std_devs = np.sqrt(variance_array)
-    
-    #         # plot the line first to capture color
-    #         line, = axs[0].plot(range(time_steps), mean_array, label=f"state {state}")
-    #         color = line.get_color()
-    #         self.state_colors.append(color)
-    
-    #         # correct color applied to the shaded region
-    #         axs[0].fill_between(range(time_steps),
-    #                             mean_array - std_devs,
-    #                             mean_array + std_devs,
-    #                             color=color,
-    #                             alpha=0.3)
-    
-    #         axs[1].plot(range(time_steps), variance_array, label=f"state {state}", color=color)
-    #         axs[2].plot(range(time_steps), reward_array, label=f"state {state}", color=color)
-    
-    #     axs[0].set_title('Mean with Std Dev')
-    #     axs[1].set_title('Variance')
-    #     axs[2].set_title('Reward')
-    
-    #     for ax in axs:
-    #         ax.set_xlabel("Steps")
-    #         ax.legend()
-    
-    #     plt.tight_layout()
-    #     plt.show()
         
     def plots_set(self, just_leader = True):
         
@@ -638,14 +618,16 @@ class CALA:
         return ani
 
 
-
-
     # plots
     def all_plots_set(self, just_leader = True):
         
+        just_leader = True
+        save_path='visualization/animations/RL_animation.gif'
+        #save_path= None
+        
         self.plots_set(just_leader = just_leader)
         #self.plot_distributions_over_time_set()
-        self.animate_distributions_set(save_path='visualization/animations/RL_animation.gif', just_leader = just_leader)
+        self.animate_distributions_set(save_path=save_path, just_leader = just_leader)
         #anim = self.animate_distributions_set(interval=50, save_path='RL_animation.gif')
 
 
