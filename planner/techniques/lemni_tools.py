@@ -24,7 +24,9 @@ from . import encirclement_tools as encircle_tools
 # -----------
 
 # learning
-learning            = 'CALA'    # None, 'CALA'
+learning            = 'CALA'   # None, 'CALA'
+learning_coupling   = True      # options: True (default), else unlikely to work
+learning_axes       = 'xz'      # options: 'x' (prototype only), 'xz' (default)
  
 # tunable
 c1_d        = 1             # gain for position (q)
@@ -48,10 +50,7 @@ r_desired, phi_dot_d, ref_plane, quat_0 = encircle_tools.get_params()
 #%% safety checks
 # ---------------
 if learning == 'CALA':
-    
-    learning_coupling   = True      # options: True (default), else unlikely to work
-    learning_axes       = 'xz'      # options: 'x' (prototype only), 'xz' (default)
-    
+        
     if 'x' not in learning_axes and 'z' not in learning_axes:
         raise Exception('warning: no learning axis defined')
     if learning_coupling and learning_axes != 'xz':
