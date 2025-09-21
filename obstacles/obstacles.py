@@ -50,9 +50,9 @@ class Obstacles:
         if manual:
 
             # manual (comment out if random)
-            self.obstacles[0,:] =  -2 #2   # position (x)
-            self.obstacles[1,:] = 2.2 # -2.5    # position (y)
-            self.obstacles[2,:] = 19    # position (z)
+            self.obstacles[0,:] = 0.5 #2   # position (x)
+            self.obstacles[1,:] = -4.1 # -2.5    # position (y)
+            self.obstacles[2,:] = 20    # position (z)
             self.obstacles[3,:] = 1
             
         else:

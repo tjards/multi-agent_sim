@@ -21,7 +21,7 @@ dynamics = 'double integrator'
 
 nAgents = 7 # 7    # number of agents
 rAgents = 0.5   # physical radius of agents 
-iSpread = 10 #20 #80 # 20   # initial spread of agents
+iSpread = 20 #20 #80 # 20   # initial spread of agents
 init_conditions = 'random'   # mesh, random, evenly_spaced
         
 # constraints

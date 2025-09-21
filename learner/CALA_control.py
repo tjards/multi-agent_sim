@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 import config.configs_tools as configs_tools
 from planner.techniques.utils import quaternions as quat
 config_path=configs_tools.config_path
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.spatial import ConvexHull
+#import copy 
 
 #%% Simulations parameters
 # ---------------------
@@ -31,15 +34,15 @@ action_max      = np.pi/2       # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.3     # rate at which policy updates
-variance        = 0.5     # initial variance
-variance_ratio  = 0.8     # default 1, permits faster (>1) /slower (<1)  variance updates
-variance_min    = 0.05    # default 0.001, makes sure variance doesn't go too low
-variance_max    = 10      # highest variance 
+learning_rate   = 0.1     # rate at which policy updates
+variance_init   = 0.2     # initial variance
+variance_ratio  = 0.1    # default 1, permits faster (>1) /slower (<1)  variance updates
+variance_min    = 0   # default 0.001, makes sure variance doesn't go too low
+variance_max    = 10       # highest variance 
 epsilon         = 1e-6
 
-counter_max = 100               # when to stop accumualating experience in a trial
-reward_mode = 'target'          # 'target' = change orientation of swarm to track target 
+counter_max     = 50            # when to stop accumualating experience in a trial
+reward_mode     = 'target'      # 'target' = change orientation of swarm to track target 
 reward_coupling = 2             # default = 2 (onlt 2 works right now) 
 
 leader_follower = True          # true = define a leader; false = consensus-based (not working yet)
@@ -61,10 +64,12 @@ class CALA:
         self.action_max     = action_max
         self.learning_rate  = learning_rate
         self.means          = 0.75*np.random.uniform(action_min, action_max, num_states) #means
-        self.variances      = np.full(num_states, variance) #variances
+        self.variances      = np.full(num_states, variance_init) #variances
         self.prev_update    = np.zeros(num_states) # previous update (used for momentum)
         self.prev_reward    = np.zeros(num_states) # previous reward (used for kicking)
-        
+        self.explore_dirs   = np.zeros_like(self.means)  # used for directional exploration
+
+
         # Dirichlet distribution with a = 1 , 
         #    inject non-uniform influence or bias across states 
         self.asymmetry  = np.random.rand(num_states)
@@ -87,6 +92,7 @@ class CALA:
         self.mean_history       = []
         self.variance_history   = []
         self.reward_history     = []
+        self.action_history = []
         
         # store the configs
         configs_tools.update_configs('CALA', [
@@ -220,12 +226,29 @@ class CALA:
     # select action
     def select_action(self, state):
         
+        explore_dirs = True         # bias learning in certain direction?
+        explore_persistence = 0.7   # if using explore dirs, tune 0.8–0.95 for smoothness
+        
         # pull mean and variance for given state
         mean        = self.means[state]
         variance    = self.variances[state]
         
-        # select action from normal distribution
-        action = np.random.normal(mean, np.sqrt(variance))
+        # if biasing in a direction (smoother)
+        if explore_dirs:
+            
+            #if self.explore_dirs[state] == 0:
+            #    self.explore_dirs[state] = np.random.normal(0, 1)
+            
+            self.explore_dirs[state] = (
+                explore_persistence * self.explore_dirs[state] + 
+                (1 - explore_persistence) * np.random.normal(0, 1))
+            
+            action = self.means[state] + self.explore_dirs[state] * np.sqrt(self.variances[state])
+
+        else:            
+            
+            # select action from normal distribution
+            action = np.random.normal(mean, np.sqrt(variance))
         
         # return the action, onstrained using clip()
         if actions_range == 'linear':
@@ -235,17 +258,41 @@ class CALA:
         elif actions_range == 'angular':
             
             #return np.mod(action, 2 * np.pi)
-            return (action + np.pi) % (2 * np.pi) - np.pi
+            #return (action + np.pi) % (2 * np.pi) - np.pi
+            return np.clip(action, self.action_min, self.action_max)
     
     # update policy 
     def update_policy(self, state, action, reward):
         
-        momentum            = True          # if using momentum 
+        momentum            = False          # if using momentum 
         momentum_beta       = 0.8           # beta param for momentum (0 to 1)
         annealing           = False         # anneal variance down with time?
         annealing_rate      = 0.99          # nominally around 0.99
         kicking             = False          # if kicking (stops reward chasing down)
         kicking_factor      = 1.3           # slighly greater than 1
+        sigmoidize          = True          # apply sigmoid in latter stages of learning
+        
+        # reward
+        # ------
+                    
+        if sigmoidize:     
+            
+            r_linear = reward
+
+            # compute sigmoid reward
+            k = 10          # steepness parameter
+            r_sigmoid = 1 / (1 + np.exp(-k * (r_linear - 0.5)))
+
+            # compute blend weight based on variance
+            avg_var = np.mean(self.variances)               # average variance across all states
+            w = 1 - np.clip(avg_var / variance_init, 0, 1)    # weight increases as variance drops
+
+            # Hybrid reward
+            reward = (1 - w) * r_linear + w * r_sigmoid
+
+
+        # distribution
+        # ------------
         
         if kicking:
             if reward < self.prev_reward[state]-0.05:
@@ -270,7 +317,9 @@ class CALA:
         
         self.variances[state]   += variance_ratio * self.learning_rate * reward * ((action - mean) ** 2 - variance)
         
-        # constrain the variance 
+        # constaints
+        # ----------
+        
         self.variances[state] = max(variance_min, self.variances[state])
         self.variances[state] = min(self.variances[state], variance_max)
         
@@ -397,8 +446,17 @@ class CALA:
         # increment counter
         self.counter[state] += 1
 
-        # check if update threshold reached
         if self.counter[state] >= self.counter_max:
+            self.update_policy(state, self.action_set[state], reward)
+            self.counter[state] = 0
+            self._log_state(state, self.action_set[state], reward)  # log old action
+            self.action_set[state] = self.select_action(state)
+        else:
+            self._log_state(state, self.action_set[state], reward)
+
+
+        # check if update threshold reached
+        '''if self.counter[state] >= self.counter_max:
       
             # update the policy
             self.update_policy(state, self.action_set[state], reward)
@@ -408,7 +466,7 @@ class CALA:
             self.action_set[state] = self.select_action(state)
 
         # log history
-        self._log_state(state, self.action_set[state], reward)
+        self._log_state(state, self.action_set[state], reward)'''
 
     # store current step info into history buffers
     def _log_state(self, state, action, reward):
@@ -418,11 +476,16 @@ class CALA:
             self.mean_history.append([])
             self.variance_history.append([])
             self.reward_history.append([])
+            self.action_history.append([])
+
+    
 
         # store data for this state
         self.mean_history[state].append(self.means[state])
         self.variance_history[state].append(self.variances[state])
         self.reward_history[state].append(reward)
+        self.action_history[state].append(action)
+
     
     # ************** #
     #   PLOTS        #
@@ -431,11 +494,21 @@ class CALA:
         
     def plots_set(self, just_leader = True):
         
+        # make sure there is a color map
+        #self.state_color_map = {}
+        if not hasattr(self, "state_color_map"):
+            self.state_color_map = {}
+        
+        # exit if there is no hostory to plot    
+        if not self.mean_history or not self.mean_history[0]:
+            print("plots_set(): No history to plot yet.")
+            return
+        
+        
         fig, axs = plt.subplots(3, 1, figsize=(10, 12))
-    
         time_steps = len(self.mean_history[0])
         #self.state_colors = []  # reset in case this is run fresh
-        self.state_color_map = {} 
+        #self.state_color_map = {} 
     
         # Choose states to plot
         if just_leader:
@@ -530,6 +603,16 @@ class CALA:
         
         import matplotlib.animation as animation
         from scipy.stats import norm
+        
+        # exit of there is no history
+        if not self.mean_history or not self.mean_history[0]:
+            print("animate_distributions_set(): No history to animate yet.")
+            return
+        
+        # ensure map exists 
+        if not hasattr(self, "state_color_map"):
+            self.state_color_map = {}
+        
     
         time_steps = len(self.mean_history[0])
         x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
@@ -616,6 +699,238 @@ class CALA:
             plt.show()
     
         return ani
+    
+    
+    def plot_exploration_contours(self, just_leader=True, bins=100):
+        """
+        Plot a 2D contour of explored action space colored by reward.
+        """
+        # Select which states to plot (leader pair if coupled)
+        if just_leader:
+            x_actions = self.action_history[leader]
+            y_actions = self.action_history[leader + self.num_agents]
+            rewards = self.reward_history[leader]  # assume same reward for coupled pair
+        else:
+            # Combine all states
+            x_actions = []
+            y_actions = []
+            rewards = []
+            for i in range(self.num_agents):
+                x_actions.extend(self.action_history[i])
+                y_actions.extend(self.action_history[i + self.num_agents])
+                rewards.extend(self.reward_history[i])  # or avg of pair
+    
+        x_actions = np.array(x_actions)
+        y_actions = np.array(y_actions)
+        rewards = np.array(rewards)
+    
+        # Create 2D histogram weighted by reward
+        heatmap, xedges, yedges = np.histogram2d(
+            x_actions, y_actions, bins=bins,
+            range=[[self.action_min, self.action_max],
+                   [self.action_min, self.action_max]],
+            weights=rewards
+        )
+    
+        # Normalize
+        counts, _, _ = np.histogram2d(
+            x_actions, y_actions, bins=bins,
+            range=[[self.action_min, self.action_max],
+                   [self.action_min, self.action_max]]
+        )
+        avg_reward = np.divide(heatmap, counts, out=np.zeros_like(heatmap), where=counts>0)
+    
+        # Plot contour
+        X, Y = np.meshgrid(
+            np.linspace(self.action_min, self.action_max, bins),
+            np.linspace(self.action_min, self.action_max, bins)
+        )
+    
+        plt.figure(figsize=(8, 6))
+        contour = plt.contourf(X, Y, avg_reward, levels=50, cmap='viridis')
+        plt.colorbar(contour, label="Average Reward")
+        plt.scatter(x_actions, y_actions, c=rewards, cmap='coolwarm', s=10, alpha=0.5)
+        plt.xlabel("Action X")
+        plt.ylabel("Action Y")
+        plt.title("Exploration Contours: Actions vs Reward")
+        plt.tight_layout()
+        plt.show()
+        
+    def plot_exploration_surface(self, just_leader=True, bins=50):
+        """
+        3D surface plot of reward over explored action space with border outline.
+        """
+    
+        # Select states (X=leader, Y=leader+num_agents if coupled)
+        if just_leader:
+            x_actions = np.array(self.action_history[leader])
+            y_actions = np.array(self.action_history[leader + self.num_agents])
+            rewards = np.array(self.reward_history[leader])
+        else:
+            # Combine all agents
+            x_actions, y_actions, rewards = [], [], []
+            for i in range(self.num_agents):
+                x_actions.extend(self.action_history[i])
+                y_actions.extend(self.action_history[i + self.num_agents])
+                rewards.extend(self.reward_history[i])
+            x_actions, y_actions, rewards = np.array(x_actions), np.array(y_actions), np.array(rewards)
+    
+        # Create 2D histogram of average rewards
+        heatmap, xedges, yedges = np.histogram2d(
+            x_actions, y_actions, bins=bins,
+            range=[[self.action_min, self.action_max],
+                   [self.action_min, self.action_max]],
+            weights=rewards
+        )
+        counts, _, _ = np.histogram2d(
+            x_actions, y_actions, bins=bins,
+            range=[[self.action_min, self.action_max],
+                   [self.action_min, self.action_max]]
+        )
+        avg_reward = np.divide(heatmap, counts, out=np.zeros_like(heatmap), where=counts > 0)
+    
+        # Prepare mesh for surface
+        X, Y = np.meshgrid(
+            (xedges[:-1] + xedges[1:]) / 2,
+            (yedges[:-1] + yedges[1:]) / 2
+        )
+        
+        #Z = avg_reward
+        Z = np.exp((avg_reward - 1))  # emphasize peaks
+        
+        # nonzero_values = avg_reward[avg_reward > 0]
+        # if nonzero_values.size == 0:
+        #     Z = np.zeros_like(avg_reward)
+        # else:
+        #     min_r = np.nanmin(nonzero_values)
+        #     max_r = np.nanmax(nonzero_values)
+        #     Z = (avg_reward - min_r) / (max_r - min_r + 1e-6)
+        #     Z = Z ** 0.5   # nonlinear boost (adjust exponent)
+        #     Z *= 2.0       # vertical exaggeration
+
+    
+        # Plot 3D surface
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        surf = ax.plot_surface(X, Y, Z.T, cmap='viridis', edgecolor='none', alpha=0.8)
+    
+        # Add colorbar
+        fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, label='Average Reward')
+    
+        # Compute and plot convex hull outline (border of explored region)
+        points = np.column_stack((x_actions, y_actions))
+        if len(points) >= 3:  # Hull requires >= 3 points
+            hull = ConvexHull(points)
+            border = points[hull.vertices]
+            ax.plot(border[:, 0], border[:, 1], np.max(avg_reward) * 1.05, 'r-', lw=2)
+    
+        # Labels
+        ax.set_xlabel("Action X")
+        ax.set_ylabel("Action Y")
+        ax.set_zlabel("Reward")
+        ax.set_title("Exploration Surface with Border")
+    
+        plt.tight_layout()
+        plt.show()
+
+    
+    from scipy.spatial import ConvexHull
+
+    
+    def plot_exploration_contours_hull(self, just_leader=True, bins=100):
+        """
+        Plot a 2D contour of explored action space colored by reward,
+        excluding unvisited bins and wrapping with a convex hull.
+        """
+        import matplotlib.cm as cm
+        
+        #color_map_to_use = 'coolwarm'
+        color_map_to_use = 'YlOrRd'
+        
+        
+        # Select which states to plot (leader pair if coupled)
+        if just_leader:
+            x_actions = self.action_history[leader]
+            y_actions = self.action_history[leader + self.num_agents]
+            rewards = self.reward_history[leader]  # assume same reward for coupled pair
+        else:
+            # Combine all states
+            x_actions, y_actions, rewards = [], [], []
+            for i in range(self.num_agents):
+                x_actions.extend(self.action_history[i])
+                y_actions.extend(self.action_history[i + self.num_agents])
+                rewards.extend(self.reward_history[i])  # or avg of pair
+    
+        x_actions = np.array(x_actions)
+        y_actions = np.array(y_actions)
+        rewards = np.array(rewards)
+    
+        # Create 2D histogram weighted by reward
+        heatmap, xedges, yedges = np.histogram2d(
+            x_actions, y_actions, bins=bins,
+            range=[[self.action_min, self.action_max],
+                   [self.action_min, self.action_max]],
+            weights=rewards
+        )
+    
+        # Normalize by counts to get average reward per bin
+        counts, _, _ = np.histogram2d(
+            x_actions, y_actions, bins=bins,
+            range=[[self.action_min, self.action_max],
+                   [self.action_min, self.action_max]]
+        )
+        avg_reward = np.divide(heatmap, counts, out=np.zeros_like(heatmap), where=counts > 0)
+    
+        # Mask zero (unvisited) values for plotting
+        avg_reward_masked = np.ma.masked_equal(avg_reward, 0)
+    
+        # Create grid
+        X, Y = np.meshgrid(
+            np.linspace(self.action_min, self.action_max, bins),
+            np.linspace(self.action_min, self.action_max, bins)
+        )
+    
+        # Plot contour only for visited bins
+        plt.figure(figsize=(8, 6))
+        contour = plt.contourf(X, Y, avg_reward_masked, levels=50, cmap=color_map_to_use)
+        plt.colorbar(contour, label="Average Reward")
+    
+        # Plot convex hull around explored points
+        explored_points = np.column_stack((x_actions, y_actions))
+        if len(explored_points) >= 3:
+            hull = ConvexHull(explored_points)
+            hull_points = explored_points[hull.vertices]
+            plt.plot(hull_points[:, 0], hull_points[:, 1], 'g-', linewidth=1)
+    
+        # Optionally scatter points
+        #plt.scatter(x_actions, y_actions, c=rewards, cmap='coolwarm', s=10, alpha=0.4)
+        plt.scatter(x_actions, y_actions, c=rewards,
+            cmap=color_map_to_use, s=60, alpha=0.1, edgecolors='none')
+    
+        plt.xlabel("Action X")
+        plt.ylabel("Action Y")
+        plt.title("Exploration Contours with Convex Hull")
+        
+        # Find highest reward (ignoring zero/unvisited bins)
+        nonzero_rewards = rewards[rewards > 0]
+        if nonzero_rewards.size > 0:
+            max_idx = np.argmax(nonzero_rewards)
+            max_x = x_actions[rewards > 0][max_idx]
+            max_y = y_actions[rewards > 0][max_idx]
+            max_val = nonzero_rewards[max_idx]
+            
+
+            #coolwarm_red = cm.get_cmap(color_map_to_use)(1.0)
+            coolwarm_red = cm.get_cmap(color_map_to_use)(max_val)
+        
+            # Plot marker and label
+            plt.plot(max_x, max_y, 'o', color=coolwarm_red, markersize=8, markeredgecolor='green', markeredgewidth=1.5)
+            #plt.text(max_x, max_y, f"{max_val:.2f}", color='black', fontsize=10,
+            #         ha='left', va='bottom', fontweight='bold')
+        
+        
+        plt.tight_layout()
+        plt.show()
 
 
     # plots

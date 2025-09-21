@@ -64,7 +64,7 @@ head                = 5 * 0.2       # size of the directional head
 pins_overide        = 1             # override colors using pin variable
 showObs             = 1             # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
 agent_shape         = 'prism'       # ['dot', 'prism']
-prism_scale         = 0.4
+prism_scale         = 0.5
 color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
 color_lattice       = ['grey', 'blue']      # [in range, connected]
 color_projection    = ['black', 'black']    # xy, yz

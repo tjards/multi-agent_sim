@@ -1,7 +1,7 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 200,
+        "Tf": 300,
         "Ts": 0.02,
         "dimens": 3,
         "verbose": 1,
@@ -58,7 +58,7 @@
     "agents": {
         "nAgents": 7,
         "rAgents": 0.5,
-        "initial_spread": 10,
+        "initial_spread": 20,
         "dynamics": "double integrator",
         "tactic_type": "lemni"
     },
@@ -83,7 +83,7 @@
         "num_states": 14,
         "action_min": -1.5707963267948966,
         "action_max": 1.5707963267948966,
-        "learning_rate": 0.3,
+        "learning_rate": 0.1,
         "reward_mode": "target"
     },
     "learners": {
