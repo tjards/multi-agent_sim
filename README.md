@@ -8,6 +8,7 @@ This project implements various multiagent coordination techniques including flo
 All agents make individual decisions based on local information only. There is no global plan. 
 
 This is an open project. Development notes are available in [DEV_NOTES.md](./DEV_NOTES.md).
+
 ---
 
 # Methodology
