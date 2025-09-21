@@ -131,3 +131,10 @@ It's learning, but not very well.
     <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized, but not well. </figcaption>
 </p>
 
+Update (21 Sep at 19:58), I simply sharpened the reward function and got much better results:
+
+<p float="center">
+    <img src="./visualization/public/kleber/RL_plots2_kleber.png" width="60%"> 
+    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized, but not well. </figcaption>
+</p>
+

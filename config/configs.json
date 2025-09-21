@@ -83,7 +83,7 @@
         "num_states": 14,
         "action_min": -1.5707963267948966,
         "action_max": 1.5707963267948966,
-        "learning_rate": 0.1,
+        "learning_rate": 1,
         "reward_mode": "target"
     },
     "learners": {

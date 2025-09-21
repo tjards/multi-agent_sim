@@ -34,14 +34,14 @@ action_max      = np.pi/2       # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 0.1     # rate at which policy updates
-variance_init   = 0.2     # initial variance
-variance_ratio  = 0.1    # default 1, permits faster (>1) /slower (<1)  variance updates
+learning_rate   = 1 #0.1     # rate at which policy updates
+variance_init   = 0.4     # initial variance
+variance_ratio  = 0.5 #0.1    # default 1, permits faster (>1) /slower (<1)  variance updates
 variance_min    = 0   # default 0.001, makes sure variance doesn't go too low
 variance_max    = 10       # highest variance 
 epsilon         = 1e-6
 
-counter_max     = 50            # when to stop accumualating experience in a trial
+counter_max     = 100            # when to stop accumualating experience in a trial
 reward_mode     = 'target'      # 'target' = change orientation of swarm to track target 
 reward_coupling = 2             # default = 2 (onlt 2 works right now) 
 
@@ -270,7 +270,7 @@ class CALA:
         annealing_rate      = 0.99          # nominally around 0.99
         kicking             = False          # if kicking (stops reward chasing down)
         kicking_factor      = 1.3           # slighly greater than 1
-        sigmoidize          = True          # apply sigmoid in latter stages of learning
+        sigmoidize          = False          # apply sigmoid in latter stages of learning
         
         # reward
         # ------
@@ -333,7 +333,7 @@ class CALA:
         if self.reward_mode == 'target':
             
             reference   = 'global'      # 'global' (default),   'local' (not working yet)
-            reward_form = 'dot'         # 'dot'(default),       'angle' (not working yet)
+            reward_form = 'sharp'         # 'dot'(default),       'angle' (not working yet), 'sharp' (prototype)
             
             # compute the heading vector (centered on centroid)
             v_centroid      = centroid[0:3, 0]
@@ -372,6 +372,21 @@ class CALA:
                         v2 /= (np.linalg.norm(v2) + epsilon)
                         angle_diff = np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
                         reward = np.exp(-angle_diff**2 / reward_sigma**2)  # Gaussian bump at 0
+                        
+                    elif reward_form == 'sharp': 
+                        
+                        # helper functions
+                        _norm = lambda v: v / (np.linalg.norm(v) + epsilon)
+                        _angle = lambda a, b: np.arccos(np.clip(np.dot(_norm(a), _norm(b)), -1.0, 1.0))
+                        # steepness for 'sharp' (bigger -> harsher).
+                        k_theta = 12.0  
+                        
+                        # high-contrast alignment: exp(-k * theta^2)
+                        theta = _angle(v1, v2)
+                        reward = np.exp(-k_theta * theta**2)
+                    
+                        
+                        
                 
                 elif reference == 'local':
                         
