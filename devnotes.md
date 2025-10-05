@@ -4,7 +4,13 @@ This document is a place for developers to collaborate on various aspects of thi
 
 Updated: 2024-09-21 at 16:03 EST.
 
-## Hypospace learning
+
+# Project 1: Learning 
+
+Summary: Inspired by recent work entitled [Latent space modeling of parametric and time-dependent PDEs using neural ODEs](https://github.com/Aleartulon/AE_NODE), we are working on ways to learn the latent space currently explicity defined in in lemni_tools.py.
+
+
+# Project 2: Hypospace learning
 
 Summary: Initially proposed in [this](https://github.com/tjards/hypospace_learning) repo, we introduced a technique for control the orientation of a [Lemniscatic Arch](https://ieeexplore.ieee.org/document/9931405) swarm using reinforcement learning; specifically, we using [Continuous Action Learning Automata (CALA)](https://github.com/tjards/continuous_action_learning_automata) to tune offset angles around the $x$- and $z$-axes. 
 
@@ -131,10 +137,10 @@ It's learning, but not very well.
     <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized, but not well. </figcaption>
 </p>
 
-Update (21 Sep at 19:58), I simply sharpened the reward function and got much better results:
+Update (21 Sep at 19:58), I simply sharpened the reward function and got better results:
 
 <p float="center">
     <img src="./visualization/public/kleber/RL_plots2_kleber.png" width="60%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized, but not well. </figcaption>
+    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized a bit better. </figcaption>
 </p>
 

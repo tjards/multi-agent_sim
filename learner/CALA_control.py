@@ -8,6 +8,16 @@ This program implements Continuous Action Learning Automata (CALA) to learn
 
 @author: tjards
 
+Note: in here, angles are -pi to pi
+
+#notes
+ - 22 Sep: the two degrees of freedom are fighting eachother, lets
+ look to define the error in local frame or something 
+ - also, confirm where the x- and z- axis parameters are being defined and pulled from
+ -- probbaly make this more obvious, it's hard to follow the action flow right now
+- 05 Oct: pausing this for now, going back to lemni_tools to dev autoencoder method
+
+
 """
 
 #%% Import stuff
@@ -24,29 +34,47 @@ from scipy.spatial import ConvexHull
 #%% Simulations parameters
 # ---------------------
 
-actions_range = 'angular'       # 'linear', 'angular' (impacts clipping)
+actions_range = 'angular'                   # 'linear', 'angular' (impacts clipping)
+action_min      = -np.pi/4  # 0             # minimum of action space
+action_max      = np.pi/4   # 2*np.pi       # maximum of action space
 
-#action_min      = 0            # minimum of action space
-#action_max      = 2*np.pi      # maximum of action space
-
-action_min      = -np.pi/2      # minimum of action space
-action_max      = np.pi/2       # maximum of action space
 
 #%% Hyperparameters
 # -----------------
-learning_rate   = 1 #0.1     # rate at which policy updates
-variance_init   = 0.4     # initial variance
-variance_ratio  = 0.5 #0.1    # default 1, permits faster (>1) /slower (<1)  variance updates
-variance_min    = 0   # default 0.001, makes sure variance doesn't go too low
-variance_max    = 10       # highest variance 
+
+# learning 
+learning_rate   = 0.5 #0.1      # rate at which policy updates
+variance_init   = 0.4 #0.4      # initial variance
+variance_ratio  = 0.5 #0.1      # default 1, permits faster (>1) /slower (<1)  variance updates
+variance_min    = 0.0001         # default 0.001, makes sure variance doesn't go too low
+variance_max    = 10            # highest variance 
 epsilon         = 1e-6
+counter_max     = 100           # when to stop accumualating experience in a trial
+counter_synch   = True          # True = all agents have same counter; False = all agents random counters (not tested)
+counter_delay   = 500           # number of timesteps to delay learning (gives time for dynamic systems to reach equilibrium)
 
-counter_max     = 100            # when to stop accumualating experience in a trial
-reward_mode     = 'target'      # 'target' = change orientation of swarm to track target 
-reward_coupling = 2             # default = 2 (onlt 2 works right now) 
+# exploration
+explore_dirs            = True  # bias learning in certain direction?
+explore_persistence     = 0.7   # if using explore dirs, tune 0.8–0.95 for smoothness
 
-leader_follower = True          # true = define a leader; false = consensus-based (not working yet)
-leader = 0
+# MAS coordination 
+leader_follower         = True  # true = define a leader; false = consensus-based (not working yet)
+leader                  = 0
+
+# rewards
+reward_mode         = 'target'      # 'target' = change orientation of swarm to track target 
+reward_coupling     = 2             # states per agent, default = 2 (only 2 works right now, look at decoupling later) 
+reward_reference    = 'global'      # 'global' (default),   'local' (not working yet)
+reward_form         = 'sharp'       # 'dot'(default),       'angle' (not working yet), 'sharp' (prototype)                    
+reward_k_theta      = 12.0          # for 'sharp'; steepness for 'sharp' (bigger -> harsher)
+momentum            = False         # if using momentum 
+momentum_beta       = 0.8           # beta param for momentum (0 to 1)
+annealing           = False         # anneal variance down with time?
+annealing_rate      = 0.99          # nominally around 0.99
+kicking             = False         # if kicking (stops reward chasing down)
+kicking_factor      = 1.3           # slighly greater than 1
+sigmoidize          = False         # apply sigmoid in latter stages of learning
+
 
 #%% Learning Class
 # ----------------
@@ -55,6 +83,7 @@ class CALA:
     # initialize
     def __init__(self, num_agents):
         
+        # each agent has a state for each degree of freedom (linked to coupling term)
         num_states = num_agents * reward_coupling
         
         # load parameters into class
@@ -63,15 +92,13 @@ class CALA:
         self.action_min     = action_min
         self.action_max     = action_max
         self.learning_rate  = learning_rate
-        self.means          = 0.75*np.random.uniform(action_min, action_max, num_states) #means
-        self.variances      = np.full(num_states, variance_init) #variances
-        self.prev_update    = np.zeros(num_states) # previous update (used for momentum)
-        self.prev_reward    = np.zeros(num_states) # previous reward (used for kicking)
-        self.explore_dirs   = np.zeros_like(self.means)  # used for directional exploration
+        self.means          = 0.75*np.random.uniform(action_min, action_max, num_states)    #means
+        self.variances      = np.full(num_states, variance_init)                            #variances
+        self.prev_update    = np.zeros(num_states)              # previous update (used for momentum)
+        self.prev_reward    = np.zeros(num_states)              # previous reward (used for kicking)
+        self.explore_dirs   = np.zeros_like(self.means)         # used for directional exploration
 
-
-        # Dirichlet distribution with a = 1 , 
-        #    inject non-uniform influence or bias across states 
+        # inject non-uniform influence or bias across states (used for MAS coordination)
         self.asymmetry  = np.random.rand(num_states)
         #self.asymmetry  /= np.sum(self.asymmetry)  # Normalize to sum to 1
         
@@ -81,9 +108,11 @@ class CALA:
 
         # counter        
         self.counter_max    = counter_max 
-        #self.counter        = np.random.uniform(0, self.counter_max, num_states).astype(int) - 500 # all agents start at differnt places
-        self.counter        = np.zeros(num_states) - 500 # all in synch now, but do asynch (above) later
-
+        if counter_synch:    
+            self.counter = np.zeros(num_states) - counter_delay 
+        else:
+            self.counter = np.random.uniform(0, self.counter_max, num_states).astype(int) - counter_delay
+            
         # store environment variables throughout the trial
         self.reward_mode      = reward_mode
         self.environment_vars = np.zeros(num_states)        
@@ -98,10 +127,43 @@ class CALA:
         configs_tools.update_configs('CALA', [
             ('num_states', num_states),
             ('action_min', action_min),
-            ('action_max', action_max),
-            ('learning_rate', learning_rate),
-            ('reward_mode', reward_mode)
+            ('action_max', action_max)
         ] )
+
+        # Store CALA hyperparams reward settings
+        configs_tools.update_configs('CALA', [
+            
+            # learning
+            ('learning_rate', learning_rate),
+            ('variance_init', variance_init),
+            ('variance_ratio', variance_ratio),
+            ('variance_min', variance_min),
+            ('variance_max', variance_max),
+            ('epsilon', epsilon),
+            ('counter_max', counter_max),
+            ('counter_synch', counter_synch),
+            ('counter_delay', counter_delay),
+        
+            # MAS coordination
+            ('leader_follower', leader_follower),
+            ('leader', leader),
+        
+            # rewards
+            ('reward_mode', reward_mode),
+            ('reward_coupling', reward_coupling),
+            ('reward_reference', reward_reference),
+            ('reward_form', reward_form),
+            ('reward_k_theta', reward_k_theta),
+            ('momentum', momentum),
+            ('momentum_beta', momentum_beta),
+            ('annealing', annealing),
+            ('annealing_rate', annealing_rate),
+            ('kicking', kicking),
+            ('kicking_factor', kicking_factor),
+            ('sigmoidize', sigmoidize)
+        ])
+
+
 
     #%% helper functions
     # ----------------
@@ -213,7 +275,8 @@ class CALA:
                 #self.variances[state]   = alpha_rewards * self.variances[state] + (1-alpha_rewards)*self.variances[neighbour]
                 updated_means       = alpha_rewards * updated_means     + (1-alpha_rewards)*self.means[neighbour]
                 updated_variances   = alpha_rewards * updated_variances + (1-alpha_rewards)*self.variances[neighbour]
-            self.means[state]       = updated_means
+            #self.means[state]       = updated_means
+            self.means[state]       = self.wrap2pi(updated_means)
             self.variances[state]   = updated_variances
             
         elif which  == 'actions':
@@ -221,13 +284,12 @@ class CALA:
             for neighbour in neighbours:
                 #self.action_set[state] = alpha_actions * self.action_set[state] + (1-alpha_actions)*self.action_set[neighbour]
                 updated_actions = alpha_actions * updated_actions + (1-alpha_actions)*self.action_set[neighbour]
-            self.action_set[state] = updated_actions
+            #self.action_set[state] = updated_actions
+            self.action_set[state] = self.wrap2pi(updated_actions)
+
             
     # select action
     def select_action(self, state):
-        
-        explore_dirs = True         # bias learning in certain direction?
-        explore_persistence = 0.7   # if using explore dirs, tune 0.8–0.95 for smoothness
         
         # pull mean and variance for given state
         mean        = self.means[state]
@@ -259,18 +321,12 @@ class CALA:
             
             #return np.mod(action, 2 * np.pi)
             #return (action + np.pi) % (2 * np.pi) - np.pi
+            action = self.wrap2pi(action)
             return np.clip(action, self.action_min, self.action_max)
+           
     
     # update policy 
     def update_policy(self, state, action, reward):
-        
-        momentum            = False          # if using momentum 
-        momentum_beta       = 0.8           # beta param for momentum (0 to 1)
-        annealing           = False         # anneal variance down with time?
-        annealing_rate      = 0.99          # nominally around 0.99
-        kicking             = False          # if kicking (stops reward chasing down)
-        kicking_factor      = 1.3           # slighly greater than 1
-        sigmoidize          = False          # apply sigmoid in latter stages of learning
         
         # reward
         # ------
@@ -315,6 +371,13 @@ class CALA:
         else:
             self.means[state]       += self.learning_rate * reward * (action - mean)
         
+        # after updating self.means[state]
+        if actions_range == 'angular':
+            self.means[state] = self.wrap2pi(self.means[state])
+            self.means[state] = np.clip(self.means[state], self.action_min, self.action_max)
+        elif actions_range == 'linear':
+            self.means[state] = np.clip(self.means[state], self.action_min, self.action_max)
+                
         self.variances[state]   += variance_ratio * self.learning_rate * reward * ((action - mean) ** 2 - variance)
         
         # constaints
@@ -330,10 +393,7 @@ class CALA:
 
     def update_reward_increment(self, k_node, state, centroid, focal, target, mode):
         
-        if self.reward_mode == 'target':
-            
-            reference   = 'global'      # 'global' (default),   'local' (not working yet)
-            reward_form = 'sharp'         # 'dot'(default),       'angle' (not working yet), 'sharp' (prototype)
+        if self.reward_mode == 'target':        
             
             # compute the heading vector (centered on centroid)
             v_centroid      = centroid[0:3, 0]
@@ -352,12 +412,11 @@ class CALA:
             
             if reward_coupling == 2:
                 
-                if reference == 'global':
+                if reward_reference == 'global':
                     
                     v1 = v_heading
                     v2 = v_target
-     
-                    
+            
                     if reward_form == 'dot':
         
                         v1 /= (np.linalg.norm(v1) + epsilon)
@@ -378,17 +437,12 @@ class CALA:
                         # helper functions
                         _norm = lambda v: v / (np.linalg.norm(v) + epsilon)
                         _angle = lambda a, b: np.arccos(np.clip(np.dot(_norm(a), _norm(b)), -1.0, 1.0))
-                        # steepness for 'sharp' (bigger -> harsher).
-                        k_theta = 12.0  
                         
                         # high-contrast alignment: exp(-k * theta^2)
                         theta = _angle(v1, v2)
-                        reward = np.exp(-k_theta * theta**2)
-                    
-                        
-                        
+                        reward = np.exp(-reward_k_theta * theta**2) 
                 
-                elif reference == 'local':
+                elif reward_reference == 'local':
                         
                         print('not done yet')
                        
@@ -399,7 +453,10 @@ class CALA:
             # if this is just one axis (i.e., not representing coupled axes)
             elif reward_coupling == 1:
             
-                if reference == 'local':
+                print('not done yet')
+                
+                # need to do angle wrapping up here 
+                '''if reward_reference == 'local':
                     
                     # define world axis 
                     unit_lem = np.array([1, 0, 0]).reshape((3, 1))  # x-dir
@@ -430,7 +487,7 @@ class CALA:
                     v2 = v_target_local[plane_indices]
             
     
-                elif reference == 'global':
+                elif reward_reference == 'global':
                     
                     if mode == 'x':
                         v1 = v_heading[[1, 2]]  # project onto y-z plane
@@ -450,7 +507,7 @@ class CALA:
                     
                     angle           = np.arctan2(v1[1], v1[0])          # focal vector angle
                     angle_desired   = np.arctan2(v2[1], v2[0])          # target vector angle
-                    reward = self.reward_func_angle(angle, angle_desired)
+                    reward = self.reward_func_angle(angle, angle_desired)'''
     
             return reward
         
@@ -664,6 +721,7 @@ class CALA:
             fills.append(fill)
             ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
             ax.set_ylim(0, y_max)
+            #ax.set_ylim(0, 1)
             
             if just_leader:
                 

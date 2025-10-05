@@ -24,7 +24,7 @@ from . import encirclement_tools as encircle_tools
 # -----------
 
 # learning
-learning            = 'CALA'   # None, 'CALA'
+learning            = None   # None, 'CALA'
 learning_coupling   = True      # options: True (default), else unlikely to work
 learning_axes       = 'xz'      # options: 'x' (prototype only), 'xz' (default)
  

@@ -53,7 +53,7 @@ if plot_quadcopter:
 # =============================================================================
 numFrames           = 10            # frame rate (bigger = slower)
 tail                = 500           # trailing trajectory length 
-zoom                = 0             # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
+zoom                = 1             # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
 zoom_axis           = 10            # if zoom mode == 2, sets fixed zoom axis
 zoom_fixed          = 7             # if zoom mode == 3, sets fixed zoom amount
 pan                 = 0             # camera pan toggle (only for 3D)
@@ -64,7 +64,7 @@ head                = 5 * 0.2       # size of the directional head
 pins_overide        = 1             # override colors using pin variable
 showObs             = 1             # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
 agent_shape         = 'prism'       # ['dot', 'prism']
-prism_scale         = 0.5
+prism_scale         = 1.0
 color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
 color_lattice       = ['grey', 'blue']      # [in range, connected]
 color_projection    = ['black', 'black']    # xy, yz

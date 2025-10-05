@@ -1,12 +1,12 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 300,
+        "Tf": 120,
         "Ts": 0.02,
         "dimens": 3,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "lemni"
+        "strategy": "circle"
     },
     "circle": {
         "c1_d": 2,
@@ -21,11 +21,6 @@
             0.0,
             0.0
         ]
-    },
-    "lemni": {
-        "c1_d": 1,
-        "c2_d": 2.0,
-        "learning": "CALA"
     },
     "saber": {
         "a": 5,
@@ -47,7 +42,7 @@
     },
     "orchestrator": {
         "pin_update_rate": 10,
-        "pin_selection_method": "nopins",
+        "pin_selection_method": "degree",
         "criteria_table": {
             "radius": true,
             "aperature": false
@@ -60,7 +55,7 @@
         "rAgents": 0.5,
         "initial_spread": 20,
         "dynamics": "double integrator",
-        "tactic_type": "lemni"
+        "tactic_type": "circle"
     },
     "targets": {
         "tSpeed": 0,
@@ -78,15 +73,5 @@
         "nWalls": 1,
         "oSpread": 20,
         "vehObs": 0
-    },
-    "CALA": {
-        "num_states": 14,
-        "action_min": -1.5707963267948966,
-        "action_max": 1.5707963267948966,
-        "learning_rate": 1,
-        "reward_mode": "target"
-    },
-    "learners": {
-        "lemni_CALA_xz": "Config not available for lemni_CALA_xz"
     }
 }

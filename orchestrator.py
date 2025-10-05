@@ -62,7 +62,7 @@ import learner.conductor
 # -----------------
 
 pin_update_rate = 10   # number of timesteps after which we update the pins
-pin_selection_method = 'nopins'
+pin_selection_method = 'degree'
     # gramian   = [future] // based on controllability gramian
     # degree    = based on degree centrality  
     # between   = [future] // based on betweenness centrality (buggy at nAgents < 3)
