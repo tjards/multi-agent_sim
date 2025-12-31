@@ -1,12 +1,12 @@
 {
     "simulation": {
         "Ti": 0,
-        "Tf": 120,
+        "Tf": 30,
         "Ts": 0.02,
         "dimens": 3,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "circle"
+        "strategy": "lemni"
     },
     "circle": {
         "c1_d": 2,
@@ -21,6 +21,11 @@
             0.0,
             0.0
         ]
+    },
+    "lemni": {
+        "c1_d": 1,
+        "c2_d": 2.0,
+        "learning": null
     },
     "saber": {
         "a": 5,
@@ -42,7 +47,7 @@
     },
     "orchestrator": {
         "pin_update_rate": 10,
-        "pin_selection_method": "degree",
+        "pin_selection_method": "nopins",
         "criteria_table": {
             "radius": true,
             "aperature": false
@@ -51,11 +56,11 @@
         "learning_ctrl": null
     },
     "agents": {
-        "nAgents": 7,
+        "nAgents": 13,
         "rAgents": 0.5,
         "initial_spread": 20,
         "dynamics": "double integrator",
-        "tactic_type": "circle"
+        "tactic_type": "lemni"
     },
     "targets": {
         "tSpeed": 0,

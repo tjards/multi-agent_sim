@@ -7,7 +7,10 @@
 This project implements various multiagent coordination techniques including flocking, pinning control, dynamic encirclement, arbitrary closed curves, shepherding, and counter-malicious agent control. 
 All agents make individual decisions based on local information only. There is no global plan. 
 
-This is an open project. Development notes are available in [devnotes.md](./devnotes.md).
+Notes: 
+- This project is a consolidation of many other smaller projects, some of which were designed long before I learned how to write code well. It works but needs much cleanup. 
+This cleanup is the next big effort for the project. 
+- Detailed development notes are available in [devnotes.md](./devnotes.md).
 
 ---
 

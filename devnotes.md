@@ -2,15 +2,31 @@
 
 This document is a place for developers to collaborate on various aspects of this project.
 
-Updated: 2024-09-21 at 16:03 EST.
+Updated: 2025-12-31 at 10:47 EST.
+
+# Project 1: Clean up
+
+Summary This project is a consolidation of numerous other smaller projects. I have merged them all and it is functional, 
+but the code is clunky and hard to follow. I am starting a cleanup project, with the following goals:
+
+- Define a custom venv with documented deps/requirements.
+- Build a single config file that feeds the entire simulation. 
+- Make the code more modular.
+- I use a mix of scripting and object-oriented modules; make better use of object-oriented design.
+- Treat the simulation like a pipeline.
+- The reinforcement learning modules, in particular, are hard to follow; make these more modular.
+- Standardize the data in/out.
+- Be more efficient in how data is stored online.
+- The whole thing is a memory hog; streamline. 
 
 
-# Project 1: Learning 
 
-Summary: Inspired by recent work entitled [Latent space modeling of parametric and time-dependent PDEs using neural ODEs](https://github.com/Aleartulon/AE_NODE), we are working on ways to learn the latent space currently explicity defined in in lemni_tools.py.
+# Project 2: Learning 
+
+Proposed: Inspired by recent work entitled [Latent space modeling of parametric and time-dependent PDEs using neural ODEs](https://github.com/Aleartulon/AE_NODE), we are working on ways to learn the latent space currently explicity defined in in lemni_tools.py.
 
 
-# Project 2: Hypospace learning
+# Project 3: Hypospace learning
 
 Summary: Initially proposed in [this](https://github.com/tjards/hypospace_learning) repo, we introduced a technique for control the orientation of a [Lemniscatic Arch](https://ieeexplore.ieee.org/document/9931405) swarm using reinforcement learning; specifically, we using [Continuous Action Learning Automata (CALA)](https://github.com/tjards/continuous_action_learning_automata) to tune offset angles around the $x$- and $z$-axes. 
 

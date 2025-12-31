@@ -13,15 +13,9 @@ The following agent dynamics are available:
 
 Created on Tue Dec 22 11:48:18 2020
 
-Lasted updated on Fri Feb 02 16:23 2024
-
 @author: tjards
 
-dev notes:
-    
-    to do: 
-        - standardize the planners (standard inputs, outputs, ...etc)
-        - too many conditional statements throughout
+See devnotes.md for updates. 
 
 """
 
@@ -53,13 +47,13 @@ data_file_path = os.path.join(data_directory, "data.h5")
 np.random.seed(42+3)
 
 Ti      = 0         # initial time
-Tf      = 120        # final time (later, add a condition to break out when desirable conditions are met)
+Tf      = 30        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
 f       = 0         # parameter for future use
 dimens  = 3         # dimension (2 = 2D, 3 = 3D)
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
-strategy = 'circle'
+strategy = 'lemni'
 
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
