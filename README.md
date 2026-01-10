@@ -8,7 +8,7 @@ This project implements various multiagent coordination techniques including flo
 All agents make individual decisions based on local information only. There is no global plan. 
 
 Notes: 
-- This project is a consolidation of many other smaller projects, some of which were designed long before I learned how to write code well. It works but needs much cleanup. 
+- This project is a consolidation of many other smaller projects. It works but needs much cleanup. 
 This cleanup is the next big effort for the project. 
 - Detailed development notes are available in [devnotes.md](./devnotes.md).
 
@@ -157,4 +157,5 @@ Alternatively, you can cite any of my related papers, which are listed in [Googl
 
 
  
+
 
