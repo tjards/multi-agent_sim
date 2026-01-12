@@ -1,0 +1,232 @@
+{
+  "project": {
+    "name": "Multi-Agent Swarm Simulator",
+    "description": "Decentralized coordination of autonomous agents",
+    "author": "tjards",
+    "version": "2.0"
+  },
+  
+  "simulation": {
+    "Ti": 0,
+    "Tf": 30,
+    "Ts": 0.02,
+    "dimens": 3,
+    "verbose": 1,
+    "system": "swarm",
+    "strategy": "lemni",
+    "random_seed": 45,
+    "f": 0,
+    "experimental_save": false
+  },
+  
+  "agents": {
+    "num_agents": 10,
+    "agent_type": "double_integrator",
+    "max_velocity": 2.0,
+    "communication_range": 5.0,
+    "control_gain": 0.5,
+    "quadcopter": {
+      "enabled": false,
+      "mass": 1.0,
+      "gravity": 9.81,
+      "motor_max_thrust": 20.0
+    }
+  },
+  
+  "targets": {
+    "num_targets": 1,
+    "target_type": "static",
+    "movement_speed": 0.5
+  },
+  
+  "obstacles": {
+    "num_obstacles": 0,
+    "obstacle_type": "circular"
+  },
+  
+  "orchestrator": {
+    "pin_update_rate": 10,
+    "pin_selection_method": "nopins",
+    "criteria_table": {
+      "radius": true,
+      "aperature": false
+    },
+    "sensor_aperature": 140,
+    "learning_ctrl": null
+  },
+  
+  "planner": {
+    "techniques": {
+      "saber": {
+        "a": 1.1,
+        "b": 0.9,
+        "c": 0.7,
+        "eps": 0.1,
+        "h": 0.5,
+        "pi": 3.14159,
+        "c1_a": 1.0,
+        "c2_a": 1.0,
+        "c1_b": 1.0,
+        "c2_b": 1.0,
+        "c1_g": 1.0,
+        "c2_g": 1.0,
+        "d": 1.0,
+        "d_prime": 0.6,
+        "r": 1.3,
+        "r_prime": 0.78
+      },
+      
+      "lemni": {
+        "c1_d": 1.0,
+        "c2_d": 1.0,
+        "learning": "CALA",
+        "learning_axes": "xz",
+        "learning_coupling": true,
+        "lemni_type": 0
+      },
+      
+      "reynolds": {
+        "escort": 1,
+        "cd_1": 1.0,
+        "cd_2": 0.5,
+        "cd_3": 0.1,
+        "cd_track": 0.2,
+        "maxu": 2.0,
+        "maxv": 1.0,
+        "recovery": 1,
+        "far_away": 300,
+        "mode_min_coh": 0,
+        "agents_min_coh": 2,
+        "r": 10,
+        "r_prime": 10
+      },
+      
+      "cao": {
+        "d": 1.5,
+        "r": 2.0,
+        "cmd_min": -10,
+        "cmd_max": 10,
+        "gain_p": 1.0,
+        "gain_v": 0.5,
+        "kv": 0.1,
+        "ka": 0.1,
+        "kr": 0.1,
+        "kx": 0.1,
+        "d_bar": 1.2,
+        "i_cont": 0,
+        "gamma_kp": 1.0,
+        "H_min": 0.5,
+        "mode_malicious": 0,
+        "mal_type": 0,
+        "mal_kv": 0.1,
+        "mal_ka": 0.1,
+        "mal_kr": 0.1,
+        "mal_kv_hat": 0.1,
+        "mal_ka_hat": 0.1,
+        "mal_kr_hat": 0.1
+      },
+      
+      "gradient_parameters": {
+        "LJ_gain": 1000000,
+        "LJ_B": 1,
+        "MORSE_beta": 0.5,
+        "MORSE_D": 1,
+        "gromacs_lambda_val": 0.5,
+        "gromacs_A": 1,
+        "gromacs_B": 2,
+        "gromacs_alpha": 0.5,
+        "gromacs_beta": 1.0
+      },
+      
+      "pinning": {
+        "gain_p": 1.0,
+        "gain_v": 0.5,
+        "k_connectivity": 1,
+        "hetero_lattice": {
+          "hetero_lattice": 0,
+          "learning": 0,
+          "d_min": 1.0,
+          "d": 1.0,
+          "r_max": 5.0,
+          "update_rate": 10,
+          "consensus_method": "consensus"
+        }
+      },
+      
+      "circle": {
+        "param1": 1.0
+      },
+      
+      "starling": {
+        "param1": 1.0
+      },
+      
+      "shep": {
+        "param1": 1.0
+      }
+    }
+  },
+  
+  "learner": {
+    "algorithm": "CALA",
+    "CALA": {
+      "num_states": 10,
+      "action_min": -1.0,
+      "action_max": 1.0,
+      "learning_rate": 0.01,
+      "variance_init": 0.5,
+      "variance_ratio": 0.8,
+      "variance_min": 0.01,
+      "variance_max": 1.0,
+      "epsilon": 0.3,
+      "counter_max": 100,
+      "counter_synch": true,
+      "counter_delay": 10,
+      "leader_follower": false,
+      "leader": 0
+    },
+    
+    "QL_learning_lattice": {
+      "alpha": 0.1,
+      "gamma": 0.9,
+      "epsilon": 0.2,
+      "num_states": 20,
+      "num_actions": 4
+    },
+    
+    "consensus": {
+      "param1": 1.0
+    },
+    
+    "gradient_estimation": {
+      "param1": 1.0
+    }
+  },
+  
+  "data": {
+    "save_data": true,
+    "data_dir": "data/data",
+    "file_format": "h5",
+    "record_interval": 1,
+    "record_agents": true,
+    "record_targets": true,
+    "record_obstacles": true,
+    "record_learning": true
+  },
+  
+  "visualization": {
+    "plot_results": true,
+    "animate_results": true,
+    "plots_dir": "visualization/plots",
+    "animations_dir": "visualization/animations",
+    "show_trajectory": true,
+    "show_connectivity": true
+  },
+  
+  "experiments": {
+    "experiment_name": "baseline_lemni",
+    "num_runs": 1,
+    "save_configs": true,
+    "save_metadata": true
+  }
+}

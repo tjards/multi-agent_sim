@@ -9,7 +9,37 @@ Created on Mon Apr 28 19:05:28 2025
 import os
 import json
 
+# load configs from JSON file
+def load_config(config_path):
+  
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config file(s) not found at {config_path}")
+  
+    with open(config_path, 'r') as f:
+        config = json.load(f)
 
+    return config
+
+# get configs 
+def get_config(configs, path):
+
+    # split up the path (form: 'section.subsection.subsubsection = value')
+    keys = path.split('.')
+    value = configs
+
+    # move through the nested dicts to get the end value
+    for key in keys:
+        value = value[key]
+
+    return value
+
+
+
+
+
+# *****************************
+# OLD
+# *****************************
 config_path = os.path.join("config", "configs.json")
 
 def initialize_configs():

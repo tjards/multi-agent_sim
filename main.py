@@ -42,10 +42,34 @@ data_directory = 'data/data/'
 #file_path = os.path.join(data_directory, f"data_{formatted_date}.json")
 data_file_path = os.path.join(data_directory, "data.h5")
 
+
+
 #%% Setup Simulation
 # ------------------
-np.random.seed(42+3)
 
+# NEW: bring in configs from config file
+from config.configs_tools import load_config, get_config
+config_directory = 'config/'
+config_file_path = os.path.join(config_directory, 'config.json')
+config = load_config(config_file_path)
+
+# Extract all simulation parameters from config
+Ti          = get_config(config, 'simulation.Ti')
+Tf          = get_config(config, 'simulation.Tf')
+Ts          = get_config(config, 'simulation.Ts')
+dimens      = get_config(config, 'simulation.dimens')
+verbose     = get_config(config, 'simulation.verbose')
+system      = get_config(config, 'simulation.system')
+strategy    = get_config(config, 'simulation.strategy')
+random_seed = get_config(config, 'simulation.random_seed')
+f           = get_config(config, 'simulation.f')
+experimental_save = get_config(config, 'simulation.experimental_save')
+
+np.random.seed(random_seed)
+
+# OLD: hardcoded configs
+'''
+np.random.seed(42+3)
 Ti      = 0         # initial time
 Tf      = 30        # final time (later, add a condition to break out when desirable conditions are met)
 Ts      = 0.02      # sample time
@@ -54,7 +78,7 @@ dimens  = 3         # dimension (2 = 2D, 3 = 3D)
 verbose = 1       # 1 = print progress reports, 0 = silent
 system   = 'swarm' 
 strategy = 'lemni'
-
+'''
     # reynolds  = Reynolds flocking + Olfati-Saber obstacle
     # saber     = Olfati-Saber flocking
     # starling  = swarm like starlings 
@@ -72,21 +96,26 @@ if dimens == 2 and strategy == 'cao':
 
 # save to config file
 # -------------------    
+'''''
 from config.configs_tools import update_configs, initialize_configs
 initialize_configs() 
 configs_entries = [('Ti', Ti), ('Tf', Tf), ('Ts', Ts), ('dimens', dimens), ('verbose', 1), ('system', system), ('strategy', strategy)]
 update_configs('simulation',configs_entries)
+'''
 
 # experimental save
 # -----------------
+'''
 experimental_save = False
+'''
 
 #%% build the system
 # ------------------
 import orchestrator
 import planner.trajectory
 
-Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens, Ts)
+#Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens, Ts)
+Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(config)
 Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state, dimens)
 Controller.learning_agents(Agents.tactic_type, Learners)
 Controller.Ts = Ts

@@ -1,0 +1,202 @@
+graph TB
+    %% External Libraries
+    subgraph ExtLib["🔹 External Libraries"]
+        NumPy["numpy"]
+        SciPy["scipy"]
+        Mpl["matplotlib"]
+        H5PY["h5py"]
+        SKL["sklearn"]
+    end
+    
+    %% Entry Point
+    subgraph Entry["🟢 ENTRY POINT"]
+        Main["main.py<br/>(211 lines)<br/>Simulation orchestration"]
+    end
+    
+    %% Configuration Layer
+    subgraph ConfigLayer["⚙️ CONFIGURATION LAYER"]
+        ConfigTools["config/configs_tools.py<br/>Dynamic config updates"]
+        ConfigJSON["config/configs.json<br/>Runtime parameters"]
+        ConfigOld["config/old_configs/<br/>Previous experiments"]
+        ConfigTools -.->|reads/writes| ConfigJSON
+    end
+    
+    %% Master Control
+    subgraph MasterControl["🎛️ MASTER CONTROL"]
+        Orchestrator["orchestrator.py<br/>(454 lines)<br/>Master controller<br/>System builder<br/>Graph management"]
+        ExpMgr["experiments/<br/>experiment_manager.py<br/>Experiment tracking"]
+    end
+    
+    %% System Models
+    subgraph SystemModels["🤖 SYSTEM MODELS"]
+        Agents["agents/agents.py<br/>(413 lines)<br/>Agent state & dynamics<br/>Double integrator"]
+        Quad["agents/quadcopter_module/<br/>Quadcopter dynamics<br/>3 nested control loops<br/>Quaternion rotations"]
+        Targets["targets/targets.py<br/>Target definition<br/>Evolution logic"]
+        Obstacles["obstacles/obstacles.py<br/>Obstacle definition<br/>Wall boundaries<br/>Reference landmarks"]
+        Agents -->|conditional| Quad
+    end
+    
+    %% Planning Layer
+    subgraph Planning["📐 PLANNING LAYER"]
+        Trajectory["planner/trajectory.py<br/>Trajectory storage<br/>Technique selector"]
+        
+        subgraph Techniques["planner/techniques/ 8 implementations"]
+            Saber["saber_tools.py<br/>Olfati-Saber flocking"]
+            Lemni["lemni_tools.py<br/>Lemniscate trajectories<br/>CALA learning"]
+            Reynolds["reynolds_tools.py<br/>Reynolds flocking"]
+            Encircle["encirclement_tools.py<br/>Circular encirclement"]
+            Cao["cao_tools.py<br/>Cao flocking"]
+            Starling["starling_tools.py<br/>Starling-like behavior"]
+            Shep["shepherding.py<br/>Shepherding/herding"]
+            Pinning["pinning_RL_tools.py<br/>Pinning control<br/>Q-learning"]
+        end
+        
+        Utils["planner/techniques/utils/"]
+        Quat["quaternions.py<br/>Rotation math"]
+        GradTools["gradient_tools.py<br/>Potential functions<br/>Morse, LJ, etc."]
+        
+        Utils --> Quat
+        Utils --> GradTools
+        
+        Encircle -->|uses| Saber
+        Encircle -->|uses| Quat
+        Lemni -->|uses| Encircle
+        Lemni -->|uses| Quat
+        Shep -->|uses| Saber
+        Pinning -->|uses| Saber
+        Pinning -->|uses| GradTools
+    end
+    
+    %% Learning Layer
+    subgraph Learning["🧠 LEARNING LAYER"]
+        Conductor["learner/conductor.py<br/>Learner initialization<br/>Factory pattern"]
+        
+        CALA["learner/CALA_control.py<br/>1028 lines<br/>Continuous Action Learning<br/>Policy parameters<br/>Reward computation<br/>Agent communication"]
+        
+        QL["learner/QL_learning_lattice.py<br/>Q-Learning for lattice<br/>Parameter tuning"]
+        
+        Consensus["learner/consensus_lattice.py<br/>Consensus-based learning"]
+        
+        GradEst["learner/gradient_estimator.py<br/>Gradient estimation<br/>Gaussian process"]
+        
+        Conductor -->|creates| CALA
+        Conductor -->|creates| QL
+        Conductor -->|creates| Consensus
+        
+        CALA -->|uses| Quat
+    end
+    
+    %% Analysis & Graph
+    subgraph Analysis["📊 ANALYSIS & GRAPHS"]
+        SwarmGraph["utils/swarmgraph.py<br/>Connectivity analysis<br/>Adjacency matrices<br/>Degree computation"]
+        
+        Modeller["utils/modeller.py<br/>System identification<br/>Linear regression"]
+        
+        PreTrash["utils/pretrash/<br/>Deprecated code"]
+    end
+    
+    %% Data Management
+    subgraph Data["💾 DATA MANAGEMENT"]
+        DataMgr["data/data_manager.py<br/>239 lines<br/>History class<br/>HDF5 storage"]
+        
+        Database["data/data.h5<br/>Simulation results<br/>State trajectories"]
+    end
+    
+    %% Visualization
+    subgraph Visualization["📈 VISUALIZATION"]
+        PlotSim["visualization/plot_sim.py<br/>Static 2D/3D plots<br/>Trajectory analysis"]
+        
+        AnimSim["visualization/animation_sim.py<br/>Animated sequences<br/>Agent trajectories"]
+        
+        Output["visualization/public/<br/>Output directory"]
+    end
+    
+    %% Prototyping
+    subgraph Proto["🧪 PROTOTYPING"]
+        Bump["prototyping/bump.py"]
+        KConn["prototyping/kconnectivity.py<br/>k-connectivity analysis"]
+    end
+    
+    %% Connections: Entry to Config
+    Main -->|loads| ConfigTools
+    Main -->|initializes| Orchestrator
+    
+    %% Connections: Orchestrator to Systems
+    Orchestrator -->|builds| Agents
+    Orchestrator -->|builds| Targets
+    Orchestrator -->|builds| Obstacles
+    Orchestrator -->|creates| Trajectory
+    Orchestrator -->|initializes| Conductor
+    Orchestrator -->|uses| SwarmGraph
+    Orchestrator -->|uses| ConfigTools
+    
+    %% Connections: Main to Trajectory & Conductor
+    Main -->|uses| Trajectory
+    Main -->|uses| Conductor
+    
+    %% Connections: Trajectory to Techniques
+    Trajectory -->|selects| Saber
+    Trajectory -->|selects| Lemni
+    Trajectory -->|selects| Reynolds
+    Trajectory -->|selects| Encircle
+    Trajectory -->|selects| Cao
+    Trajectory -->|selects| Starling
+    Trajectory -->|selects| Shep
+    Trajectory -->|selects| Pinning
+    
+    %% Connections: Techniques to Config
+    Saber -->|updates| ConfigTools
+    Lemni -->|updates| ConfigTools
+    Reynolds -->|updates| ConfigTools
+    Encircle -->|updates| ConfigTools
+    Cao -->|updates| ConfigTools
+    Starling -->|updates| ConfigTools
+    Shep -->|updates| ConfigTools
+    Pinning -->|updates| ConfigTools
+    
+    %% Connections: Learning to Techniques
+    Lemni -->|gets actions from| CALA
+    Pinning -->|gets rewards from| QL
+    
+    %% Connections: Data
+    Main -->|stores state| DataMgr
+    DataMgr -->|writes| Database
+    Database -->|reads| PlotSim
+    Database -->|reads| AnimSim
+    
+    %% Connections: External Libs
+    Agents -->|uses| NumPy
+    Agents -->|uses| SciPy
+    Quad -->|uses| NumPy
+    Targets -->|uses| NumPy
+    Obstacles -->|uses| NumPy
+    Saber -->|uses| NumPy
+    Lemni -->|uses| NumPy
+    Pinning -->|uses| NumPy
+    CALA -->|uses| NumPy
+    QL -->|uses| NumPy
+    SwarmGraph -->|uses| NumPy
+    SwarmGraph -->|uses| SciPy
+    PlotSim -->|uses| Mpl
+    PlotSim -->|uses| NumPy
+    AnimSim -->|uses| Mpl
+    AnimSim -->|uses| NumPy
+    DataMgr -->|uses| H5PY
+    Modeller -->|uses| SKL
+    
+    %% Styling
+    style Main fill:#90EE90
+    style Orchestrator fill:#FFB6C1
+    style Agents fill:#87CEEB
+    style Quad fill:#87CEEB
+    style CALA fill:#FFD700
+    style Lemni fill:#FFA500
+    style Pinning fill:#FFA500
+    style DataMgr fill:#9370DB
+    style Database fill:#9370DB
+    style PlotSim fill:#F0E68C
+    style AnimSim fill:#F0E68C
+    style ConfigTools fill:#DEB887
+    style ConfigJSON fill:#DEB887
+    style SwarmGraph fill:#FF6347
+    style Trajectory fill:#FF8C00

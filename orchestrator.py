@@ -24,6 +24,13 @@ import json
 
 # dev!
 import utils.swarmgraph as graphical 
+
+# new
+import config.configs_tools as configs_tools
+
+
+# old
+'''
 import config.configs_tools as configs_tools
 config_path=configs_tools.config_path
 
@@ -31,7 +38,45 @@ config_path=configs_tools.config_path
 with open(config_path, 'r') as tactic_tests:
     tactic_test = json.load(tactic_tests)
     tactic_type = tactic_test['simulation']['strategy']
+'''
 
+# new
+config = configs_tools.load_config('config/config.json')
+tactic_type = configs_tools.get_config(config, 'simulation.strategy')
+
+# laod orchestrator hyperparameters from config
+pin_update_rate         = configs_tools.get_config(config, 'orchestrator.pin_update_rate')
+pin_selection_method    = configs_tools.get_config(config, 'orchestrator.pin_selection_method')
+criteria_table          = configs_tools.get_config(config, 'orchestrator.criteria_table')
+sensor_aperature        = configs_tools.get_config(config, 'orchestrator.sensor_aperature')
+learning_ctrl           = configs_tools.get_config(config, 'orchestrator.learning_ctrl')
+
+if tactic_type == 'circle':
+    from planner.techniques import encirclement_tools as encircle_tools
+    from planner.techniques import saber_tools
+elif tactic_type == 'lemni':
+    from planner.techniques import lemni_tools
+    from planner.techniques import saber_tools
+elif tactic_type == 'reynolds':
+    from planner.techniques import reynolds_tools
+    from planner.techniques import saber_tools
+elif tactic_type == 'saber':
+    from planner.techniques import saber_tools
+elif tactic_type == 'starling':
+    from planner.techniques import starling_tools
+elif tactic_type == 'shep':
+    from planner.techniques import shepherding as shep
+elif tactic_type == 'pinning':
+    from planner.techniques import pinning_RL_tools as pinning_tools
+    planner_configs = configs_tools.get_config(config, 'planner.techniques.pinning')
+elif tactic_type == 'cao':
+    from planner.techniques import cao_tools
+
+
+
+# old
+
+'''
 # load the modules, as appropriate
 if tactic_type == 'circle':
     from planner.techniques import encirclement_tools as encircle_tools
@@ -55,12 +100,15 @@ elif tactic_type == 'pinning':
         planner_configs = json.load(planner_pinning_tests)['pinning']['hetero_lattice']
 elif tactic_type == 'cao':
     from planner.techniques import cao_tools
+'''
+    
 
 import learner.conductor
 
 #%% Hyperparameters 
 # -----------------
 
+'''
 pin_update_rate = 10   # number of timesteps after which we update the pins
 pin_selection_method = 'nopins'
     # gramian   = [future] // based on controllability gramian
@@ -74,7 +122,10 @@ sensor_aperature    = 140
 learning_ctrl = None  # None, 'CALA'; CALA unverified for now
 
 #twoD = True
+'''
 
+
+'''
 configs_tools.update_configs('orchestrator', [
     ('pin_update_rate', pin_update_rate),
     ('pin_selection_method', pin_selection_method),
@@ -82,25 +133,35 @@ configs_tools.update_configs('orchestrator', [
     ('sensor_aperature', sensor_aperature),
     ('learning_ctrl', learning_ctrl)
 ] )
+'''
+
 
 #%% Build the system
 # ------------------
-def build_system(system, strategy, dimens, Ts):
-    
+#def build_system(system, strategy, dimens, Ts):
+def build_system(config):
+
+    system      = configs_tools.get_config(config, 'simulation.system')
+    strategy    = configs_tools.get_config(config, 'simulation.strategy')
+    tactic_type = strategy
+    dimens      = configs_tools.get_config(config, 'simulation.dimens')
+    #tactic_type = configs_tools.get_config(config, 'agents.tactic_type')
+    Ts          = configs_tools.get_config(config, 'simulation.Ts')
+
     if system == 'swarm':
     
         # instantiate the agents
         # ------------------------
         import agents.agents as agents
         Agents = agents.Agents(strategy, dimens)
-        configs_tools.update_orch_configs(config_path, agent_obj=Agents)
+        #configs_tools.update_orch_configs(config_path, agent_obj=Agents)
 
         
         # instantiate the targets
         # -----------------------
         import targets.targets as targets
         Targets = targets.Targets(Agents.nAgents, dimens)    
-        configs_tools.update_orch_configs(config_path, target_obj=Targets)
+        #configs_tools.update_orch_configs(config_path, target_obj=Targets)
     
         # instantiate the planner
         # -----------------------
@@ -112,7 +173,7 @@ def build_system(system, strategy, dimens, Ts):
         # -------------------------
         import obstacles.obstacles as obstacles
         Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets, dimens)     
-        configs_tools.update_orch_configs(config_path, obstacle_obj=Obstacles) 
+        #configs_tools.update_orch_configs(config_path, obstacle_obj=Obstacles) 
         
         # instatiate any learning
         # -----------------------

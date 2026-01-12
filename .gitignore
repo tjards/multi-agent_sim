@@ -6,7 +6,35 @@ experiments/*
 # Python cache files
 __pycache__/
 *.py[cod]
+*.so
+.Python
 
-# macOS system files
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# pytest & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# HDF5 data files (unless you want to commit them)
+*.h5
+
+# Environment files
+.env
+.env.local
