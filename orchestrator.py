@@ -196,7 +196,8 @@ class Controller:
         tactic_type         = configs_tools.get_config(config, 'simulation.strategy')
         self.dimens         = configs_tools.get_config(config, 'simulation.dimens')
         self.nAgents        = configs_tools.get_config(config, 'agents.nAgents')
-        self.planner_config = configs_tools.get_config(config, f'planner.techniques.{tactic_type}')
+        #self.planner_config = configs_tools.get_config(config, f'planner.techniques.{tactic_type}')
+        self.planners            = {} # dictionary for planners
 
         # commands
         # --------
@@ -240,8 +241,13 @@ class Controller:
         if tactic_type == 'shep':
             self.shepherdClass = shep.Shepherding(state) 
         
-        if tactic_type == 'saber':
-            self.lattice = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1])) 
+        #if tactic_type == 'saber':
+        if tactic_type in {'saber', 'circle', 'lemni', 'reynolds'}:
+            self.planners['saber'] = saber_tools.Planner(config)
+            if tactic_type == 'saber':
+                self.lattice = self.planners['saber'].return_ranges()*np.ones((state.shape[1],state.shape[1]))
+            #self.lattice = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1])) 
+
         
         # cao has it's own class and a separate graph for connected (in addition to in range)    
         if tactic_type == 'cao':
@@ -289,7 +295,9 @@ class Controller:
             
             # update connectivity parameters 
             if tactic_type == 'saber':
-                r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                #r_matrix = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                r_matrix = self.planners['saber'].return_ranges()*np.ones((state.shape[1],state.shape[1]))
+
             elif tactic_type == 'circle':
                 r_matrix_1, _, _, _ = encircle_tools.get_params()
                 r_matrix_2  = encircle_tools.compute_desired_sep(r_matrix_1, self.nAgents)
@@ -343,7 +351,8 @@ class Controller:
                
                # steal obstacle avoidance term from saber
                # ----------------------------------------
-               u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+               #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+               u_obs[:,k_node] = self.planners['saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
             
             # Saber Flocking
             # ---------------                                
@@ -351,16 +360,19 @@ class Controller:
                    
                 # Lattice Flocking term (phi_alpha)
                 # ---------------------------------  
-                u_int[:,k_node] = saber_tools.compute_cmd_a(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)    
-            
+                #u_int[:,k_node] = saber_tools.compute_cmd_a(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)    
+                u_int[:,k_node] = self.planners['saber'].compute_cmd_a(state[0:3,:], state[3:6,:], k_node)
+
                 # Navigation term (phi_gamma)
                 # ---------------------------
-                u_nav[:,k_node] = saber_tools.compute_cmd_g(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)
-                              
+                #u_nav[:,k_node] = saber_tools.compute_cmd_g(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)
+                u_nav[:,k_node] = self.planners['saber'].compute_cmd_g(state[0:3,:], state[3:6,:], targets[0:3,:], targets[3:6,:], k_node)              
+                
                 # Obstacle Avoidance term (phi_beta)
                 # ---------------------------------   
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
-    
+                #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                u_obs[:,k_node] = self.planners['saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+
             # Encirclement term (phi_delta)
             # ---------------------------- 
             if tactic_type == 'circle':       
@@ -369,7 +381,8 @@ class Controller:
                 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                u_obs[:,k_node] = self.planners['saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                      
             # Lemniscatic term (phi_lima)
             # ---------------------------- 
@@ -379,12 +392,13 @@ class Controller:
                 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
-                      
+                #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                u_obs[:,k_node] = self.planners['saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+
             # Starling
             # --------
             if tactic_type == 'starling':
