@@ -10,17 +10,17 @@
     "Ti": 0,
     "Tf": 30,
     "Ts": 0.02,
-    "dimens": 3,
+    "dimens": 2,
     "verbose": 1,
     "system": "swarm",
-    "strategy": "lemni",
+    "strategy": "saber",
     "random_seed": 45,
     "f": 0,
     "experimental_save": false
   },
   
   "agents": {
-    "num_agents": 10,
+    "nAgents": 13,
     "agent_type": "double_integrator",
     "max_velocity": 2.0,
     "communication_range": 5.0,
@@ -34,7 +34,6 @@
   },
   
   "targets": {
-    "num_targets": 1,
     "target_type": "static",
     "movement_speed": 0.5
   },

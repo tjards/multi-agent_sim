@@ -116,7 +116,8 @@ import planner.trajectory
 
 #Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens, Ts)
 Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(config)
-Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state, dimens)
+#Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state, dimens)
+Controller = orchestrator.Controller(config, Agents.state)
 Controller.learning_agents(Agents.tactic_type, Learners)
 Controller.Ts = Ts
 

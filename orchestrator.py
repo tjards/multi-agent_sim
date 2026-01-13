@@ -142,8 +142,9 @@ configs_tools.update_configs('orchestrator', [
 def build_system(config):
 
     system      = configs_tools.get_config(config, 'simulation.system')
-    strategy    = configs_tools.get_config(config, 'simulation.strategy')
-    tactic_type = strategy
+    #strategy    = configs_tools.get_config(config, 'simulation.strategy')
+    #tactic_type = strategy
+    tactic_type = configs_tools.get_config(config, 'simulation.strategy')
     dimens      = configs_tools.get_config(config, 'simulation.dimens')
     #tactic_type = configs_tools.get_config(config, 'agents.tactic_type')
     Ts          = configs_tools.get_config(config, 'simulation.Ts')
@@ -153,7 +154,8 @@ def build_system(config):
         # instantiate the agents
         # ------------------------
         import agents.agents as agents
-        Agents = agents.Agents(strategy, dimens)
+        #Agents = agents.Agents(strategy, dimens)
+        Agents = agents.Agents(tactic_type, dimens)
         #configs_tools.update_orch_configs(config_path, agent_obj=Agents)
 
         
@@ -187,17 +189,24 @@ def build_system(config):
 # -------------------
 class Controller:
     
-    def __init__(self, tactic_type, nAgents, state, dimens):
+    #def __init__(self, tactic_type, nAgents, state, dimens):
+    def __init__(self, config, state):
                 
+        # new: export configs
+        tactic_type         = configs_tools.get_config(config, 'simulation.strategy')
+        self.dimens         = configs_tools.get_config(config, 'simulation.dimens')
+        self.nAgents        = configs_tools.get_config(config, 'agents.nAgents')
+        self.planner_config = configs_tools.get_config(config, f'planner.techniques.{tactic_type}')
+
         # commands
         # --------
-        self.dimens  = dimens
-        self.nAgents = nAgents
-        self.cmd = np.zeros((3,nAgents))
-        self.cmd[0] = 0.001*np.random.rand(1,nAgents)-0.5      # command (x)
-        self.cmd[1] = 0.001*np.random.rand(1,nAgents)-0.5      # command (y)
-        self.cmd[2] = 0.001*np.random.rand(1,nAgents)-0.5      # command (z)
-        if dimens == 2:
+        #self.dimens  = dimens
+        #self.nAgents = nAgents
+        self.cmd = np.zeros((3,self.nAgents))
+        self.cmd[0] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (x)
+        self.cmd[1] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (y)
+        self.cmd[2] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (z)
+        if self.dimens == 2:
             self.cmd[2] = 0*self.cmd[2]
 
         # graph
@@ -208,21 +217,21 @@ class Controller:
         self.counter = 0                
         
         # [legacy] general purpose parameters variable (retire this)
-        self.params = np.zeros((4,nAgents))             # store dynamic parameters
+        self.params = np.zeros((4,self.nAgents))             # store dynamic parameters
         
         # lattice parameters (not always used, move into pinning) * redudany
-        self.lattice = np.zeros((nAgents,nAgents))      # stores lattice parameters
+        self.lattice = np.zeros((self.nAgents,self.nAgents))      # stores lattice parameters
         
         # pins and components (not always used)
-        self.pin_matrix = np.zeros((nAgents,nAgents))
+        self.pin_matrix = np.zeros((self.nAgents,self.nAgents))
                 
         if tactic_type == 'pinning':
     
-            self.pin_matrix = np.ones((nAgents,nAgents))# make all pins
+            self.pin_matrix = np.ones((self.nAgents,self.nAgents))# make all pins
             d_init = pinning_tools.return_lattice_param()
             self.d_init= d_init
             i = 0
-            while (i < nAgents):
+            while (i < self.nAgents):
                 self.lattice[i,:] = d_init
                 i+=1
             #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
@@ -239,7 +248,7 @@ class Controller:
             self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
             self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
             #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
-            self.pin_matrix = np.ones((nAgents,nAgents))
+            self.pin_matrix = np.ones((self.nAgents,self.nAgents))
             
    
     # integrate learninging agents (learning updates happen at the Controller object)

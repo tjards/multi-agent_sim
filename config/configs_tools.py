@@ -38,7 +38,7 @@ def get_config(configs, path):
 
 
 # *****************************
-# OLD
+# OLD - to be removed later
 # *****************************
 config_path = os.path.join("config", "configs.json")
 
