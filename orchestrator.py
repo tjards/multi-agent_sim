@@ -26,7 +26,7 @@ import json
 import utils.swarmgraph as graphical 
 
 # new
-import config.configs_tools as configs_tools
+import config.config as cfg
 
 
 # old
@@ -40,16 +40,20 @@ with open(config_path, 'r') as tactic_tests:
     tactic_type = tactic_test['simulation']['strategy']
 '''
 
+# note: move these down into init and use when necessary, make self.*
+
 # new
-config = configs_tools.load_config('config/config.json')
-tactic_type = configs_tools.get_config(config, 'simulation.strategy')
+config_loaded = cfg.load_config('config/config.json')
+tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
 
 # laod orchestrator hyperparameters from config
-pin_update_rate         = configs_tools.get_config(config, 'orchestrator.pin_update_rate')
-pin_selection_method    = configs_tools.get_config(config, 'orchestrator.pin_selection_method')
-criteria_table          = configs_tools.get_config(config, 'orchestrator.criteria_table')
-sensor_aperature        = configs_tools.get_config(config, 'orchestrator.sensor_aperature')
-learning_ctrl           = configs_tools.get_config(config, 'orchestrator.learning_ctrl')
+pin_update_rate         = cfg.get_config(config_loaded, 'orchestrator.pin_update_rate')
+pin_selection_method    = cfg.get_config(config_loaded, 'orchestrator.pin_selection_method')
+#criteria_table          = cfg.get_config(config, 'orchestrator.criteria_table')
+sensor_aperature        = cfg.get_config(config_loaded, 'orchestrator.sensor_aperature')
+#learning_ctrl           = cfg.get_config(config, 'orchestrator.learning_ctrl')
+
+# note: move these down into init and use when necessary
 
 if tactic_type == 'circle':
     from planner.techniques import encirclement_tools as encircle_tools
@@ -68,7 +72,7 @@ elif tactic_type == 'shep':
     from planner.techniques import shepherding as shep
 elif tactic_type == 'pinning':
     from planner.techniques import pinning_RL_tools as pinning_tools
-    planner_configs = configs_tools.get_config(config, 'planner.techniques.pinning')
+    planner_configs = cfg.get_config(config_loaded, 'planner.techniques.pinning')
 elif tactic_type == 'cao':
     from planner.techniques import cao_tools
 
@@ -141,47 +145,52 @@ configs_tools.update_configs('orchestrator', [
 #def build_system(system, strategy, dimens, Ts):
 def build_system(config):
 
-    system      = configs_tools.get_config(config, 'simulation.system')
+    #system      = cfg.get_config(config, 'simulation.system')
     #strategy    = configs_tools.get_config(config, 'simulation.strategy')
     #tactic_type = strategy
-    tactic_type = configs_tools.get_config(config, 'simulation.strategy')
-    dimens      = configs_tools.get_config(config, 'simulation.dimens')
+    #tactic_type = cfg.get_config(config, 'simulation.strategy')
+    #dimens      = cfg.get_config(config, 'simulation.dimens')
     #tactic_type = configs_tools.get_config(config, 'agents.tactic_type')
-    Ts          = configs_tools.get_config(config, 'simulation.Ts')
+    #Ts          = cfg.get_config(config, 'simulation.Ts')
 
-    if system == 'swarm':
+    #if system == 'swarm':
+    if config.system == 'swarm':
     
         # instantiate the agents
         # ------------------------
         import agents.agents as agents
         #Agents = agents.Agents(strategy, dimens)
-        Agents = agents.Agents(tactic_type, dimens)
+        #Agents = agents.Agents(tactic_type, dimens)
+        Agents = agents.Agents(config.strategy, config.dimens)
         #configs_tools.update_orch_configs(config_path, agent_obj=Agents)
 
         
         # instantiate the targets
         # -----------------------
         import targets.targets as targets
-        Targets = targets.Targets(Agents.nAgents, dimens)    
+        #Targets = targets.Targets(Agents.nAgents, dimens)  
+        Targets = targets.Targets(config.nAgents, config.dimens)   
         #configs_tools.update_orch_configs(config_path, target_obj=Targets)
     
         # instantiate the planner
         # -----------------------
         import planner.trajectory as trajectory
-        Trajectory = trajectory.Trajectory(Agents.tactic_type, Targets.targets, Agents.nAgents)
+        #Trajectory = trajectory.Trajectory(Agents.tactic_type, Targets.targets, Agents.nAgents)
+        Trajectory = trajectory.Trajectory(config.strategy, Targets.targets, config.nAgents)
         
     
         # instantiate the obstacles 
         # -------------------------
         import obstacles.obstacles as obstacles
-        Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets, dimens)     
+        #Obstacles = obstacles.Obstacles(Agents.tactic_type, Targets.targets, dimens)    
+        Obstacles = obstacles.Obstacles(config.strategy, Targets.targets, config.dimens)  
         #configs_tools.update_orch_configs(config_path, obstacle_obj=Obstacles) 
         
         # instatiate any learning
         # -----------------------
         import learner.conductor
-        Learners = learner.conductor.initialize(Agents, tactic_type, learning_ctrl, Ts)
-        
+        #Learners = learner.conductor.initialize(Agents, tactic_type, learning_ctrl, Ts)
+        Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts)
                 
     return Agents, Targets, Trajectory, Obstacles, Learners
 
@@ -193,21 +202,28 @@ class Controller:
     def __init__(self, config, state):
                 
         # new: export configs
-        tactic_type         = configs_tools.get_config(config, 'simulation.strategy')
-        self.dimens         = configs_tools.get_config(config, 'simulation.dimens')
-        self.nAgents        = configs_tools.get_config(config, 'agents.nAgents')
+        #self.tactic_type         = configs_tools.get_config(config, 'simulation.strategy')
+        #self.dimens         = cfg.get_config(config, 'simulation.dimens')
+        #self.nAgents        = cfg.get_config(config, 'agents.nAgents')
         #self.planner_config = configs_tools.get_config(config, f'planner.techniques.{tactic_type}')
+        criteria_table          = cfg.get_config(config_loaded, 'orchestrator.criteria_table')
         self.planners            = {} # dictionary for planners
 
         # commands
         # --------
         #self.dimens  = dimens
+        self.dimens  = config.dimens
         #self.nAgents = nAgents
-        self.cmd = np.zeros((3,self.nAgents))
-        self.cmd[0] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (x)
-        self.cmd[1] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (y)
-        self.cmd[2] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (z)
-        if self.dimens == 2:
+        #self.cmd = np.zeros((3,self.nAgents))
+        #self.cmd[0] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (x)
+        #self.cmd[1] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (y)
+        #self.cmd[2] = 0.001*np.random.rand(1,self.nAgents)-0.5      # command (z)
+        self.cmd = np.zeros((3,config.nAgents))
+        self.cmd[0] = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (x)
+        self.cmd[1] = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (y)
+        self.cmd[2] = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (z)
+        #if self.dimens == 2:
+        if config.dimens == 2:
             self.cmd[2] = 0*self.cmd[2]
 
         # graph
@@ -218,39 +234,50 @@ class Controller:
         self.counter = 0                
         
         # [legacy] general purpose parameters variable (retire this)
-        self.params = np.zeros((4,self.nAgents))             # store dynamic parameters
+        #self.params = np.zeros((4,self.nAgents))             # store dynamic parameters
+        self.params = np.zeros((4,config.nAgents))             # store dynamic parameters
         
         # lattice parameters (not always used, move into pinning) * redudany
-        self.lattice = np.zeros((self.nAgents,self.nAgents))      # stores lattice parameters
+        #self.lattice = np.zeros((self.nAgents,self.nAgents))      # stores lattice parameters
+        self.lattice = np.zeros((config.nAgents,config.nAgents))      # stores lattice parameters
         
         # pins and components (not always used)
-        self.pin_matrix = np.zeros((self.nAgents,self.nAgents))
+        #self.pin_matrix = np.zeros((self.nAgents,self.nAgents))
+        self.pin_matrix = np.zeros((config.nAgents,config.nAgents))
                 
-        if tactic_type == 'pinning':
+        #if tactic_type == 'pinning':
+        if config.strategy == 'pinning':
     
-            self.pin_matrix = np.ones((self.nAgents,self.nAgents))# make all pins
+            #self.pin_matrix = np.ones((self.nAgents,self.nAgents))# make all pins
+            self.pin_matrix = np.ones((config.nAgents,config.nAgents))# make all pins
             d_init = pinning_tools.return_lattice_param()
             self.d_init= d_init
             i = 0
-            while (i < self.nAgents):
+            #while (i < self.nAgents):
+            while (i < config.nAgents):
                 self.lattice[i,:] = d_init
                 i+=1
             #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
         
         # sheparding has its own class (differentiating shepherd and herd)
-        if tactic_type == 'shep':
+        #if tactic_type == 'shep':
+        if config.strategy == 'shep':
             self.shepherdClass = shep.Shepherding(state) 
         
         #if tactic_type == 'saber':
-        if tactic_type in {'saber', 'circle', 'lemni', 'reynolds'}:
-            self.planners['saber'] = saber_tools.Planner(config)
-            if tactic_type == 'saber':
+        #if tactic_type in {'saber', 'circle', 'lemni', 'reynolds'}:
+        if config.strategy in {'saber', 'circle', 'lemni', 'reynolds'}:
+            self.planners['saber'] = saber_tools.Planner(config_loaded)
+            #if tactic_type == 'saber':
+            #if tactic_type == 'saber':
+            if config.strategy == 'saber':
                 self.lattice = self.planners['saber'].return_ranges()*np.ones((state.shape[1],state.shape[1]))
             #self.lattice = saber_tools.return_ranges()*np.ones((state.shape[1],state.shape[1])) 
 
         
         # cao has it's own class and a separate graph for connected (in addition to in range)    
-        if tactic_type == 'cao':
+        #if tactic_type == 'cao':
+        if config.strategy == 'cao':
             self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
             self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
             #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
@@ -290,6 +317,7 @@ class Controller:
         
         # update connectivity
         self.counter += 1                    # increment the counter 
+        #if self.counter == pin_update_rate:  # only update the pins at Ts/(tunable parameter)
         if self.counter == pin_update_rate:  # only update the pins at Ts/(tunable parameter)
             self.counter = 0                 # reset counter
             

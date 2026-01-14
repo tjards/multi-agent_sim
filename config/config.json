@@ -10,7 +10,7 @@
     "Ti": 0,
     "Tf": 30,
     "Ts": 0.02,
-    "dimens": 2,
+    "dimens": 3,
     "verbose": 1,
     "system": "swarm",
     "strategy": "saber",
@@ -21,7 +21,7 @@
   
   "agents": {
     "nAgents": 13,
-    "agent_type": "double_integrator",
+    "dynamics": "double_integrator",
     "max_velocity": 2.0,
     "communication_range": 5.0,
     "control_gain": 0.5,

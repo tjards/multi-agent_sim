@@ -18,7 +18,7 @@ import json
 #%% New: object
 # -------------
 
-from config import configs_tools
+import config.config as cfg
 
 # helpers
 def regnorm(z):
@@ -40,7 +40,7 @@ class Planner:
     def __init__(self, config):
  
         # load the configs
-        saber_config =configs_tools.get_config(config, 'planner.techniques.saber')
+        saber_config =cfg.get_config(config, 'planner.techniques.saber')
         self.pi      = saber_config['pi']
         self.a       = saber_config['a']
         self.b       = saber_config['b']
