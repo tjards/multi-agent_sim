@@ -25,6 +25,16 @@ def get_config(configs, path):
 
     return value
 
+def validate_configs(config):
+
+    if config.dimens == 2 and config.strategy == 'lemni':
+        raise ValueError("Lemniscate trajectories not supported in 2D. Please choose different strategy.")
+
+    if config.dimens == 2 and config.strategy == 'cao':
+        raise ValueError("Cao not adapted for 2D yet.")
+
+
+
 # immutable class used to store high level configuration parameters
 class Config:
     
@@ -43,6 +53,8 @@ class Config:
                 
         except KeyError as e:
             raise ValueError(f"Missing required HYPER CONFIG section: {e}")
+        
+        validate_configs(self)
     
     def _extract_section(self, section_data, prefix=''):
 

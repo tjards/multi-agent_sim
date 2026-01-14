@@ -11,6 +11,16 @@ The following agent dynamics are available:
     1. double integrator 
     2. quadrotor helicopter (quadcopter)
 
+# strategy summaries:
+    # reynolds  = Reynolds flocking + Olfati-Saber obstacle
+    # saber     = Olfati-Saber flocking
+    # starling  = swarm like starlings 
+    # circle    = encirclement
+    # lemni     = dynamic lemniscates and other closed curves
+    # pinning   = pinning control (with RL)
+    # shep      = shepherding
+    # cao       = cao flocking
+
 Created on Tue Dec 22 11:48:18 2020
 
 @author: tjards
@@ -23,7 +33,6 @@ See devnotes.md for updates.
 # --------------
 
 # official packages 
-# ------------------
 import numpy as np
 import matplotlib.pyplot as plt
 #plt.style.use('dark_background')
@@ -36,104 +45,41 @@ import h5py
 import os
 from datetime import datetime
 
-# define data path
-# ----------------
-data_directory = 'data/data/'
-#file_path = os.path.join(data_directory, f"data_{formatted_date}.json")
-data_file_path = os.path.join(data_directory, "data.h5")
-
-
+# custom packages
+import config.config as cfg
 
 #%% Setup Simulation
 # ------------------
 
-# NEW: bring in configs from config file
-#from config.config import load_config, get_config
-import config.config as cfg
+# config path
 config_directory = 'config/'
 config_path = os.path.join(config_directory, 'config.json')
-#config = cfg.load_config(config_file_path)
 
 # create an immutable config object
 config = cfg.Config(config_path)
 
-# Extract all simulation parameters from config
-# Ti          = cfg.get_config(config, 'simulation.Ti')
-# Tf          = cfg.get_config(config, 'simulation.Tf')
-# Ts          = cfg.get_config(config, 'simulation.Ts')
-# dimens      = cfg.get_config(config, 'simulation.dimens')
-# verbose     = cfg.get_config(config, 'simulation.verbose')
-# system      = cfg.get_config(config, 'simulation.system')
-# strategy    = cfg.get_config(config, 'simulation.strategy')
-# random_seed = cfg.get_config(config, 'simulation.random_seed')
-# f           = cfg.get_config(config, 'simulation.f')
-# experimental_save = cfg.get_config(config, 'simulation.experimental_save')
+# define data paths
+data_directory = config.data_dir
+data_file = config.data_file
+data_file_path = os.path.join(data_directory, data_file)
 
+# reproducibility
 np.random.seed(config.random_seed)
-
-# OLD: hardcoded configs
-'''
-np.random.seed(42+3)
-Ti      = 0         # initial time
-Tf      = 30        # final time (later, add a condition to break out when desirable conditions are met)
-Ts      = 0.02      # sample time
-f       = 0         # parameter for future use
-dimens  = 3         # dimension (2 = 2D, 3 = 3D)
-verbose = 1       # 1 = print progress reports, 0 = silent
-system   = 'swarm' 
-strategy = 'lemni'
-'''
-    # reynolds  = Reynolds flocking + Olfati-Saber obstacle
-    # saber     = Olfati-Saber flocking
-    # starling  = swarm like starlings 
-    # circle    = encirclement
-    # lemni     = dynamic lemniscates and other closed curves
-    # pinning   = pinning control (with RL)
-    # shep      = shepherding
-    # cao       = cao flocking
-
-if config.dimens == 2 and config.strategy == 'lemni':
-    raise ValueError("Lemniscate trajectories not supported in 2D. Please choose different strategy.")
-
-if config.dimens == 2 and config.strategy == 'cao':
-    raise ValueError("Cao not adapted for 2D yet.")
-
-# save to config file
-# -------------------    
-'''''
-from config.configs_tools import update_configs, initialize_configs
-initialize_configs() 
-configs_entries = [('Ti', Ti), ('Tf', Tf), ('Ts', Ts), ('dimens', dimens), ('verbose', 1), ('system', system), ('strategy', strategy)]
-update_configs('simulation',configs_entries)
-'''
-
-# experimental save
-# -----------------
-'''
-experimental_save = False
-'''
 
 #%% build the system
 # ------------------
 import orchestrator
 import planner.trajectory
 
-#Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(system, strategy, dimens, Ts)
 Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(config)
-#Controller = orchestrator.Controller(Agents.tactic_type, Agents.nAgents, Agents.state, dimens)
 Controller = orchestrator.Controller(config, Agents.state)
 Controller.learning_agents(config.strategy, Learners)
-Controller.Ts = config.Ts
-
-# pull out constants
-#rVeh        = Agents.rVeh
-#tactic_type = Agents.tactic_type
-#dynamics    = Agents.config_agents['dynamics']
 
 #%% initialize the data store
 # ---------------------------
 from data import data_manager
-Database = data_manager.History(Agents, Targets, Obstacles, Controller, Trajectory, config.Ts, config.Tf, config.Ti, config.f)
+Database = data_manager.History(Agents, Targets, Obstacles, Controller, Trajectory, 
+                                config.Ts, config.Tf, config.Ti, config.f)
 
 #%% Run Simulation
 # ----------------------
@@ -141,7 +87,7 @@ t = config.Ti
 i = 1
 
 if config.verbose == 1:
-    print('starting simulation with ',Agents.nAgents,' agents.')
+    print('starting simulation with ',config.nAgents,' agents.')
 
 while round(t,3) < config.Tf:
     
@@ -214,13 +160,11 @@ import visualization.animation_sim as animation_sim
 if config.verbose == 1:
     print('building animation.')
     
-with open(os.path.join("config", "configs.json"), 'r') as configs_sim:
+with open(config_path, 'r') as configs_sim:
     config_sim = json.load(configs_sim)
     config_Ts = config_sim['simulation']['Ts']
     config_dimens = config_sim['simulation']['dimens']
-with open(os.path.join("config", "configs.json"), 'r') as configs_agents:
-    config_agents = json.load(configs_agents)
-    config_tactic_type = config_agents['agents']['tactic_type']
+    config_tactic_type = config_sim['simulation']['strategy']
 
 ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
 

@@ -203,8 +203,8 @@
   
   "data": {
     "save_data": true,
-    "data_dir": "data/data",
-    "file_format": "h5",
+    "data_dir": "data/data/",
+    "data_file": "data.h5",
     "record_interval": 1,
     "record_agents": true,
     "record_targets": true,
