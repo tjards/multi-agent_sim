@@ -64,8 +64,8 @@ elif tactic_type == 'lemni':
 elif tactic_type == 'reynolds':
     from planner.techniques import reynolds_tools
     from planner.techniques import saber_tools
-elif tactic_type == 'saber':
-    from planner.techniques import saber_tools
+#elif tactic_type == 'saber':
+#    from planner.techniques import saber_tools
 elif tactic_type == 'starling':
     from planner.techniques import starling_tools
 elif tactic_type == 'shep':
@@ -267,6 +267,7 @@ class Controller:
         #if tactic_type == 'saber':
         #if tactic_type in {'saber', 'circle', 'lemni', 'reynolds'}:
         if config.strategy in {'saber', 'circle', 'lemni', 'reynolds'}:
+            from planner.techniques import saber_tools
             self.planners['saber'] = saber_tools.Planner(config_loaded)
             #if tactic_type == 'saber':
             #if tactic_type == 'saber':
