@@ -74,6 +74,7 @@ import planner.trajectory
 Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(config)
 Controller = orchestrator.Controller(config, Agents.state)
 Controller.learning_agents(config.strategy, Learners)
+Trajectory.load_planners(Controller.planners)
 
 #%% initialize the data store
 # ---------------------------

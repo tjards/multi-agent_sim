@@ -5,6 +5,8 @@ Created on Fri Jan  1 21:26:07 2021
 
 This module implements dynamic encirclement 
 
+ delta_phi_desired = 2Pi/N
+
 @author: tjards
 """
 
@@ -12,64 +14,189 @@ import numpy as np
 #import os
 #import json
 from .utils import quaternions as quat
+import config.config as cfg
 
-# delta_phi_desired = 2Pi/N
-
-#%% Hyperparameters
-# -----------------
-
-# gains
-c1_d        = 2             # position (q)
-c2_d        = 2*np.sqrt(2)  # velocity (p)
-
-# parameters of the circle 
-r_max       = 50            # max distance to view neighbors (nominally, set high)
-r_desired   = 5             # desired radius of encirclement [m]
-phi_dot_d   = 0.05 #0.05           # desired angular speed of encirclement [m/s] 0.05 # 0.12  
-
-# reference frames
-ref_plane = 'horizontal'                # defines reference plane (default horizontal)
-enc_plane = ref_plane                   # uncessary duplicate (legacy code)
-
-
-# acceptable ranges
-#   quat_0 = quat.e2q([a, b, c])
-#   where a in [0, 2pi), b in [0, pi), c in [0, 2pi)
-
-quat_0 = quat.e2q(np.array([0,0,0]))    # if lemniscate, this has to be all zeros (consider expanding later to rotate the whole swarm)
-#quat_0 = quat.e2q(np.array([np.pi/2,0,0]))
-#quat_0 = quat.e2q(np.array([0, np.pi/2, 0]))
-#quat_0 = quat.e2q(np.array([0, np.pi/4, 0]))        # Tilt down 60° along Y-axis
-#quat_0 = quat.e2q(np.array([0,np.pi/3,0]))
-#quat_0 = quat.e2q(np.array([np.pi/3,0,np.pi/2]))
-quatern = quat_0                        #  duplicate (legacy code)
-
-
-
-#%% save configs
-# --------------    
-from config.configs_tools import update_configs  
-configs_entries = [
-    ('c1_d', c1_d),
-    ('c2_d', c2_d),
-    ('r_max', r_max),
-    ('r_desired', r_desired),
-    ('phi_dot_d', phi_dot_d),
-    ('ref_plane', ref_plane),
-    ('quat_0', list(quat_0))
-    ]
-update_configs('circle',  configs_entries)
 
 #%% Useful functions
 # -------------------
 
-def get_params():
+# Load config at module initialization (for legacy module-level functions)
+config_loaded = cfg.load_config('config/config.json')
+encircle_config = cfg.get_config(config_loaded, 'planner.techniques.circle')
+r_desired = encircle_config.get('r_desired', 5)
+phi_dot_d = encircle_config.get('phi_dot_d', 0.05)
+ref_plane = encircle_config.get('ref_plane', 'horizontal')
+quat_0 = encircle_config.get('quat_0', quat.e2q(np.array([0,0,0])))
+r_max = encircle_config.get('r_max', 50)
+c1_d = encircle_config.get('c1_d', 2)
+c2_d = encircle_config.get('c2_d', 2*np.sqrt(2))
+
+class Planner:
     
+    def __init__(self, config_data):
+
+        circle_config = cfg.get_config(config_data, 'planner.techniques.circle')
+        
+        # Store hyperparameters
+        self.c1_d = circle_config.get('c1_d', 2)
+        self.c2_d = circle_config.get('c2_d', 2*np.sqrt(2))
+        self.r_max = circle_config.get('r_max', 50)
+        self.r_desired = circle_config.get('r_desired', 5)
+        self.phi_dot_d = circle_config.get('phi_dot_d', 0.05)
+        self.ref_plane = circle_config.get('ref_plane', 'horizontal')
+        TEMP_quat_0_0 = circle_config.get('quat_0_0', 0.0)
+        TEMP_quat_0_1 = circle_config.get('quat_0_1', 0.0)
+        TEMP_quat_0_2 = circle_config.get('quat_0_2', 0.0)
+        self.quat_0 = quat.e2q(np.array([TEMP_quat_0_0, TEMP_quat_0_1, TEMP_quat_0_2]))
+        
+        # Store as instance attributes for use in methods
+        self.d = self.r_desired  # Make compatible with orchestrator pattern
+
+        # compute desired separation (for analyzing results)
+        nAgents = cfg.get_config(config_data, 'agents.nAgents')
+        print(nAgents)
+        self.desired_separation = self.compute_desired_sep(self.r_desired, nAgents)  
+
+    
+    def get_params(self):
+        return get_params()
+    
+    def compute_desired_sep(self, r_matrix_1, nAgents):
+        return compute_desired_sep(r_matrix_1, nAgents)
+    
+    def compute_cmd(self, states_q, states_p, trajectory_q, trajectory_v, k_node):
+        return compute_cmd(states_q, states_p, trajectory_q, trajectory_v, k_node)
+    
+    def encircle_target(self, targets, state):
+        return encircle_target(targets, state)
+
+
+def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
+    
+    u_enc = np.zeros((3,states_q.shape[1]))     
+    u_enc[:,k_node] = - c1_d*sigma_1(states_q[:,k_node]-targets_enc[:,k_node])-c2_d*(states_p[:,k_node] - targets_v_enc[:,k_node])    
+    
+    return u_enc[:,k_node]
+    
+def encircle_target(targets, state):
+        
+    # desired rate of encirclement [rad/s]
+    # -----------------------------------
+    phi_dot_desired = phi_dot_d                 
+    
+    # initialise global stuff
+    # -----------------------
+    targets_encircle = targets.copy() 
+    points_i = np.zeros((3,state.shape[1]))
+    temp = np.zeros((3,1))
+    quatern_ = quat.quatjugate(quat_0)
+    
+    # Regulation of Radius (position control)
+    # ------------------------------   
+    new_pos_desired_i = np.zeros((3,state.shape[1]))
+    
+    # iterate through each agent
+    for ii in range(0,state.shape[1]):
+
+        # to rotate with reference to horizontal
+        if ref_plane == 'horizontal':
+            # rotate down to the reference plane
+            points_i[:,ii] = quat.rotate(quatern_,state[0:3,ii]-targets[0:3,ii])+targets[0:3,ii]
+            # now find the desired position projected on the plane
+            temp[0:2,0] = directToCircle(targets[0:2,ii],points_i[0:2,ii],r_desired)
+            temp[2,0] = targets[2,ii] # at altitude
+            # now rotate back
+            new_pos_desired_i[:,ii] = quat.rotate(quat_0,temp.ravel()-targets[0:3,ii])+targets[0:3,ii]            
+        
+    # Regulation of Angular speed (velocity control)
+    # ----------------------------------------------   
+    # express state with reference to target
+    state_shifted = state - targets
+        
+    # to rotate with reference to horizontal
+    if ref_plane == 'horizontal':
+        # define a new unit vector, which is perp to plane 
+        unit_v = np.array([0,0,1]).reshape((3,1))
+        # initialize a new state vector
+        state_shifted_new = np.zeros((3,state.shape[1]))
+        # rotate each agent into the reference plane
+        for ij in range(0,state.shape[1]):
+            state_shifted_new[:,ij] = quat.rotate(quatern_,state_shifted[0:3,ij])
+
+        # convert to polar coordinates
+        polar_r, polar_phi = cart2polar(state_shifted_new[0,:], state_shifted_new[1,:])
+
+    # sort by phi and save the indicies so we can reassemble
+    polar_phi_sorted = np.sort(polar_phi, axis=0)
+    polar_phi_argsort = np.argsort(polar_phi, axis=0) 
+    
+    # for each vehicle, define a desired angular speed 
+    phi_dot_desired_i = np.zeros((1,state_shifted.shape[1]))
+    phiDot_out = np.zeros((1,state_shifted.shape[1]))
+    
+    # identify leading and lagging 
+    for ii in range(0,state_shifted.shape[1]):
+        # define leading and lagging vehicles (based on angles)
+        if ii == 0:
+            ij = state_shifted.shape[1]-1    
+        else:
+            ij = ii-1 # lagging vehicle
+        
+        if ii == state_shifted.shape[1]-1:
+            ik = 0
+        else:
+            ik = ii+1 # leading vehicle 
+        
+        # compute distances
+        dist_lag = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ij])
+        dist_lead = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ik])
+        
+        # if neighbours too far away, default to the desired encirclement speed
+        if dist_lead > r_max or dist_lag > r_max:
+            phi_dot_desired_i[0,ii] = phi_dot_desired
+            continue
+        
+        # compute the desired phi-dot       
+        phi_dot_desired_i[0,ii] = phi_dot_i_desired(polar_phi_sorted[ii], polar_phi_sorted[ij], polar_phi_sorted[ik], phi_dot_desired)
+    
+    # convert the angular speeds back to cartesian (in the correct order)
+    # ----------------------------------------------
+    xy_dot_desired_i = np.zeros((3,state.shape[1]))
+    
+    index_proper = 0
+    for ii in polar_phi_argsort:
+        
+        # get angular speed 
+        w_vector = quat.rotate(quat_0,phi_dot_desired_i[0,index_proper]*unit_v)
+        # find the corresponding velo vector
+        v_vector = np.cross(w_vector.ravel(),state_shifted[0:3,ii])
+        # break out into components
+        xy_dot_desired_i[0,ii] = v_vector[0] 
+        xy_dot_desired_i[1,ii] = v_vector[1] 
+        xy_dot_desired_i[2,ii] = v_vector[2] 
+        
+        #fix phiDot
+        phiDot_out[0,ii] = phi_dot_desired_i[0,index_proper]
+        
+        index_proper += 1
+
+    # define new targets for encirclement
+    # ----------------------------------
+    # if we're rotating wrt horizontal 
+    if ref_plane == 'horizontal':
+        targets_encircle[0:3,:] = new_pos_desired_i[:,:]
+        targets_encircle[3:6,:] = -xy_dot_desired_i[:,:] 
+
+    return targets_encircle, phiDot_out, polar_phi_argsort
+
+# useful functions
+def get_params():
     return r_desired, phi_dot_d, ref_plane, quat_0
 
 def compute_desired_sep(r, N):
     theta = np.pi / N  # Half of the central angle
     return 2 * r * np.sin(theta)
+
 
 def sigma_1(z):    
     sigma_1 = np.divide(z,np.sqrt(1+z**2))    
@@ -112,129 +239,5 @@ def centroid(points):
     sum_z = np.sum(points[:, 2])
     centroid = np.array((sum_x/length, sum_y/length, sum_z/length), ndmin = 2)
     return centroid.transpose() 
-
-
-#%% Encirclement calculations
-# ---------------------------
-
-def compute_cmd(states_q, states_p, targets_enc, targets_v_enc, k_node):
-    
-    u_enc = np.zeros((3,states_q.shape[1]))     
-    u_enc[:,k_node] = - c1_d*sigma_1(states_q[:,k_node]-targets_enc[:,k_node])-c2_d*(states_p[:,k_node] - targets_v_enc[:,k_node])    
-    
-    return u_enc[:,k_node]
-    
-def encircle_target(targets, state):
-        
-    # desired rate of encirclement [rad/s]
-    # -----------------------------------
-    phi_dot_desired = phi_dot_d                 
-    
-    # initialise global stuff
-    # -----------------------
-    targets_encircle = targets.copy() 
-    points_i = np.zeros((3,state.shape[1]))
-    temp = np.zeros((3,1))
-    quatern_ = quat.quatjugate(quatern)
-    
-    # Regulation of Radius (position control)
-    # ------------------------------   
-    new_pos_desired_i = np.zeros((3,state.shape[1]))
-    
-    # iterate through each agent
-    for ii in range(0,state.shape[1]):
-   
-        # to rotate with reference to horizontal
-        if enc_plane == 'horizontal':
-            # rotate down to the reference plane
-            points_i[:,ii] = quat.rotate(quatern_,state[0:3,ii]-targets[0:3,ii])+targets[0:3,ii]
-            # now find the desired position projected on the plane
-            temp[0:2,0] = directToCircle(targets[0:2,ii],points_i[0:2,ii],r_desired)
-            temp[2,0] = targets[2,ii] # at altitude
-            # now rotate back
-            new_pos_desired_i[:,ii] = quat.rotate(quatern,temp.ravel()-targets[0:3,ii])+targets[0:3,ii]            
-        
-    # Regulation of Angular speed (velocity control)
-    # ----------------------------------------------   
-    # express state with reference to target
-    state_shifted = state - targets
-        
-    # to rotate with reference to horizontal
-    if enc_plane == 'horizontal':
-        # define a new unit vector, which is perp to plane 
-        unit_v = np.array([0,0,1]).reshape((3,1))
-        # initialize a new state vector
-        state_shifted_new = np.zeros((3,state.shape[1]))
-        # rotate each agent into the reference plane
-        for ij in range(0,state.shape[1]):
-            state_shifted_new[:,ij] = quat.rotate(quatern_,state_shifted[0:3,ij])
- 
-        # convert to polar coordinates
-        polar_r, polar_phi = cart2polar(state_shifted_new[0,:], state_shifted_new[1,:])
-  
-    # sort by phi and save the indicies so we can reassemble
-    polar_phi_sorted = np.sort(polar_phi, axis=0)
-    polar_phi_argsort = np.argsort(polar_phi, axis=0) 
-    
-    # for each vehicle, define a desired angular speed 
-    phi_dot_desired_i = np.zeros((1,state_shifted.shape[1]))
-    phiDot_out = np.zeros((1,state_shifted.shape[1]))
-     
-    # identify leading and lagging 
-    for ii in range(0,state_shifted.shape[1]):
-        # define leading and lagging vehicles (based on angles)
-        if ii == 0:
-            ij = state_shifted.shape[1]-1    
-        else:
-            ij = ii-1 # lagging vehicle
-        
-        if ii == state_shifted.shape[1]-1:
-            ik = 0
-        else:
-            ik = ii+1 # leading vehicle 
-        
-        # compute distances
-        dist_lag = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ij])
-        dist_lead = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ik])
-        
-        # if neighbours too far away, default to the desired encirclement speed
-        if dist_lead > r_max or dist_lag > r_max:
-            phi_dot_desired_i[0,ii] = phi_dot_desired
-            continue
-        
-        # compute the desired phi-dot       
-        phi_dot_desired_i[0,ii] = phi_dot_i_desired(polar_phi_sorted[ii], polar_phi_sorted[ij], polar_phi_sorted[ik], phi_dot_desired)
-    
-    # convert the angular speeds back to cartesian (in the correct order)
-    # ----------------------------------------------
-    xy_dot_desired_i = np.zeros((3,state.shape[1]))
-    
-    index_proper = 0
-    for ii in polar_phi_argsort:
-        
-        # get angular speed 
-        w_vector = quat.rotate(quatern,phi_dot_desired_i[0,index_proper]*unit_v)
-        # find the corresponding velo vector
-        v_vector = np.cross(w_vector.ravel(),state_shifted[0:3,ii])
-        # break out into components
-        xy_dot_desired_i[0,ii] = v_vector[0] 
-        xy_dot_desired_i[1,ii] = v_vector[1] 
-        xy_dot_desired_i[2,ii] = v_vector[2] 
-        
-        #fix phiDot
-        phiDot_out[0,ii] = phi_dot_desired_i[0,index_proper]
-        
-        index_proper += 1
- 
-    # define new targets for encirclement
-    # ----------------------------------
-    # if we're rotating wrt horizontal 
-    if enc_plane == 'horizontal':
-        targets_encircle[0:3,:] = new_pos_desired_i[:,:]
-        targets_encircle[3:6,:] = -xy_dot_desired_i[:,:] 
-
-    return targets_encircle, phiDot_out, polar_phi_argsort
-
-
 
 
