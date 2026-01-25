@@ -71,10 +71,10 @@ np.random.seed(config.random_seed)
 import orchestrator
 import planner.trajectory
 
-Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(config)
-Controller = orchestrator.Controller(config, Agents.state)
-Controller.learning_agents(config.strategy, Learners)
-Trajectory.load_planners(Controller.planners)
+Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(config)    # primary components 
+Controller = orchestrator.Controller(config, Agents.state)                              # controller (includes planners and mixers)
+Controller.learning_agents(config.strategy, Learners)                                   # load learning agents
+Trajectory.load_planners(Controller.planners)                                           # link controller to trajectory 
 
 #%% initialize the data store
 # ---------------------------

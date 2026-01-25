@@ -162,6 +162,11 @@ class Controller:
             if config.strategy == 'circle':
                 from planner.techniques import encirclement_tools 
                 self.planners['circle'] = encirclement_tools.Planner(config._data)
+            if config.strategy == 'lemni':
+                from planner.techniques import encirclement_tools 
+                from planner.techniques import lemni_tools
+                self.planners['circle']     = encirclement_tools.Planner(config._data)
+                self.planners['lemni']      = lemni_tools.Planner(config._data, self.planners['circle'])
 
         
         # cao has it's own class and a separate graph for connected (in addition to in range)    
@@ -299,8 +304,9 @@ class Controller:
             # ---------------------------- 
             if tactic_type == 'lemni':    
                 
-                u_enc[:,k_node] = lemni_tools.compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
-                
+                #u_enc[:,k_node] = lemni_tools.compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
+                u_enc[:,k_node] = self.planners['lemni'].compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
+
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
                 #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)

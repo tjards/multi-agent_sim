@@ -20,7 +20,7 @@ import config.config as cfg
 #%% Useful functions
 # -------------------
 
-# Load config at module initialization (for legacy module-level functions)
+# Load config at module initialization (for legacy module-level functions) - delete later 
 config_loaded = cfg.load_config('config/config.json')
 encircle_config = cfg.get_config(config_loaded, 'planner.techniques.circle')
 r_desired = encircle_config.get('r_desired', 5)

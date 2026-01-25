@@ -8,12 +8,12 @@
   
   "simulation": {
     "Ti": 0,
-    "Tf": 30,
+    "Tf": 45,
     "Ts": 0.02,
     "dimens": 3,
     "verbose": 1,
     "system": "swarm",
-    "strategy": "circle",
+    "strategy": "lemni",
     "random_seed": 45,
     "f": 0,
     "experimental_save": false
@@ -76,8 +76,8 @@
       
       "lemni": {
         "c1_d": 1.0,
-        "c2_d": 1.0,
-        "learning": "CALA",
+        "c2_d": 2.0,
+        "learning": null,
         "learning_axes": "xz",
         "learning_coupling": true,
         "lemni_type": 0

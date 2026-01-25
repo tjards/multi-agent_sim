@@ -34,6 +34,7 @@ class Trajectory:
     def update(self, tactic_type, state, targets, t, i, **kwargs):
 
         # later: I can remove if statements and just pull the string from tactic_type
+        # later: standardize the planner method calls and outputs ... perhaps... p, q, info = plan()
         
         #if flocking
         if tactic_type == 'reynolds' or tactic_type == 'saber' or tactic_type == 'starling' or tactic_type == 'pinning' or tactic_type == 'shep':
@@ -49,8 +50,8 @@ class Trajectory:
             lemni_all = kwargs.get('lemni_all')
             learn_actions = kwargs.get('lemni_learn_actions')
                 
-            self.trajectory, self.lemni, self.sorted_neighs = lemni_tools.lemni_target(lemni_all,state,targets,i,t,learn_actions)
-         
+            #self.trajectory, self.lemni, self.sorted_neighs = lemni_tools.lemni_target(lemni_all,state,targets,i,t,learn_actions)
+            self.trajectory, self.lemni, self.sorted_neighs = self.planners['lemni'].lemni_target(lemni_all,state,targets,i,t,learn_actions)
             
         elif tactic_type == 'cao':
             
