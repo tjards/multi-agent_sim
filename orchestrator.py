@@ -304,16 +304,10 @@ class Controller:
             # ---------------------------- 
             if tactic_type == 'lemni':    
                 
-                #u_enc[:,k_node] = lemni_tools.compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
                 u_enc[:,k_node] = self.planners['lemni'].compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
-                
-                # steal obstacle avoidance term from saber
-                # ----------------------------------------
-                #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                 u_obs[:,k_node] = self.planners['saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
 
             # Starling

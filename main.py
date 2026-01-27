@@ -124,7 +124,7 @@ while round(t,3) < config.Tf:
     # Compute Trajectory
     # --------------------
 
-    my_kwargs = planner.trajectory.update_trajectory_args(Database, Agents, Trajectory, Controller, config.strategy, my_kwargs)     
+    my_kwargs = planner.trajectory.update_trajectory_args(Agents, Trajectory, Controller, config.strategy, my_kwargs)     
     Trajectory.update(config.strategy, Agents.state, Targets.targets, t, i, **my_kwargs)
                         
     # Compute the commads (next step)

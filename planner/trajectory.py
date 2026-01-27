@@ -33,9 +33,6 @@ class Trajectory:
 
     def update(self, tactic_type, state, targets, t, i, **kwargs):
 
-        # later: I can remove if statements and just pull the string from tactic_type
-        # later: standardize the planner method calls and outputs ... perhaps... p, q, info = plan()
-        
         #if flocking
         if tactic_type == 'reynolds' or tactic_type == 'saber' or tactic_type == 'starling' or tactic_type == 'pinning' or tactic_type == 'shep':
             self.trajectory = targets.copy() 
@@ -47,24 +44,19 @@ class Trajectory:
         # if lemniscating
         elif tactic_type == 'lemni':
             
-            lemni_all = kwargs.get('lemni_all')
             learn_actions = kwargs.get('lemni_learn_actions')
-                
-            #self.trajectory, self.lemni, self.sorted_neighs = lemni_tools.lemni_target(lemni_all,state,targets,i,t,learn_actions)
-            self.trajectory, self.lemni, self.sorted_neighs = self.planners['lemni'].lemni_target(lemni_all,state,targets,i,t,learn_actions)
+            self.trajectory, self.lemni, self.sorted_neighs = self.planners['lemni'].lemni_target(state,targets,i,t,learn_actions)
             
         elif tactic_type == 'cao':
             
             self.trajectory = targets.copy()
             
 # helpers
-def update_trajectory_args(Database, Agents, Trajectory, Controller, tactic_type, my_kwargs):
+def update_trajectory_args(Agents, Trajectory, Controller, tactic_type, my_kwargs):
     
     # we'll need the record of lemni parameters  
     if tactic_type == 'lemni':
         
-        # only need to pass last timestep, so reduce this later 
-        my_kwargs['lemni_all'] = Database.lemni_all
         my_kwargs['sorted_neighs'] = Trajectory.sorted_neighs
         
         # new bidrirectional controller
