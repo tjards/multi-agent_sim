@@ -42,10 +42,10 @@ tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
 #if tactic_type == 'circle':
     #from planner.techniques import encirclement_tools as encircle_tools
     #from planner.techniques import saber_tools
-if tactic_type == 'lemni':
-    from planner.techniques import lemni_tools
-    from planner.techniques import saber_tools
-elif tactic_type == 'reynolds':
+#if tactic_type == 'lemni':
+    #from planner.techniques import lemni_tools
+    #from planner.techniques import saber_tools
+if tactic_type == 'reynolds':
     from planner.techniques import reynolds_tools
     from planner.techniques import saber_tools
 #elif tactic_type == 'saber':
@@ -153,7 +153,8 @@ class Controller:
         if config.strategy == 'shep':
             self.shepherdClass = shep.Shepherding(state) 
         
-        if config.strategy in {'saber', 'circle', 'lemni', 'reynolds'}:
+        # the planners that rely on saber tools for obstacle avoidance
+        if config.strategy in ['saber', 'circle', 'lemni', 'reynolds']:
             from planner.techniques import saber_tools
             self.planners['saber'] = saber_tools.Planner(config._data)
             if config.strategy == 'saber':

@@ -35,7 +35,7 @@ agents_min_coh  = 2     # min number of agents
 
 # key ranges  
 r               = 10    # range at which neighbours can be sensed  
-r_prime         = 10     # range at which obstacles can be sensed
+r_prime         = 5     # range at which obstacles can be sensed
 
 # save configs
 # --------------

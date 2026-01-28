@@ -41,22 +41,22 @@ class Planner:
  
         # load the configs
         saber_config =cfg.get_config(config, 'planner.techniques.saber')
-        self.pi      = saber_config['pi']
-        self.a       = saber_config['a']
-        self.b       = saber_config['b']
-        self.c       = np.divide(np.abs(self.a-self.b),np.sqrt(4*self.a*self.b)) 
+        self.pi      = saber_config['pi'] # value of pi
+        self.a       = saber_config['a']  # uneven sigmoid parameter a
+        self.b       = saber_config['b']  # uneven sigmoid parameter b
+        self.c       = np.divide(np.abs(self.a-self.b),np.sqrt(4*self.a*self.b)) # uneven sigmoid parameter c
         self.eps     = saber_config['eps']
-        self.h       = saber_config['h']
-        self.c1_a    = saber_config['c1_a']
-        self.c2_a    = saber_config['c2_a']
-        self.c1_b    = saber_config['c1_b']
-        self.c2_b    = saber_config['c2_b']
-        self.c1_g    = saber_config['c1_g']
-        self.c2_g    = saber_config['c2_g']
-        self.d       = saber_config['d']
-        self.d_prime = saber_config['d_prime']
-        self.r       = saber_config['r']
-        self.r_prime = saber_config['r_prime']
+        self.h       = saber_config['h'] # bump function parameter h
+        self.c1_a    = saber_config['c1_a'] # interaction gain, position
+        self.c2_a    = saber_config['c2_a'] # interaction gain, velocity
+        self.c1_b    = saber_config['c1_b'] # obstacle avoidance gain, position
+        self.c2_b    = saber_config['c2_b'] # obstacle avoidance gain, velocity
+        self.c1_g    = saber_config['c1_g'] # navigation gain, position
+        self.c2_g    = saber_config['c2_g'] # navigation gain, velocity
+        self.d       = saber_config['d']        # desired inter-agent distance
+        self.d_prime = saber_config['d_prime']  # desired obstacle distance
+        self.r       = saber_config['r']        # range at which neighbours can be sensed
+        self.r_prime = saber_config['r_prime']  # range at which obstacles can be sensed
 
     # methods that depend on class attributes/methods
     def sigma_norm(self, z):    

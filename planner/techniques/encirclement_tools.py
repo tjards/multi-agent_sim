@@ -68,13 +68,13 @@ class Planner:
         circle_config = cfg.get_config(config_data, 'planner.techniques.circle')
         
         # Store hyperparameters
-        self.c1_d = circle_config.get('c1_d', 2)
-        self.c2_d = circle_config.get('c2_d', 2*np.sqrt(2))
-        self.r_max = circle_config.get('r_max', 50)
-        self.r_desired = circle_config.get('r_desired', 5)
-        self.phi_dot_d = circle_config.get('phi_dot_d', 0.05)
-        self.ref_plane = circle_config.get('ref_plane', 'horizontal')
-        TEMP_quat_0_0 = circle_config.get('quat_0_0', 0.0)
+        self.c1_d = circle_config.get('c1_d', 2)                # position gain
+        self.c2_d = circle_config.get('c2_d', 2*np.sqrt(2))     # velocity gain
+        self.r_max = circle_config.get('r_max', 50)             # max sensing range 
+        self.r_desired = circle_config.get('r_desired', 5)      # desired encirclement radius
+        self.phi_dot_d = circle_config.get('phi_dot_d', 0.05)   # desired angular speed [rad/s]
+        self.ref_plane = circle_config.get('ref_plane', 'horizontal') # reference plane for encirclement 
+        TEMP_quat_0_0 = circle_config.get('quat_0_0', 0.0)      # orientation of disc
         TEMP_quat_0_1 = circle_config.get('quat_0_1', 0.0)
         TEMP_quat_0_2 = circle_config.get('quat_0_2', 0.0)
         self.quat_0 = quat.e2q(np.array([TEMP_quat_0_0, TEMP_quat_0_1, TEMP_quat_0_2]))

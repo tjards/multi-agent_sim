@@ -8,13 +8,13 @@
   
   "simulation": {
     "Ti": 0,
-    "Tf": 45,
+    "Tf": 30,
     "Ts": 0.02,
     "dimens": 3,
     "verbose": 1,
     "system": "swarm",
-    "strategy": "lemni",
-    "random_seed": 45,
+    "strategy": "reynolds",
+    "random_seed": 42,
     "f": 0,
     "experimental_save": false
   },

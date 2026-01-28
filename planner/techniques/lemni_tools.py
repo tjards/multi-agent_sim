@@ -23,20 +23,19 @@ from .utils import quaternions as quat
 '''
 lemni_type descriptions:
             
-    # Explcit definition of rotation (https://ieeexplore.ieee.org/document/9931405)
+    # Implicit definition of rotation (https://ieeexplore.ieee.org/document/9931405)
     #   0 = lemniscate of Gerono - 'surveillance (/^\)'
     #   1 = lemniscate of Gerono - 'rolling (/^\ -> \_/)'
     #   2 = lemniscate of Gerono - 'mobbing (\_/)'
         
-    # Implicit definition (see https://github.com/tjards/twisted_circles)
+    # Explicit definition (see https://github.com/tjards/twisted_circles)
     #   3 = lemniscate of Gerono (with shift)
     #   4 = dumbbell curve 
     #   5 = lemniscate of Bernoulli
 
 '''                      
 
-#%% helpers 
-    
+# helpers 
 def sigma_1(z):    
     sigma_1 = np.divide(z,np.sqrt(1+z**2))    
     return sigma_1
@@ -89,12 +88,12 @@ class Planner:
         lemni_config = cfg.get_config(config_data, 'planner.techniques.lemni')
 
         # get lemni hyperparameters
-        self.c1_d               = lemni_config.get('c1_d', 1.0)
-        self.c2_d               = lemni_config.get('c2_d', 2.0)
-        self.lemni_type         = lemni_config.get('lemni_type', 0)
-        self.learning           = lemni_config.get('learning', None)
-        self.learning_axes      = lemni_config.get('learning_axes', 'xz')
-        self.learning_coupling  = lemni_config.get('learning_coupling', True)
+        self.c1_d               = lemni_config.get('c1_d', 1.0)         # position gain 
+        self.c2_d               = lemni_config.get('c2_d', 2.0)         # velocity gain
+        self.lemni_type         = lemni_config.get('lemni_type', 0)     # lemni type (see above)
+        self.learning           = lemni_config.get('learning', None)    # learning method (None, 'CALA')
+        self.learning_axes      = lemni_config.get('learning_axes', 'xz')       # axis along which to learn (nominally, xz)
+        self.learning_coupling  = lemni_config.get('learning_coupling', True)   # whether to couple learning actions (True/False)
         self.nVeh               = cfg.get_config(config_data, 'agents.nAgents')
         self.last_twist         = np.zeros([2, self.nVeh])  # initialize twist storage
 
@@ -194,20 +193,15 @@ class Planner:
             # do the untwist
             # -------------------------- #
 
-            # IMPLICIT - untwist 
+            # untwist 
             if self.lemni_type < 3:
                 untwist_quat = self.twist_implicit(last_twist_x, last_twist_z, n, invert=True)
-
-            # EXPLICIT - untwist
             elif self.lemni_type >= 3 and self.lemni_type <=5:
                 untwist_quat = twist_explicit(untwist, self.lemni_type, invert = True)
-
-            # UNDEFINED - falls back to circle 
             else:
                 # bypass
                 untwist_quat =  np.zeros(4)
                 untwist_quat[0] = 1
-                twist_quat =  untwist_quat
 
             # pull out states
             states_q_n = state[0:3,n]
@@ -271,32 +265,29 @@ class Planner:
             # do the twist
             # -------------------------- #
 
-            # IMPLICIT - twist 
+            # twist 
             if self.lemni_type < 3:
                 twist_quat = self.twist_implicit(lemni[0, :], lemni[1, :], m, invert=False)
-
-            # EXPLICIT - twist
             elif self.lemni_type >= 3 and self.lemni_type <=5:
                 twist_quat = twist_explicit(lemni[0, m], self.lemni_type, invert = False)
 
             # UNDEFINED - falls back to circle 
             else:
                 # bypass
-                untwist_quat =  np.zeros(4)
-                untwist_quat[0] = 1
-                twist_quat =  untwist_quat
+                twist_quat =  np.zeros(4)
+                twist_quat[0] = 1
       
             # twist positions
             # ---------------
             
             # pull out states/targets
-            states_q_i = state[0:3,m]
-            targets_i = targets[0:3,m]
-            target_encircle_i = targets_encircle[0:3,m]
+            states_q_i          = state[0:3,m]
+            targets_i           = targets[0:3,m]
+            target_encircle_i   = targets_encircle[0:3,m]
             
             # get the vector of agent position wrt target
-            state_m_shifted = states_q_i - targets_i
-            target_encircle_shifted = target_encircle_i - targets_i 
+            state_m_shifted             = states_q_i - targets_i
+            target_encircle_shifted     = target_encircle_i - targets_i 
     
             #twist_quat = quat.e2q(twist*unit_lem.ravel())        
             twist_pos = quat.rotate(twist_quat,target_encircle_shifted)+targets_i 
@@ -310,14 +301,14 @@ class Planner:
             # ----------------
             
             # generalize to arbitrary planes
-            w_vector = phi_dot_desired_i[0,m]*self.twist_perp 
-            w_vector_twisted =  quat.rotate(twist_quat,w_vector) 
+            w_vector            = phi_dot_desired_i[0,m]*self.twist_perp 
+            w_vector_twisted    =  quat.rotate(twist_quat,w_vector) 
             # rotate into embedding plane
             state_m_shifted_emb = quat.rotate(self.quat_0_, state_m_shifted.reshape(3,1)).ravel()
-            w_vector_emb = quat.rotate(self.quat_0_, w_vector_twisted).ravel()
-            v_emb = np.cross(w_vector_emb, state_m_shifted_emb)
+            w_vector_emb        = quat.rotate(self.quat_0_, w_vector_twisted).ravel()
+            v_emb               = np.cross(w_vector_emb, state_m_shifted_emb)
             # rotate back
-            twist_v_vector = quat.rotate(self.circle.quat_0, v_emb.reshape(3,1)).ravel()
+            twist_v_vector      = quat.rotate(self.circle.quat_0, v_emb.reshape(3,1)).ravel()
             
             targets_encircle[3,m] =  - twist_v_vector[0] 
             targets_encircle[4,m] =  - twist_v_vector[1] 
