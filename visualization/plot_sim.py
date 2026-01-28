@@ -184,7 +184,7 @@ def plotMe(data_file_path):
         
     #%% Energy
     # --------
-    plot_energy = True
+    plot_energy = False
     if plot_energy:
     
         fig, ax = plt.subplots()

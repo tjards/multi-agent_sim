@@ -60,7 +60,7 @@ from config.configs_tools import update_configs
 # ------------------
 
 # learning parameters
-hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
+hetero_lattice      = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
 
 learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
 learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
@@ -86,14 +86,22 @@ d       = None
 d_min   = 5         # default 5
 
 # import olfat-saber stuff as baseline
-from planner.techniques.saber_tools import velocity_alignment as alignment_term
-from planner.techniques.saber_tools import navigation as navigation_term
-from planner.techniques.saber_tools import compute_cmd_b as obstacle_term
-from planner.techniques.saber_tools import r
-from planner.techniques.saber_tools import d
+# from planner.techniques.saber_tools import velocity_alignment as alignment_term
+# from planner.techniques.saber_tools import navigation as navigation_term
+# from planner.techniques.saber_tools import compute_cmd_b as obstacle_term
+# from planner.techniques.saber_tools import r
+# from planner.techniques.saber_tools import d
+
+from planner.techniques.pinning_utils import velocity_alignment as alignment_term
+from planner.techniques.pinning_utils import navigation as navigation_term
+from planner.techniques.pinning_utils import compute_cmd_b as obstacle_term
+from planner.techniques.pinning_utils import r
+from planner.techniques.pinning_utils import d
+
 
 # import the gradients
-from planner.techniques.saber_tools import gradient as cohesion_term_sab
+#from planner.techniques.saber_tools import gradient as cohesion_term_sab
+from planner.techniques.pinning_utils import gradient as cohesion_term_sab
 from planner.techniques.gradient_tools import grad_morse_gradient as cohesion_term_mor
 from planner.techniques.gradient_tools import grad_lennard_jones as cohesion_term_len
 from planner.techniques.gradient_tools import  grad_gromacs_soft_core as cohesion_term_gro

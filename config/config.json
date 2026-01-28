@@ -8,12 +8,12 @@
   
   "simulation": {
     "Ti": 0,
-    "Tf": 30,
+    "Tf": 90,
     "Ts": 0.02,
-    "dimens": 3,
+    "dimens": 2,
     "verbose": 1,
     "system": "swarm",
-    "strategy": "reynolds",
+    "strategy": "pinning",
     "random_seed": 42,
     "f": 0,
     "experimental_save": false
@@ -45,7 +45,7 @@
   
   "orchestrator": {
     "pin_update_rate": 10,
-    "pin_selection_method": "nopins",
+    "pin_selection_method": "degree_leafs",
     "criteria_table": {
       "radius": true,
       "aperature": false
