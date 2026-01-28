@@ -45,12 +45,12 @@ tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
 #if tactic_type == 'lemni':
     #from planner.techniques import lemni_tools
     #from planner.techniques import saber_tools
-if tactic_type == 'reynolds':
-    from planner.techniques import reynolds_tools
-    from planner.techniques import saber_tools
+# if tactic_type == 'reynolds':
+#     from planner.techniques import reynolds_tools
+#     from planner.techniques import saber_tools
 #elif tactic_type == 'saber':
 #    from planner.techniques import saber_tools
-elif tactic_type == 'starling':
+if tactic_type == 'starling':
     from planner.techniques import starling_tools
 elif tactic_type == 'shep':
     from planner.techniques import shepherding as shep
@@ -157,6 +157,9 @@ class Controller:
         if config.strategy in ['saber', 'circle', 'lemni', 'reynolds']:
             from planner.techniques import saber_tools
             self.planners['saber'] = saber_tools.Planner(config._data)
+            if config.strategy == 'reynolds':
+                from planner.techniques import reynolds_tools
+                self.planners['reynolds'] = reynolds_tools.Planner(config._data)
             if config.strategy == 'saber':
                 #self.lattice = self.planners['saber'].return_ranges()*np.ones((state.shape[1],state.shape[1]))
                 self.lattice = self.planners['saber'].d*np.ones((state.shape[1],state.shape[1]))
@@ -255,8 +258,8 @@ class Controller:
 
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'reynolds':
-            distances = reynolds_tools.order(state[0:3,:])
-            
+            distances = self.planners['reynolds'].order(state[0:3,:])
+   
         # for each vehicle/node/agent in the network
         # ------------------------------------
         for k_node in range(state[0:3,:].shape[1]): 
@@ -264,12 +267,10 @@ class Controller:
             # Reynolds Flocking
             # ------------------
             if tactic_type == 'reynolds':
-               
-               cmd_i[:,k_node] = reynolds_tools.compute_cmd( targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, distances)
-               
+               cmd_i[:,k_node] = self.planners['reynolds'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, distances)
+
                # steal obstacle avoidance term from saber
                # ----------------------------------------
-               #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                u_obs[:,k_node] = self.planners['saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
             
             # Saber Flocking
@@ -278,17 +279,14 @@ class Controller:
                    
                 # Lattice Flocking term (phi_alpha)
                 # ---------------------------------  
-                #u_int[:,k_node] = saber_tools.compute_cmd_a(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)    
                 u_int[:,k_node] = self.planners['saber'].compute_cmd_a(state[0:3,:], state[3:6,:], k_node)
 
                 # Navigation term (phi_gamma)
                 # ---------------------------
-                #u_nav[:,k_node] = saber_tools.compute_cmd_g(state[0:3,:], state[3:6,:],  targets[0:3,:], targets[3:6,:], k_node)
                 u_nav[:,k_node] = self.planners['saber'].compute_cmd_g(state[0:3,:], state[3:6,:], targets[0:3,:], targets[3:6,:], k_node)              
                 
                 # Obstacle Avoidance term (phi_beta)
                 # ---------------------------------   
-                #u_obs[:,k_node] = saber_tools.compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                 u_obs[:,k_node] = self.planners['saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
 
             # Encirclement term (phi_delta)
