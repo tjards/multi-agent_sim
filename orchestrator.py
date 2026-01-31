@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+""" 
 
 This module computes the commands for various swarming strategies 
 
@@ -52,8 +52,8 @@ tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
 #    from planner.techniques import saber_tools
 if tactic_type == 'starling':
     from planner.techniques import starling_tools
-elif tactic_type == 'shep':
-    from planner.techniques import shepherding as shep
+#elif tactic_type == 'shep':
+#    from planner.techniques import shepherding as shep
 elif tactic_type == 'pinning':
     from planner.techniques import pinning_RL_tools as pinning_tools
     planner_configs = cfg.get_config(config_loaded, 'planner.techniques.pinning')
@@ -151,7 +151,9 @@ class Controller:
         
         # sheparding has its own class (differentiating shepherd and herd)
         if config.strategy == 'shep':
-            self.shepherdClass = shep.Shepherding(state) 
+            #self.shepherdClass = shep.Shepherding(state)
+            from planner.techniques import shepherding
+            self.planners['shep'] = shepherding.Planner(config._data, state) 
         
         # the planners that rely on saber tools for obstacle avoidance
         if config.strategy in ['saber', 'circle', 'lemni', 'reynolds']:
@@ -353,12 +355,15 @@ class Controller:
                 # ----------------------------------------------------------
 
                 # compute the commands
-                self.shepherdClass.compute_cmd(targets, k_node)
-        
+                self.planners['shep'].compute_cmd(targets, k_node)
+                
                 # pull out results
-                cmd_i[:,k_node]                 = self.shepherdClass.cmd
-                self.pin_matrix[k_node, k_node] = self.shepherdClass.index[self.shepherdClass.i] # note: by moving pin selection to outer loop, i may have messed this up
-  
+                cmd_i[:,k_node]                 = self.planners['shep'].cmd
+                
+                # assign the pin matrix (roles)
+                self.pin_matrix[k_node, k_node] = self.planners['shep'].index[k_node]
+
+
             # Cao flocking 
             # ------------
             if tactic_type == 'cao':
