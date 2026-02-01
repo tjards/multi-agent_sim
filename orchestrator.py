@@ -50,11 +50,11 @@ tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
 #     from planner.techniques import saber_tools
 #elif tactic_type == 'saber':
 #    from planner.techniques import saber_tools
-if tactic_type == 'starling':
-    from planner.techniques import starling_tools
+#if tactic_type == 'starling':
+#    from planner.techniques import starling_tools
 #elif tactic_type == 'shep':
 #    from planner.techniques import shepherding as shep
-elif tactic_type == 'pinning':
+if tactic_type == 'pinning':
     from planner.techniques import pinning_RL_tools as pinning_tools
     planner_configs = cfg.get_config(config_loaded, 'planner.techniques.pinning')
 elif tactic_type == 'cao':
@@ -127,8 +127,8 @@ class Controller:
         # general purpose counter (nominally, pin reset)
         self.counter = 0                
         
-        # [legacy] general purpose parameters variable (retire this)
-        self.params = np.zeros((4,config.nAgents))             # store dynamic parameters
+        # [legacy] general purpose parameters variable (retire this eventually, just used for starling now)
+        #self.params = np.zeros((4,config.nAgents))             # store dynamic parameters
         
         # lattice parameters (not always used, move into pinning) 
         self.lattice = np.zeros((config.nAgents,config.nAgents))      # stores lattice parameters
@@ -149,6 +149,12 @@ class Controller:
                 i+=1
             #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
         
+        # starling
+        if config.strategy == 'starling':
+            from planner.techniques import starling_tools
+            self.planners['starling'] = starling_tools.Planner(config._data)
+            #self.params = np.zeros((4, config.nAgents)) 
+
         # sheparding has its own class (differentiating shepherd and herd)
         if config.strategy == 'shep':
             #self.shepherdClass = shep.Shepherding(state)
@@ -205,7 +211,7 @@ class Controller:
         u_nav = np.zeros((3,state[0:3,:].shape[1]))     # navigation
         u_enc = np.zeros((3,state[0:3,:].shape[1]))     # encirclement 
         cmd_i = np.zeros((3,state[0:3,:].shape[1]))     # store the commands
-        self.params = np.zeros((state[0:3,:].shape[1],state[0:3,:].shape[1])) # store pins 
+        #self.params = np.zeros((state[0:3,:].shape[1],state[0:3,:].shape[1])) # store pins 
         
         # ************* #
         # GRAPH UPDATES #
@@ -316,8 +322,9 @@ class Controller:
             if tactic_type == 'starling':
                
                 # compute command 
-                cmd_i[:,k_node], self.params = starling_tools.compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, self.params, 0.02)
-            
+                #cmd_i[:,k_node], self.params = starling_tools.compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, self.params, 0.02)
+                cmd_i[:, k_node] = self.planners['starling'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node)
+
             # Pinning
             # --------
             if tactic_type == 'pinning':
