@@ -162,5 +162,29 @@
         "eps": 1e-05,
         "sigma": 4.566707989706994,
         "sigma_sqr": 20.854821863253694
+    },
+    "cao": {
+        "d": 5,
+        "r": 7.0710678118654755,
+        "cmd_min": -100,
+        "cmd_max": 100,
+        "gain_p": 1,
+        "gain_v": 0,
+        "kv": 3,
+        "ka": 1,
+        "kr": 2,
+        "kx": 2,
+        "d_bar": 3.5355339059327378,
+        "i_cont": 0.2,
+        "gamma_kp": 2,
+        "H_min": 100,
+        "mode_malicious": 1,
+        "mal_type": "collider",
+        "mal_kv": -50,
+        "mal_ka": 200,
+        "mal_kr": -10,
+        "mal_kv_hat": -6.0,
+        "mal_ka_hat": 68.0,
+        "mal_kr_hat": -5.6000000000000005
     }
 }

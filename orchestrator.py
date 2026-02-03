@@ -104,6 +104,7 @@ class Controller:
 
         # store config
         self.config = config
+        self.Ts     = config.Ts
 
         # initialize graphs
         criteria_table = cfg.get_config(config._data, 'orchestrator.criteria_table')

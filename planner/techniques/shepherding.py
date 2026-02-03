@@ -118,12 +118,13 @@ class Planner:
         
         self.state    = state
         shep_config = cfg.get_config(config, 'planner.techniques.shep')
-        
-        
         self.nShepherds = shep_config.get('nShepherds', 3)
 
+        agents_config = cfg.get_config(config, 'agents')
+        self.nAgents  = agents_config.get('nAgents', None)
+
         # Herd Parameters 
-        self.nHerd      = self.state.shape[1] - self.nShepherds
+        self.nHerd      = self.nAgents - self.nShepherds
         self.r_R = shep_config.get('r_R', 3)      # repulsion radius
         self.r_O = shep_config.get('r_O', 5)      # orientation radius
         self.r_A = shep_config.get('r_A', 7)      # attraction radius
@@ -148,12 +149,15 @@ class Planner:
         self.type_shepherd = shep_config.get('type_shepherd', 'haver')
         self.type_avoid = shep_config.get('type_avoid', 'ref_point')
         self.cmd_adjust = shep_config.get('cmd_adjust', 0.02)
-        
+        self.spawned = False
+
         # instantiate the herd and shepherds
         self.build_index()
         self.herd       = self.Herd(self)
         self.shepherds  = self.Shepherds(self) 
-        
+    
+    #def spawn(self):
+
         # compute distances between all
         self.compute_seps()
         
@@ -163,6 +167,7 @@ class Planner:
         
         # cmd adjustment (based on sample time, later, import this)
         self.cmd = np.zeros((1,3))
+
 
     # define separation
     # ------------------ 
@@ -181,7 +186,8 @@ class Planner:
     def build_index(self):
 
         # check to ensure herd is big enough
-        if self.nShepherds > (self.state.shape[1]-1):
+        #if self.nShepherds > (self.state.shape[1]-1):
+        if self.nShepherds > (self.nAgents-1):
             raise ValueError("there needs to be at least one member in the herd ")
                    
         # random, for now (later, based on conditions)
@@ -193,6 +199,11 @@ class Planner:
     #def compute_cmd(self, Targets, i):
     def compute_cmd(self, targets, i):
         
+        #if not self.spawned:
+        #    self.state = state
+        #    self.spawn()
+        #    self.spawned = True 
+
         # store the agent being examined
         self.i = i
         
