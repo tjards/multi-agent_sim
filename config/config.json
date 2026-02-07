@@ -116,12 +116,6 @@
           "H_min": 100,
           "mode_malicious": 1,
           "mal_type": "collider",
-          "mal_kv": -50,
-          "mal_ka": 200,
-          "mal_kr": -10,
-          "mal_kv_hat": -6,
-          "mal_ka_hat": 68,
-          "mal_kr_hat": -5.6,
           "filter_v_gain": 50
       },
       

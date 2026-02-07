@@ -156,6 +156,13 @@ class Controller:
             self.planners['starling'] = starling_tools.Planner(config._data)
             #self.params = np.zeros((4, config.nAgents)) 
 
+        if config.strategy == 'cao':
+            from planner.techniques import cao_tools
+            self.planners['cao'] = cao_tools.Planner(config._data, state[0:3,:], state[3:6,:])
+            #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
+            self.lattice = self.planners['cao'].d*np.ones((state.shape[1],state.shape[1]))
+            self.pin_matrix = np.ones((config.nAgents,config.nAgents))
+
         # sheparding has its own class (differentiating shepherd and herd)
         if config.strategy == 'shep':
             #self.shepherdClass = shep.Shepherding(state)
@@ -183,10 +190,10 @@ class Controller:
 
         
         # cao has it's own class and a separate graph for connected (in addition to in range)    
-        if config.strategy == 'cao':
-            self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
-            self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
-            self.pin_matrix = np.ones((config.nAgents,config.nAgents))
+        #if config.strategy == 'cao':
+        #    self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
+        #    self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
+        #    self.pin_matrix = np.ones((config.nAgents,config.nAgents))
             
    
     # integrate learninging agents (learning updates happen at the Controller object)
@@ -233,7 +240,8 @@ class Controller:
                 r_matrix = self.planners['circle'].desired_separation*np.ones((state.shape[1],state.shape[1]))
 
             elif tactic_type == 'cao':
-                r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                #r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                r_matrix = self.planners['cao'].r*np.ones((state.shape[1],state.shape[1]))
                 # new, define a different graph for "connected", which is slightly different than "in range"
                 #separation_matrix = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
                 self.Graphs_connectivity.update_A(state[0:3,:], self.lattice+1, **kwargs_cmd)
@@ -382,10 +390,12 @@ class Controller:
                 kwargs_cao['pin_matrix']  = self.pin_matrix
                 kwargs_cao['Ts'] = self.Ts
                 #cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
-                cmd_i[:,k_node] = self.caoClass.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
+                #cmd_i[:,k_node] = self.caoClass.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
                 #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
                 #print(self.caoClass.status)
                 #print(self.caoClass.layer)
+
+                cmd_i[:,k_node] = self.planners['cao'].compute_cmd(targets[0:3,:], state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
 
             
             # Apply controller learning (move all this inside learner later)
