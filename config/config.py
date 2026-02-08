@@ -45,6 +45,7 @@ class Config:
         
         data = load_config(config_path)
         object.__setattr__(self, '_data', data)
+        object.__setattr__(self, 'config_path', config_path)
         
         try:
             # auto-extract all params from specified sections

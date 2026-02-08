@@ -16,13 +16,13 @@ import os
 import json
 import config.configs_tools as configs_tools
 import numpy as np
-config_path=configs_tools.config_path
+#config_path=configs_tools.config_path
 
 
 # load configs
 # ------------
 
-def initialize(Agents, tactic_type, learning_ctrl, Ts):
+def initialize(Agents, tactic_type, learning_ctrl, Ts, config_path):
     
     Learners = {}
     
@@ -46,16 +46,20 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
     # pinning control case
     if tactic_type == 'pinning':
         
-        from planner.techniques import pinning_RL_tools as pinning_tools
-        
-        pinning_tools.update_pinning_configs()
-        #with open(os.path.join("config", "configs.json"), 'r') as planner_pinning_tests:
         with open(config_path, 'r') as planner_pinning_tests:
             configs = json.load(planner_pinning_tests)
-            planner_configs = configs['pinning']
+            planner_configs = configs['planner']['techniques']['pinning']
             
-            # need one learner to achieve consensus on lattice size
+            # see what kind of learning is enabled
             lattice_consensus = planner_configs['hetero_lattice']
+            lattice_learner = planner_configs['learning']
+
+            if lattice_learner == 1 and lattice_consensus != 1:
+                print('Warning: learning lattice requires hetero_lattice enabled. Enforcing hetero_lattice=1.')
+                planner_configs['hetero_lattice'] = 1
+                lattice_consensus = 1
+
+
             if lattice_consensus == 1:
                 import learner.consensus_lattice as consensus_lattice
 
@@ -84,6 +88,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
                     Learners['learning_lattice'] = Learning_agent
             
             # see if I have to integrate different potential functions (legacy - remove)
+            '''
             potential_function_learner = planner_configs['hetero_gradient']
             if potential_function_learner == 1:
                 
@@ -94,6 +99,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts):
                 
                 # load
                 Learners['estimator_gradients'] = Gradient_agent
+            '''
       
     
     configs_tools.update_orch_configs(config_path,learner_objs=Learners)

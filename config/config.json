@@ -1,273 +1,258 @@
 {
-  "project": {
-    "name": "Multi-Agent Swarm Simulator",
-    "description": "Decentralized coordination of autonomous agents",
-    "author": "tjards",
-    "version": "2.0"
-  },
-  
-  "simulation": {
-    "Ti": 0,
-    "Tf": 30,
-    "Ts": 0.02,
-    "dimens": 3,
-    "verbose": 1,
-    "system": "swarm",
-    "strategy": "cao",
-    "random_seed": 42,
-    "f": 0,
-    "experimental_save": false
-  },
-  
-  "agents": {
-    "nAgents": 13,
-    "dynamics": "double_integrator",
-    "max_velocity": 2.0,
-    "communication_range": 5.0,
-    "control_gain": 0.5,
-    "quadcopter": {
-      "enabled": false,
-      "mass": 1.0,
-      "gravity": 9.81,
-      "motor_max_thrust": 20.0
-    }
-  },
-  
-  "targets": {
-    "target_type": "static",
-    "movement_speed": 0.5
-  },
-  
-  "obstacles": {
-    "num_obstacles": 0,
-    "obstacle_type": "circular"
-  },
-  
-  "orchestrator": {
-    "pin_update_rate": 10,
-    "pin_selection_method": "degree_leafs",
-    "criteria_table": {
-      "radius": true,
-      "aperature": false
+    "project": {
+        "name": "Multi-Agent Swarm Simulator",
+        "description": "Decentralized coordination of autonomous agents",
+        "author": "tjards",
+        "version": "2.0"
     },
-    "sensor_aperature": 140,
-    "learning_ctrl": null
-  },
-  
-  "planner": {
-    "techniques": {
-      "saber": {
-        "a": 5.0,
-        "b": 5.0,
-        "eps": 0.1,
-        "h": 0.2,
-        "pi": 3.14159,
-        "c1_a": 1.0,
-        "c2_a": 2.0,
-        "c1_b": 0.0,
-        "c2_b": 0.0,
-        "c1_g": 2.0,
-        "c2_g": 4.472,
-        "d": 10.0,
-        "d_prime": 6.0,
-        "r": 13.0,
-        "r_prime": 7.8
-      },
-      
-      "lemni": {
-        "c1_d": 1.0,
-        "c2_d": 2.0,
-        "learning": null,
-        "learning_axes": "xz",
-        "learning_coupling": true,
-        "lemni_type": 0
-      },
-      
-      "reynolds": {
-        "escort": 1,
-        "cd_1": 0.3,
-        "cd_2": 0.4,
-        "cd_3": 0.2,
-        "cd_track": 0.1,
-        "maxu": 10,
-        "maxv": 100,
-        "recovery": 0,
-        "far_away": 300,
-        "mode_min_coh": 0,
-        "agents_min_coh": 2,
-        "r": 10,
-        "r_prime": 5
-      },
-      
-      "cao": {
-          "d": 5,
-          "r": 7.071067811865476,
-          "cmd_min": -100,
-          "cmd_max": 100,
-          "gain_p": 1,
-          "gain_v": 0,
-          "kv": 3,
-          "ka": 1,
-          "kr": 2,
-          "kx": 2,
-          "d_bar": 3.5355339059327378,
-          "i_cont": 0.2,
-          "gamma_kp": 2,
-          "H_min": 100,
-          "mode_malicious": 1,
-          "mal_type": "collider",
-          "filter_v_gain": 50
-      },
-      
-      "gradient_parameters": {
-        "LJ_gain": 1000000,
-        "LJ_B": 1,
-        "MORSE_beta": 0.5,
-        "MORSE_D": 1,
-        "gromacs_lambda_val": 0.5,
-        "gromacs_A": 1,
-        "gromacs_B": 2,
-        "gromacs_alpha": 0.5,
-        "gromacs_beta": 1.0
-      },
-      
-      "pinning": {
-        "gain_p": 1.0,
-        "gain_v": 0.5,
-        "k_connectivity": 1,
-        "hetero_lattice": {
-          "hetero_lattice": 0,
-          "learning": 0,
-          "d_min": 1.0,
-          "d": 1.0,
-          "r_max": 5.0,
-          "update_rate": 10,
-          "consensus_method": "consensus"
+    "simulation": {
+        "Ti": 0,
+        "Tf": 60,
+        "Ts": 0.02,
+        "dimens": 2,
+        "verbose": 1,
+        "system": "swarm",
+        "strategy": "pinning",
+        "random_seed": 42,
+        "f": 0,
+        "experimental_save": false
+    },
+    "agents": {
+        "nAgents": 13,
+        "dynamics": "double_integrator",
+        "max_velocity": 2.0,
+        "communication_range": 5.0,
+        "control_gain": 0.5,
+        "quadcopter": {
+            "enabled": false,
+            "mass": 1.0,
+            "gravity": 9.81,
+            "motor_max_thrust": 20.0
         }
-      },
-      
-      "circle": {
-        "param1": 1.0,
-        "c1_d": 2,
-        "c2_d": 2.8284,
-        "r_max": 50,
-        "r_desired": 5,
-        "phi_dot_d": 0.05,
-        "ref_plane": "horizontal",
-        "quat_0_0": 0.0,
-        "quat_0_1": 0.0,
-        "quat_0_2": 0.0              
-      },
-      
-      "starling": {
-        "v_o": 10,
-        "m": 0.08,
-        "tau": 0.2,
-        "del_u": 0.1,
-        "s": 0.01,
-        "R_max": 100,
-        "n_c": 6.5,
-        "r_sep": 10,
-        "r_h": 0.2,
-        "r_roost": 50,
-        "w_s": 1,
-        "w_c": 0.7,
-        "w_a": 0.2,
-        "w_roost_h": 0.2,
-        "w_roost_v": 0.1,
-        "w_rand": 0.05,
-        "C_c": 0.35,
-        "alpha": 0.5,
-        "eps": 1e-05,
-        "sigma_param":4.60517
-      },
-      
-      "shep": {
-        "nShepherds": 5,
-        "r_R": 3,
-        "r_O": 5,
-        "r_A": 7,
-        "r_I": 6.5,
-        "a_R": 2,
-        "a_O": 2,
-        "a_A": 2,
-        "a_I": 4,
-        "a_V": 2,
-        "r_S": 5.5,
-        "r_Oi": 3,
-        "r_Od": 2,
-        "r_Or": 1,
-        "a_N": 5,
-        "a_R_s": 1,
-        "a_R_s_v": 2.0,
-        "a_V_s": 1.0,
-        "type_shepherd": "haver",
-        "type_avoid": "ref_point",
-        "cmd_adjust": 0.02
-      }
+    },
+    "targets": {
+        "target_type": "static",
+        "movement_speed": 0.5
+    },
+    "obstacles": {
+        "num_obstacles": 0,
+        "obstacle_type": "circular"
+    },
+    "orchestrator": {
+        "pin_update_rate": 10,
+        "pin_selection_method": "degree_leafs",
+        "criteria_table": {
+            "radius": true,
+            "aperature": false
+        },
+        "sensor_aperature": 140,
+        "learning_ctrl": null
+    },
+    "planner": {
+        "techniques": {
+            "saber": {
+                "a": 5.0,
+                "b": 5.0,
+                "eps": 0.1,
+                "h": 0.2,
+                "pi": 3.14159,
+                "c1_a": 1.0,
+                "c2_a": 2.0,
+                "c1_b": 0.0,
+                "c2_b": 0.0,
+                "c1_g": 2.0,
+                "c2_g": 4.472,
+                "d": 10.0,
+                "d_prime": 6.0,
+                "r": 13.0,
+                "r_prime": 7.8
+            },
+            "lemni": {
+                "c1_d": 1.0,
+                "c2_d": 2.0,
+                "learning": null,
+                "learning_axes": "xz",
+                "learning_coupling": true,
+                "lemni_type": 0
+            },
+            "reynolds": {
+                "escort": 1,
+                "cd_1": 0.3,
+                "cd_2": 0.4,
+                "cd_3": 0.2,
+                "cd_track": 0.1,
+                "maxu": 10,
+                "maxv": 100,
+                "recovery": 0,
+                "far_away": 300,
+                "mode_min_coh": 0,
+                "agents_min_coh": 2,
+                "r": 10,
+                "r_prime": 5
+            },
+            "cao": {
+                "d": 5,
+                "r": 7.071067811865476,
+                "cmd_min": -100,
+                "cmd_max": 100,
+                "gain_p": 1,
+                "gain_v": 0,
+                "kv": 3,
+                "ka": 1,
+                "kr": 2,
+                "kx": 2,
+                "d_bar": 3.5355339059327378,
+                "i_cont": 0.2,
+                "gamma_kp": 2,
+                "H_min": 100,
+                "mode_malicious": 1,
+                "mal_type": "collider",
+                "filter_v_gain": 50
+            },
+            "gradients": {
+                "LJ_gain": 1000000,
+                "LJ_B": 1,
+                "MORSE_beta": 0.5,
+                "MORSE_D": 1,
+                "gromacs_lambda_val": 0.5,
+                "gromacs_A": 1,
+                "gromacs_B": 2,
+                "gromacs_alpha": 0.5,
+                "gromacs_beta": 1.0
+            },
+            "pinning": {
+                "hetero_lattice": 1,
+                "learning": 0,
+                "learning_grid_size": -1,
+                "flocking_method": "lennard_jones",
+                "r_max": 15,
+                "d": 10,
+                "d_min": 5,
+                "d_prime_ratio": 0.6,
+                "r_prime_ratio": 1.3,
+                "c1_a": 0.1,
+                "c2_a": 0.2,
+                "c1_b": 0,
+                "c2_b": 0,
+                "c1_g": 0.2,
+                "c2_g": 0.4472
+            },
+            "circle": {
+                "param1": 1.0,
+                "c1_d": 2,
+                "c2_d": 2.8284,
+                "r_max": 50,
+                "r_desired": 5,
+                "phi_dot_d": 0.05,
+                "ref_plane": "horizontal",
+                "quat_0_0": 0.0,
+                "quat_0_1": 0.0,
+                "quat_0_2": 0.0
+            },
+            "starling": {
+                "v_o": 10,
+                "m": 0.08,
+                "tau": 0.2,
+                "del_u": 0.1,
+                "s": 0.01,
+                "R_max": 100,
+                "n_c": 6.5,
+                "r_sep": 10,
+                "r_h": 0.2,
+                "r_roost": 50,
+                "w_s": 1,
+                "w_c": 0.7,
+                "w_a": 0.2,
+                "w_roost_h": 0.2,
+                "w_roost_v": 0.1,
+                "w_rand": 0.05,
+                "C_c": 0.35,
+                "alpha": 0.5,
+                "eps": 1e-05,
+                "sigma_param": 4.60517
+            },
+            "shep": {
+                "nShepherds": 5,
+                "r_R": 3,
+                "r_O": 5,
+                "r_A": 7,
+                "r_I": 6.5,
+                "a_R": 2,
+                "a_O": 2,
+                "a_A": 2,
+                "a_I": 4,
+                "a_V": 2,
+                "r_S": 5.5,
+                "r_Oi": 3,
+                "r_Od": 2,
+                "r_Or": 1,
+                "a_N": 5,
+                "a_R_s": 1,
+                "a_R_s_v": 2.0,
+                "a_V_s": 1.0,
+                "type_shepherd": "haver",
+                "type_avoid": "ref_point",
+                "cmd_adjust": 0.02
+            }
+        }
+    },
+    "learner": {
+        "algorithm": "CALA",
+        "CALA": {
+            "num_states": 10,
+            "action_min": -1.0,
+            "action_max": 1.0,
+            "learning_rate": 0.01,
+            "variance_init": 0.5,
+            "variance_ratio": 0.8,
+            "variance_min": 0.01,
+            "variance_max": 1.0,
+            "epsilon": 0.3,
+            "counter_max": 100,
+            "counter_synch": true,
+            "counter_delay": 10,
+            "leader_follower": false,
+            "leader": 0
+        },
+        "QL_learning_lattice": {
+            "alpha": 0.1,
+            "gamma": 0.9,
+            "epsilon": 0.2,
+            "num_states": 20,
+            "num_actions": 4
+        },
+        "consensus": {
+            "param1": 1.0
+        },
+        "gradient_estimation": {
+            "param1": 1.0
+        }
+    },
+    "data": {
+        "save_data": true,
+        "data_dir": "data/data/",
+        "data_file": "data.h5",
+        "record_interval": 1,
+        "record_agents": true,
+        "record_targets": true,
+        "record_obstacles": true,
+        "record_learning": true
+    },
+    "visualization": {
+        "plot_results": true,
+        "animate_results": true,
+        "plots_dir": "visualization/plots",
+        "animations_dir": "visualization/animations",
+        "show_trajectory": true,
+        "show_connectivity": true
+    },
+    "experiments": {
+        "experiment_name": "baseline_lemni",
+        "num_runs": 1,
+        "save_configs": true,
+        "save_metadata": true
+    },
+    "learners": {
+        "consensus_lattice": "Config not available for consensus_lattice"
     }
-  },
-  
-  "learner": {
-    "algorithm": "CALA",
-    "CALA": {
-      "num_states": 10,
-      "action_min": -1.0,
-      "action_max": 1.0,
-      "learning_rate": 0.01,
-      "variance_init": 0.5,
-      "variance_ratio": 0.8,
-      "variance_min": 0.01,
-      "variance_max": 1.0,
-      "epsilon": 0.3,
-      "counter_max": 100,
-      "counter_synch": true,
-      "counter_delay": 10,
-      "leader_follower": false,
-      "leader": 0
-    },
-    
-    "QL_learning_lattice": {
-      "alpha": 0.1,
-      "gamma": 0.9,
-      "epsilon": 0.2,
-      "num_states": 20,
-      "num_actions": 4
-    },
-    
-    "consensus": {
-      "param1": 1.0
-    },
-    
-    "gradient_estimation": {
-      "param1": 1.0
-    }
-  },
-  
-  "data": {
-    "save_data": true,
-    "data_dir": "data/data/",
-    "data_file": "data.h5",
-    "record_interval": 1,
-    "record_agents": true,
-    "record_targets": true,
-    "record_obstacles": true,
-    "record_learning": true
-  },
-  
-  "visualization": {
-    "plot_results": true,
-    "animate_results": true,
-    "plots_dir": "visualization/plots",
-    "animations_dir": "visualization/animations",
-    "show_trajectory": true,
-    "show_connectivity": true
-  },
-  
-  "experiments": {
-    "experiment_name": "baseline_lemni",
-    "num_runs": 1,
-    "save_configs": true,
-    "save_metadata": true
-  }
 }

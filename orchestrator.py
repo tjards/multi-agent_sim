@@ -32,33 +32,14 @@ import os
 import json
 
 # custom packages
+from planner.techniques import pinning_RL_tools
+from planner.techniques import pinning_RL_tools
 import utils.swarmgraph as graphical 
 import config.config as cfg
 
 # these will be removed later, after I objectify and migrate off conditional imports 
 config_loaded = cfg.load_config('config/config.json')
 tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
-
-#if tactic_type == 'circle':
-    #from planner.techniques import encirclement_tools as encircle_tools
-    #from planner.techniques import saber_tools
-#if tactic_type == 'lemni':
-    #from planner.techniques import lemni_tools
-    #from planner.techniques import saber_tools
-# if tactic_type == 'reynolds':
-#     from planner.techniques import reynolds_tools
-#     from planner.techniques import saber_tools
-#elif tactic_type == 'saber':
-#    from planner.techniques import saber_tools
-#if tactic_type == 'starling':
-#    from planner.techniques import starling_tools
-#elif tactic_type == 'shep':
-#    from planner.techniques import shepherding as shep
-if tactic_type == 'pinning':
-    from planner.techniques import pinning_RL_tools as pinning_tools
-    planner_configs = cfg.get_config(config_loaded, 'planner.techniques.pinning')
-elif tactic_type == 'cao':
-    from planner.techniques import cao_tools
 
 import learner.conductor
 
@@ -92,7 +73,7 @@ def build_system(config):
         # instatiate any learning
         # -----------------------
         import learner.conductor
-        Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts)
+        Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts, config.config_path)
                 
     return Agents, Targets, Trajectory, Obstacles, Learners
 
@@ -138,10 +119,12 @@ class Controller:
         self.pin_matrix = np.zeros((config.nAgents,config.nAgents))
                 
         if config.strategy == 'pinning':
-    
+            from planner.techniques import pinning_RL_tools as pinning_tools
+            self.planners['pinning'] = pinning_tools.Planner(config._data)
             #self.pin_matrix = np.ones((self.nAgents,self.nAgents))# make all pins
             self.pin_matrix = np.ones((config.nAgents,config.nAgents))# make all pins
-            d_init = pinning_tools.return_lattice_param()
+            #d_init = pinning_tools.return_lattice_param()
+            d_init = self.planners['pinning'].d_init
             self.d_init= d_init
             i = 0
             #while (i < self.nAgents):
@@ -255,7 +238,8 @@ class Controller:
                     kwargs_cmd['d_weighted'] = self.lattice # redundant below
                 kwargs_cmd['aperature'] = self.config.sensor_aperature
                 #r_matrix = kwargs_cmd['d_weighted']  # if we want the graph based on lattice parameters
-                r_matrix = pinning_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                #r_matrix = pinning_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
+                r_matrix = self.planners['pinning'].r_max*np.ones((state.shape[1],state.shape[1]))
                 self.Graphs_connectivity.update_A(state[0:3,:], self.lattice, **kwargs_cmd)
             else:
                 r_matrix = 0*np.ones((state.shape[1],state.shape[1]))
@@ -358,8 +342,8 @@ class Controller:
                 kwargs_pinning['local_k_connectivity']      = self.Graphs.local_k_connectivity
                 
                 # compute command
-                _, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
-
+                #_, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
+                _, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = self.planners['pinning'].compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
                 # learning update 
                 learner.conductor.pinning_update_lattice(self)
                        

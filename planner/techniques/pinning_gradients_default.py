@@ -17,19 +17,6 @@ eps = 0.1
 h   = 0.2# 0.2 # 0.9 for obs
 pi  = 3.141592653589793
 
-# gains
-c1_a = 0.2               # cohesion
-c2_a = 0.2*np.sqrt(1)
-c1_b = 0.1             # obstacles 
-c2_b = 0.1*2*np.sqrt(1)
-c1_g = 0.4               # tracking (for the pins)
-c2_g = 0.4*np.sqrt(5)
-
-# key ranges 
-d       = 10            # lattice scale (Saber flocking, distance between a-agents)
-r       = 1.3*d           # range at which neighbours can be sensed (Saber flocking, interaction range of a-agents)
-d_prime = 0.6*d      # desired separation (Saber flocking, distance between a- and b-agents)
-r_prime = 1.3*d_prime     # range at which obstacles can be sensed, (Saber flocking, interaction range of a- and b-agents)
 
 
 #%% Useful functions
@@ -91,7 +78,7 @@ def norm_sat(u,maxu):
 # ----------------
 
 # gradient term
-def gradient(states_q, k_node, k_neigh, r, d):
+def gradient(c1_a, states_q, k_node, k_neigh, r, d):
     
     r_a = sigma_norm(r)     # lattice separation (sensor range)
     d_a = sigma_norm(d)     # lattice separation (goal)
@@ -100,7 +87,7 @@ def gradient(states_q, k_node, k_neigh, r, d):
     return u_gradient 
 
 # alignment term
-def velocity_alignment(states_q, states_p, k_node, k_neigh, r, d):
+def velocity_alignment(c2_a, states_q, states_p, k_node, k_neigh, r, d):
     
     r_a = sigma_norm(r)  # lattice separation (sensor range)
     u_velocity_alignment = c2_a*a_ij(states_q[:,k_node],states_q[:,k_neigh],r_a)*(states_p[:,k_neigh]-states_p[:,k_node])
@@ -108,7 +95,7 @@ def velocity_alignment(states_q, states_p, k_node, k_neigh, r, d):
     return u_velocity_alignment
 
 # navigation term
-def navigation(states_q, states_p, targets, targets_v, k_node):
+def navigation(c1_g, c2_g, states_q, states_p, targets, targets_v, k_node):
     
     u_navigation = - c1_g*sigma_1(states_q[:,k_node]-targets[:,k_node])-c2_g*(states_p[:,k_node] - targets_v[:,k_node])
 
@@ -116,7 +103,7 @@ def navigation(states_q, states_p, targets, targets_v, k_node):
 
 # obstacle avoidance command
 # --------------------------
-def compute_cmd_b(states_q, states_p, obstacles, walls, k_node):
+def compute_cmd_b(c1_b, c2_b, states_q, states_p, obstacles, walls, k_node, d_prime, r_prime):
       
     # initialize 
     d_b = sigma_norm(d_prime)                   # obstacle separation (goal range)
