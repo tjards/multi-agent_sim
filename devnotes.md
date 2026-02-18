@@ -6,8 +6,8 @@ Updated: 2025-12-31 at 10:47 EST.
 
 # Project 1: Clean up
 
-Summary This project is a consolidation of numerous other smaller projects. I have merged them all and it is functional, 
-but the code is clunky and hard to follow. I am starting a cleanup project, with the following goals:
+Summary: This project is a consolidation of numerous other smaller projects. I have merged them all and it is functional. 
+I am starting a cleanup project, with the following goals:
 
 - Define a custom venv with documented deps/requirements.
 - Build a single config file that feeds the entire simulation. 
