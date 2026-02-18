@@ -20,7 +20,6 @@ I am starting a cleanup project, with the following goals:
 - The whole thing is a memory hog; streamline. 
 
 
-
 # Project 2: Learning 
 
 Proposed: Inspired by recent work entitled [Latent space modeling of parametric and time-dependent PDEs using neural ODEs](https://github.com/Aleartulon/AE_NODE), we are working on ways to learn the latent space currently explicity defined in in lemni_tools.py.
