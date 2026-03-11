@@ -19,6 +19,7 @@ from matplotlib.ticker import MaxNLocator
 
 from data import data_manager
 import os
+import json
 
 #%% parameters
 # ------------
@@ -432,6 +433,58 @@ def plotMe(data_file_path):
             handle_plot(fig, 'heatmap')
             
             #plt.close(fig)
+
+
+    # learners
+    config_path = os.path.join('config', 'config.json')
+    with open(config_path, 'r') as f:
+            config_data = json.load(f)
+    planner_config = config_data.get('planner', {})
+    if planner_config.get('techniques', {}).get('lemniscates', {}).get('learning', False) == 'CALA':
+        plot_learners = True
+    else:
+        plot_learners = False
+    if plot_learners:
+        try:
+            data_file_path_learn = os.path.join(data_directory, "data/data_learner_lemni_CALA_xz.h5")
+
+            CALA_config = config_data.get('learner', {}).get('CALA', None)
+            agents_config = config_data.get('agents', {})
+            from learner.CALA_control import CALA            
+            # Load histories from main data file
+            _, action_history = data_manager.load_data_HDF5('History', 'action_history', data_file_path_learn)
+            _, mean_history = data_manager.load_data_HDF5('History', 'mean_history', data_file_path_learn)
+            _, variance_history = data_manager.load_data_HDF5('History', 'variance_history', data_file_path_learn)
+            _, reward_history = data_manager.load_data_HDF5('History', 'reward_history', data_file_path_learn)
+
+            # Create CALA object without calling __init__ and populate with loaded data
+            learner = CALA.__new__(CALA)
+            learner.action_history = action_history.tolist() if isinstance(action_history, np.ndarray) else action_history
+            learner.mean_history = mean_history.tolist() if isinstance(mean_history, np.ndarray) else mean_history
+            learner.variance_history = variance_history.tolist() if isinstance(variance_history, np.ndarray) else variance_history
+            learner.reward_history = reward_history.tolist() if isinstance(reward_history, np.ndarray) else reward_history
+            
+            # Set required attributes for plotting
+            learner.action_min = CALA_config.get('action_min', -np.pi/4)
+            learner.action_max = CALA_config.get('action_max', np.pi/4)
+            learner.reward_coupling = CALA_config.get('reward_coupling', None)
+            learner.num_agents = agents_config.get('nAgents', None)
+            learner.num_states = learner.num_agents * learner.reward_coupling
+            learner.leader = 0
+            
+            print("Generating CALA learning plots...")
+            
+            # Call existing plotting methods
+            learner.plots_set(just_leader=True)
+            learner.animate_distributions_set(just_leader=True)
+            learner.plot_exploration_contours_hull(just_leader=True)
+            
+            print("CALA plots generated successfully")
+            
+        except Exception as e:
+            print(f"Error generating CALA plots: {e}")
+            import traceback
+            traceback.print_exc()
 
 
           

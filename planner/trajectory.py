@@ -52,25 +52,29 @@ class Trajectory:
             self.trajectory = targets.copy()
             
 # helpers
-def update_trajectory_args(Agents, Trajectory, Controller, tactic_type, my_kwargs):
+# def update_trajectory_args(Agents, Trajectory, Controller, tactic_type, kwargs):
     
-    # we'll need the record of lemni parameters  
-    if tactic_type == 'lemniscates':
+#     #kwargs['sorted_neighs'] = Trajectory.sorted_neighs
+
+
+#     # we'll need the record of lemni parameters  
+#     if tactic_type == 'lemniscates':
         
-        my_kwargs['sorted_neighs'] = Trajectory.sorted_neighs
+#         #kwargs['sorted_neighs'] = Trajectory.sorted_neighs
         
-        # new bidrirectional controller
-        if 'lemni_CALA_xz' in Controller.Learners:
+#         # new bidrirectional controller
+#         if 'lemni_CALA_xz' in Controller.Learners:
             
-            # CASE 2: bidirectional
-            my_kwargs['lemni_learn_actions'] = {
-                'xz': Controller.Learners['lemni_CALA_xz'].action_set,
-                }
-        else:
-            my_kwargs['lemni_learn_actions'] = {
-               'xz': np.zeros((2*Agents.state.shape[1]))
-               }
+#             # CASE 2: bidirectional
+#             kwargs['lemni_learn_actions'] = {
+#                 'xz': Controller.Learners['lemni_CALA_xz'].action_set,
+#                 }
+#         else:
+#             kwargs['lemni_learn_actions'] = {
+#                'xz': np.zeros((2*Agents.state.shape[1]))
+#                }
             
-    return my_kwargs            
+            
+#     return kwargs            
             
             

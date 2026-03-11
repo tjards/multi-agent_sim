@@ -169,7 +169,7 @@ class Planner:
             
             # if neighbours too far away, default to the desired encirclement speed
             if dist_lead > self.r_max or dist_lag > self.r_max:
-                phi_dot_desired_i[0,ii] = self.phi_dot_desired
+                phi_dot_desired_i[0,ii] = phi_dot_desired
                 continue
             
             # compute the desired phi-dot       

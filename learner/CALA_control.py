@@ -82,6 +82,8 @@ Parameters examples:
     sigmoidize          = False         # apply sigmoid in latter stages of learning
 '''
 
+show_plots = False 
+
 #%% Learning Class
 # ----------------
 class CALA:
@@ -607,7 +609,7 @@ class CALA:
     #   PLOTS        #
     # ************** #
     
-        
+   
     def plots_set(self, just_leader = True):
         
         # make sure there is a color map
@@ -672,8 +674,12 @@ class CALA:
             if not just_leader:
                 ax.legend()
     
+        #plt.tight_layout()
+        #plt.show()
         plt.tight_layout()
-        plt.show()
+        fig.savefig('visualization/plots/CALA_plots_set.png', dpi=300, bbox_inches='tight')
+        if not show_plots:
+            plt.close(fig)
 
         
     # plot the distributions 
@@ -715,7 +721,7 @@ class CALA:
     #     plt.show()
         
     
-    def animate_distributions_set(self, interval=50, save_path=None, just_leader = True):
+    def animate_distributions_set(self, interval=50, save_path='visualization/animations/CALA_distributions.gif', just_leader = True):
         
         import matplotlib.animation as animation
         from scipy.stats import norm
@@ -811,6 +817,7 @@ class CALA:
     
         if save_path:
             ani.save(save_path, writer='pillow', fps=1000 // interval)
+            plt.close(fig)
         else:
             plt.tight_layout()
             plt.show()
@@ -870,8 +877,12 @@ class CALA:
         plt.xlabel("Action X")
         plt.ylabel("Action Y")
         plt.title("Exploration Contours: Actions vs Reward")
+        #plt.tight_layout()
+        #plt.show()
         plt.tight_layout()
-        plt.show()
+        plt.savefig('visualization/plots/CALA_exploration_contours.png', dpi=300, bbox_inches='tight')
+        if not show_plots:
+            plt.close()
         
     def plot_exploration_surface(self, just_leader=True, bins=50):
         """
@@ -1047,14 +1058,15 @@ class CALA:
         
         
         plt.tight_layout()
-        plt.show()
+        plt.savefig('visualization/plots/CALA_exploration_contours_hull.png', dpi=300, bbox_inches='tight')
+        plt.close()
 
 
     # plots
     def all_plots_set(self, just_leader = True):
         
         just_leader = True
-        save_path='visualization/animations/RL_animation.gif'
+        save_path='visualization/animations/CALA_animation.gif'
         #save_path= None
         
         self.plots_set(just_leader = just_leader)

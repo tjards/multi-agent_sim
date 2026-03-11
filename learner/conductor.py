@@ -132,6 +132,26 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
     return Learners
         
 
+def update_args(Agents, Controller, tactic_type, kwargs):
+    
+    # we'll need the record of lemni parameters  
+    if tactic_type == 'lemniscates':
+        
+        #kwargs['sorted_neighs'] = Trajectory.sorted_neighs
+        
+        # new bidrirectional controller
+        if 'lemni_CALA_xz' in Controller.Learners:
+            
+            # CASE 2: bidirectional
+            kwargs['lemni_learn_actions'] = {
+                'xz': Controller.Learners['lemni_CALA_xz'].action_set,
+                }
+        else:
+            kwargs['lemni_learn_actions'] = {
+               'xz': np.zeros((2*Agents.state.shape[1]))
+               }
+            
+    return kwargs 
       
 def pinning_update_args(Controller, kwargs_pinning):
     

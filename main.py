@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This project implements an autonomous, decentralized swarming strategies.
+This project implements various multi-agent swarming strategies: 
 
-The strategies requires no human invervention once the target is selected and all agents rely on local knowledge only. 
-Each vehicle makes its own decisions about where to go based on its relative position to other vehicles.
+    swarming = decentralized + asynchronous + local 
 
 The following agent dynamics are available:
     
@@ -69,7 +68,8 @@ np.random.seed(config.random_seed)
 #%% build the system
 # ------------------
 import orchestrator
-import planner.trajectory
+import learner.conductor
+#import planner.trajectory
 
 Agents, Targets, Trajectory, Obstacles, Learners = orchestrator.build_system(config)    # primary components 
 Controller = orchestrator.Controller(config, Agents.state)                              # controller (includes planners and mixers)
@@ -94,7 +94,7 @@ while round(t,3) < config.Tf:
     
     # initialize keyword arguments
     # ----------------------------
-    my_kwargs = {}
+    kwargs = {}
     
     # Evolve the target
     # -----------------    
@@ -121,18 +121,24 @@ while round(t,3) < config.Tf:
     if config.verbose == 1 and (round(t,2)).is_integer():
         print(round(t,1),' of ',config.Tf,' sec completed.')
     
+
+    # Update learning 
+    # ---------------
+    kwargs = learner.conductor.update_args(Agents, Controller, config.strategy, kwargs)
+
     # Compute Trajectory
     # --------------------
 
-    my_kwargs = planner.trajectory.update_trajectory_args(Agents, Trajectory, Controller, config.strategy, my_kwargs)     
-    Trajectory.update(config.strategy, Agents.state, Targets.targets, t, i, **my_kwargs)
+    #kwargs = planner.trajectory.update_trajectory_args(Agents, Trajectory, Controller, config.strategy, kwargs)
+    kwargs['sorted_neighs'] = Trajectory.sorted_neighs     
+    Trajectory.update(config.strategy, Agents.state, Targets.targets, t, i, **kwargs)
                         
     # Compute the commads (next step)
     # --------------------------------  
     if config.strategy == 'pinning_lattice' and config.dynamics == 'quadcopter':
-        my_kwargs['quads_headings'] = Agents.quads_headings
+        kwargs['quads_headings'] = Agents.quads_headings
                        
-    Controller.commands(Agents.state, config.strategy, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, config.dynamics, **my_kwargs) 
+    Controller.commands(Agents.state, config.strategy, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, config.dynamics, **kwargs) 
     
 #%% Save data
 # -----------
@@ -140,6 +146,9 @@ if config.verbose == 1:
     print('saving data.')
 
 data_manager.save_data_HDF5(Database, data_file_path)
+if hasattr(Controller, 'Learners'):
+    for learner in Controller.Learners:
+        data_manager.save_data_HDF5(Controller.Learners[learner], os.path.join(data_directory, f"data_learner_{learner}.h5"))
 
 if config.verbose == 1:
     print('done.')
