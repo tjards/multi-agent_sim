@@ -2,17 +2,20 @@
   <img src="./visualization/public/m-a_s.png" width="30%"/>
 </p>
 
-# Multi-agent Coordination Simulator
+# Multi-agent Simulator
 
-This project implements various multiagent coordination techniques, including:
+An open architecture multi-agent simulator for use by academic researchers. Implemented techniques currently include:
+
 - Flocking (reynolds, starling, and olfati-saber)
 - Structured swarming (lemniscates, encirclement)
 - Shepherding
 - Various lattice assembly techniques using pinning control
-All agents make individual decisions based on local information only. There is no global plan. 
+
+Agents make decentralized decisions asynchronously based on local information only. There is no global plan. 
 
 Notes: 
 - This latest release is a major overhaul of the codebase. Some modules are still being updated. Detailed development notes are available in [devnotes.md](./devnotes.md).
+- Inputs/outputs for the various modules are still being standardized.
 - Learning modules are still untested. 
 - Now with virtual environment and requirements.txt for easier setup.
 
@@ -52,13 +55,13 @@ The quadcopters make use of 3 nested control loops (translational velocity, angu
 
 # Setup
 
-**Create and activate the virtual environment:**
+Activate the virtual environment:
 
 ```bash
 source venv/bin/activate
 ```
 
-**Install dependencies:**
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
