@@ -52,9 +52,9 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
     #        # Load
     #        Learners['lemni_CALA_xz'] = lemni_CALA_xz
     
-    if tactic_type == 'lemni':
+    if tactic_type == 'lemniscates':
         planner_configs = config.get('planner', {})
-        lemni_config = planner_configs.get('techniques', {}).get('lemni', {})
+        lemni_config = planner_configs.get('techniques', {}).get('lemniscates', {})
         if lemni_config.get('learning') == 'CALA':
             import learner.CALA_control as lemni_CALA
             lemni_CALA_xz = lemni_CALA.CALA(config)
@@ -69,8 +69,8 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
     #        planner_configs = configs['planner']['techniques']['pinning']
     
     # 
-    if tactic_type == 'pinning':
-        planner_configs = config['planner']['techniques']['pinning']
+    if tactic_type == 'pinning_lattice':
+        planner_configs = config['planner']['techniques']['pinning_lattice']
         
         do = True
         if do:

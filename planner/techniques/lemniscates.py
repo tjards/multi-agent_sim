@@ -85,7 +85,7 @@ class Planner:
 
     def __init__(self, config_data, circle):
 
-        lemni_config = cfg.get_config(config_data, 'planner.techniques.lemni')
+        lemni_config = cfg.get_config(config_data, 'planner.techniques.lemniscates')
 
         # get lemni hyperparameters
         self.c1_d               = lemni_config.get('c1_d', 1.0)         # position gain 

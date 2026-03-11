@@ -12,7 +12,7 @@
         "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "pinning",
+        "strategy": "pinning_lattice",
         "random_seed": 42,
         "f": 0,
         "experimental_save": false
@@ -21,7 +21,7 @@
         "nAgents": 13,
         "dynamics": "double integrator",
         "rAgents": 0.5,
-        "iSpread": 20,
+        "iSpread": 40,
         "init_conditions": "random",
         "vmax": 5,
         "vmin": -5
@@ -54,7 +54,7 @@
     },
     "planner": {
         "techniques": {
-            "saber": {
+            "flocking_saber": {
                 "a": 5.0,
                 "b": 5.0,
                 "eps": 0.1,
@@ -71,15 +71,15 @@
                 "r": 13.0,
                 "r_prime": 7.8
             },
-            "lemni": {
+            "lemniscates": {
                 "c1_d": 1.0,
                 "c2_d": 2.0,
                 "learning": null,
                 "learning_axes": "xz",
                 "learning_coupling": true,
-                "lemni_type": 4
+                "lemni_type": 0
             },
-            "reynolds": {
+            "flocking_reynolds": {
                 "escort": 1,
                 "cd_1": 0.3,
                 "cd_2": 0.4,
@@ -94,7 +94,7 @@
                 "r": 10,
                 "r_prime": 5
             },
-            "cao": {
+            "malicious_agent": {
                 "d": 5,
                 "r": 7.071067811865476,
                 "cmd_min": -100,
@@ -124,8 +124,8 @@
                 "gromacs_alpha": 0.5,
                 "gromacs_beta": 1.0
             },
-            "pinning": {
-                "hetero_lattice": 1,
+            "pinning_lattice": {
+                "hetero_lattice": 0,
                 "learning": 0,
                 "learning_grid_size": -1,
                 "flocking_method": "lennard_jones",
@@ -141,7 +141,7 @@
                 "c1_g": 0.2,
                 "c2_g": 0.4472
             },
-            "circle": {
+            "encirclement": {
                 "param1": 1.0,
                 "c1_d": 2,
                 "c2_d": 2.8284,
@@ -153,7 +153,7 @@
                 "quat_0_1": 0.0,
                 "quat_0_2": 0.0
             },
-            "starling": {
+            "flocking_starling": {
                 "v_o": 10,
                 "m": 0.08,
                 "tau": 0.2,
@@ -175,7 +175,7 @@
                 "eps": 1e-05,
                 "sigma_param": 4.60517
             },
-            "shep": {
+            "shepherding": {
                 "nShepherds": 5,
                 "r_R": 3,
                 "r_O": 5,

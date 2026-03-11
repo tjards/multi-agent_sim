@@ -98,7 +98,7 @@ class Planner:
     def __init__(self, config_data, states_q, states_p):
         
         # Extract cao configuration section
-        cao_config = cfg.get_config(config_data, 'planner.techniques.cao')
+        cao_config = cfg.get_config(config_data, 'planner.techniques.malicious_agent')
         
         # Normal agent parameters
         self.d = cao_config.get('d', 5)

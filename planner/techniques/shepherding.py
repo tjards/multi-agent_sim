@@ -117,7 +117,7 @@ class Planner:
     def __init__(self, config, state):
         
         self.state    = state
-        shep_config = cfg.get_config(config, 'planner.techniques.shep')
+        shep_config = cfg.get_config(config, 'planner.techniques.shepherding')
         self.nShepherds = shep_config.get('nShepherds', 3)
 
         agents_config = cfg.get_config(config, 'agents')

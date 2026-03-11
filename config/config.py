@@ -27,11 +27,11 @@ def get_config(configs, path):
 
 def validate_configs(config):
 
-    if config.dimens == 2 and config.strategy == 'lemni':
+    if config.dimens == 2 and config.strategy == 'lemniscates':
         raise ValueError("Lemniscate trajectories not supported in 2D. Please choose different strategy.")
 
-    if config.dimens == 2 and config.strategy == 'cao':
-        raise ValueError("Cao not adapted for 2D yet.")
+    if config.dimens == 2 and config.strategy == 'malicious_agent':
+        raise ValueError("Malicious agent not adapted for 2D yet.")
 
 
 

@@ -65,7 +65,7 @@ class Planner:
     
     def __init__(self, config_data):
 
-        circle_config = cfg.get_config(config_data, 'planner.techniques.circle')
+        circle_config = cfg.get_config(config_data, 'planner.techniques.encirclement')
         
         # Store hyperparameters
         self.c1_d = circle_config.get('c1_d', 2)                # position gain

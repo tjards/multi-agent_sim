@@ -24,7 +24,7 @@ class Planner:
 
     def __init__(self, config):
         # load the configs
-        reynolds_config =cfg.get_config(config, 'planner.techniques.reynolds')
+        reynolds_config =cfg.get_config(config, 'planner.techniques.flocking_reynolds')
         self.escort          = reynolds_config['escort']          # escort (i.e. target tracking?): 0 = no, 1 = yes
         self.cd_1            = reynolds_config['cd_1']            # cohesion weight
         self.cd_2            = reynolds_config['cd_2']            # alignment weight

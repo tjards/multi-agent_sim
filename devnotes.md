@@ -2,23 +2,19 @@
 
 This document is a place for developers to collaborate on various aspects of this project.
 
-Updated: 2025-12-31 at 10:47 EST.
-
 # Project 1: Clean up
 
 Summary This project is a consolidation of numerous other smaller projects. I am starting a cleanup project, with the following goals:
 
-- Define a custom venv with documented deps/requirements.
-- Build a single config file that feeds the entire simulation. 
+- ~~Define a custom venv with documented deps/requirements.~~
+- ~~Build a single config file that feeds the entire simulation.~~
 - Make the code more modular.
-- I use a mix of scripting and object-oriented modules; make better use of object-oriented design.
+- ~~I use a mix of scripting and object-oriented modules; make better use of object-oriented design.~~
 - Treat the simulation like a pipeline.
 - The reinforcement learning modules, in particular, are hard to follow; make these more modular.
 - Standardize the data in/out.
 - Be more efficient in how data is stored online.
 - The whole thing is a memory hog; streamline. 
-
-
 
 # Project 2: Learning 
 

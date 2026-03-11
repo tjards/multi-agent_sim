@@ -111,7 +111,7 @@ class Planner:
     def __init__(self, config):
  
         # load the configs
-        starling_config =cfg.get_config(config, 'planner.techniques.starling')
+        starling_config =cfg.get_config(config, 'planner.techniques.flocking_starling')
         self.v_o       = starling_config['v_o']         # cruise speed
         self.m         = starling_config['m']           # agent mass (could be different per)
         self.tau       = starling_config['tau']         # relaxation time (tunable)

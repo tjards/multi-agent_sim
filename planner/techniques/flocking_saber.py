@@ -40,7 +40,7 @@ class Planner:
     def __init__(self, config):
  
         # load the configs
-        saber_config =cfg.get_config(config, 'planner.techniques.saber')
+        saber_config =cfg.get_config(config, 'planner.techniques.flocking_saber')
         self.pi      = saber_config['pi'] # value of pi
         self.a       = saber_config['a']  # uneven sigmoid parameter a
         self.b       = saber_config['b']  # uneven sigmoid parameter b

@@ -14,7 +14,7 @@ import os
 import json
 
 # custom packages
-from .techniques import lemni_tools 
+from .techniques import lemniscates
 
 # define the trajectory object
 # ----------------------------
@@ -33,21 +33,21 @@ class Trajectory:
 
     def update(self, tactic_type, state, targets, t, i, **kwargs):
 
-        #if flocking
-        if tactic_type == 'reynolds' or tactic_type == 'saber' or tactic_type == 'starling' or tactic_type == 'pinning' or tactic_type == 'shep':
+        #if flocking or similar
+        if tactic_type == 'flocking_reynolds' or tactic_type == 'flocking_saber' or tactic_type == 'flocking_starling' or tactic_type == 'pinning_lattice' or tactic_type == 'shepherding':
             self.trajectory = targets.copy() 
         
         # if encircling
-        if tactic_type == 'circle':
-            self.trajectory, _, _ = self.planners['circle'].encircle_target(targets, state)
+        elif tactic_type == 'encirclement':
+            self.trajectory, _, _ = self.planners['encirclement'].encircle_target(targets, state)
         
         # if lemniscating
-        elif tactic_type == 'lemni':
+        elif tactic_type == 'lemniscates':
             
             learn_actions = kwargs.get('lemni_learn_actions')
-            self.trajectory, self.lemni, self.sorted_neighs = self.planners['lemni'].lemni_target(state,targets,i,t,learn_actions)
+            self.trajectory, self.lemni, self.sorted_neighs = self.planners['lemniscates'].lemni_target(state,targets,i,t,learn_actions)
             
-        elif tactic_type == 'cao':
+        elif tactic_type == 'malicious_agent':
             
             self.trajectory = targets.copy()
             
@@ -55,7 +55,7 @@ class Trajectory:
 def update_trajectory_args(Agents, Trajectory, Controller, tactic_type, my_kwargs):
     
     # we'll need the record of lemni parameters  
-    if tactic_type == 'lemni':
+    if tactic_type == 'lemniscates':
         
         my_kwargs['sorted_neighs'] = Trajectory.sorted_neighs
         

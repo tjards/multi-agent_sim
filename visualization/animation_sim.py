@@ -37,7 +37,7 @@ with open(config_path, 'r') as config_file:
     
     # pull out a radius (if avail)
     #r_range = config.get('saber', {}).get('r', 0)
-    r_range = config.get('planner', {}).get('techniques', {}).get('saber', {}).get('r', 0)
+    r_range = config.get('planner', {}).get('techniques', {}).get('flocking_saber', {}).get('r', 0)
 
 
 
@@ -594,9 +594,9 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
     
     # set text labels for simulation mode and centroid distance
     cd = round(np.linalg.norm(centroid_all[0, :, 0].ravel() - targets_all[0, 0:3, 0]), 1)
-    if tactic_type == 'circle':
+    if tactic_type == 'encirclement':
         mode = 'Mode: Encirclement'
-    elif tactic_type == 'lemni':
+    elif tactic_type == 'lemniscates':
         mode = 'Mode: Closed Curves'
     else:
         mode = 'Mode: ' + tactic_type

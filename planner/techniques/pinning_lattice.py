@@ -93,7 +93,7 @@ class Planner:
 
     def __init__(self, config): 
 
-        pinning_config =cfg.get_config(config, 'planner.techniques.pinning')
+        pinning_config =cfg.get_config(config, 'planner.techniques.pinning_lattice')
 
         self.hetero_lattice     = pinning_config.get('hetero_lattice', 0)
         self.learning           = pinning_config.get('learning', 0)

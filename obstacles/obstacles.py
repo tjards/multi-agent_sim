@@ -47,7 +47,7 @@ class Obstacles:
         self.oSpread  = obstacles_config.get('oSpread', None)     # spread of random obstacles around the target (if not manual)
 
         # if using reynolds, need make target an obstacle 
-        if self.tactic_type == 'reynolds':
+        if self.tactic_type == 'flocking_reynolds':
             self.targetObs = 1
         else:
             self.targetObs = 0   

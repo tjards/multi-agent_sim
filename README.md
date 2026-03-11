@@ -4,13 +4,17 @@
 
 # Multi-agent Coordination Simulator
 
-This project implements various multiagent coordination techniques including flocking, pinning control, dynamic encirclement, arbitrary closed curves, shepherding, and counter-malicious agent control. 
+This project implements various multiagent coordination techniques, including:
+- Flocking (reynolds, starling, and olfati-saber)
+- Structured swarming (lemniscates, encirclement)
+- Shepherding
+- Various lattice assembly techniques using pinning control
 All agents make individual decisions based on local information only. There is no global plan. 
 
 Notes: 
-- This project is a consolidation of many other smaller projects. It works but needs much cleanup. 
-This cleanup is the next big effort for the project. 
-- Detailed development notes are available in [devnotes.md](./devnotes.md).
+- This latest release is a major overhaul of the codebase. Some modules are still being updated. Detailed development notes are available in [devnotes.md](./devnotes.md).
+- Learning modules are still untested. 
+- Now with virtual environment and requirements.txt for easier setup.
 
 ---
 
@@ -26,6 +30,8 @@ The quadcopters make use of 3 nested control loops (translational velocity, angu
 
 
 ```
+├── venv/                    # python virtual environment
+├── requirements.txt         # python package dependencies
 ├── agents/                  # agent definitions
 ├── config/                  # location of configuration file
 ├── data/                    # data storage
@@ -44,10 +50,25 @@ The quadcopters make use of 3 nested control loops (translational velocity, angu
 
 ---
 
+# Setup
+
+**Create and activate the virtual environment:**
+
+```bash
+source venv/bin/activate
+```
+
+**Install dependencies:**
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
 # Operation
 
-Parameters for each module (for example, encirclement radius) are set within the respective technique definitions file.
-Global simulations parameters are set within the main script. The parameters are all dropped in the configuration file.
+Most parameters are centralized in `config/config.json`. Some of the learning-related parameters are still stored within the specific modules as they are in development, but these will be moved into the config in later versions. 
 
 To run a simulation, adjust the parameters as desired and then run as follows from the root folder:
 

@@ -12,14 +12,14 @@ The following agent dynamics are available:
     2. quadrotor helicopter (quadcopter)
 
 # strategy summaries:
-    # reynolds  = Reynolds flocking + Olfati-Saber obstacle
-    # saber     = Olfati-Saber flocking
-    # starling  = swarm like starlings 
-    # circle    = encirclement
-    # lemni     = dynamic lemniscates and other closed curves
-    # pinning   = pinning control (with RL)
-    # shep      = shepherding
-    # cao       = cao flocking
+    # reynolds    = Reynolds flocking + Olfati-Saber obstacle avoidance
+    # saber       = Olfati-Saber flocking algorithm
+    # starling    = Swarm-like starling behavior
+    # encirclement = Encirclement of target
+    # lemniscates = Dynamic lemniscate and closed curve trajectories 
+    # pinning     = Pinning control with heterogeneous lattice learning 
+    # shepherding = Shepherding control (shepherds herd agents towards target)
+    # malicious_agent = Flocking with compensating for malicious agents in swarm
 
 Created on Tue Dec 22 11:48:18 2020
 
@@ -129,7 +129,7 @@ while round(t,3) < config.Tf:
                         
     # Compute the commads (next step)
     # --------------------------------  
-    if config.strategy == 'pinning' and config.dynamics == 'quadcopter':
+    if config.strategy == 'pinning_lattice' and config.dynamics == 'quadcopter':
         my_kwargs['quads_headings'] = Agents.quads_headings
                        
     Controller.commands(Agents.state, config.strategy, Agents.centroid, Targets.targets, Obstacles.obstacles_plus, Obstacles.walls, Trajectory.trajectory, config.dynamics, **my_kwargs) 
