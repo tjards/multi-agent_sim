@@ -53,7 +53,8 @@ def build_system(config):
         # instantiate the agents
         # ------------------------
         import agents.agents as agents
-        Agents = agents.Agents(config.strategy, config.dimens)
+        #Agents = agents.Agents(config.strategy, config.dimens)
+        Agents = agents.Agents()
 
         # instantiate the targets
         # -----------------------
@@ -68,12 +69,14 @@ def build_system(config):
         # instantiate the obstacles 
         # -------------------------
         import obstacles.obstacles as obstacles  
-        Obstacles = obstacles.Obstacles(config.strategy, Targets.targets, config.dimens)  
+        #Obstacles = obstacles.Obstacles(config.strategy, Targets.targets, config.dimens)  
+        Obstacles = obstacles.Obstacles(Targets.targets)  
         
         # instatiate any learning
         # -----------------------
         import learner.conductor
-        Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts, config.config_path)
+        #Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts, config.config_path)
+        Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts, config._data)
                 
     return Agents, Targets, Trajectory, Obstacles, Learners
 

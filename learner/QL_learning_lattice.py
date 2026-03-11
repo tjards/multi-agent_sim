@@ -43,16 +43,16 @@ reward_method   = 'connectivity'
     #   'connectivity'  - maximizes local k-connectivity
 
 
-from config.configs_tools import update_configs  
-configs_entries = [
-    ('options_range', options_range),
-    ('nOptions', nOptions),
-    ('time_horizon', time_horizon),
-    ('time_horizon_v', time_horizon_v),
-    ('states_grid', states_grid),
-    ('reward_method', reward_method)
-    ]
-update_configs('QL_learning_lattice',  configs_entries)
+# from config.configs_tools import update_configs  
+# configs_entries = [
+#     ('options_range', options_range),
+#     ('nOptions', nOptions),
+#     ('time_horizon', time_horizon),
+#     ('time_horizon_v', time_horizon_v),
+#     ('states_grid', states_grid),
+#     ('reward_method', reward_method)
+#     ]
+# update_configs('QL_learning_lattice',  configs_entries)
 
 
 #%% data saving

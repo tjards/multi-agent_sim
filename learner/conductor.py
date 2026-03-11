@@ -14,42 +14,67 @@ Coordinates all learning modules. Like orchestrator does for control.
 # -----------
 import os
 import json
-import config.configs_tools as configs_tools
+#import config.configs_tools as configs_tools
 import numpy as np
+
+from agents.quadcopter_module import config
 #config_path=configs_tools.config_path
 
 
 # load configs
 # ------------
 
-def initialize(Agents, tactic_type, learning_ctrl, Ts, config_path):
+#def initialize(Agents, tactic_type, learning_ctrl, Ts, config_path):
+def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
     
     Learners = {}
     
     # if using CALA to tune controller parameters (placeholder for future dev)
+    #if learning_ctrl == 'CALA':
+    #    from learner import CALA_control
+    #    CALA = CALA_control.CALA(Agents.nAgents) # just one param per agent now (expand latter)
+        
+    #    #Load
+    #    Learners['CALA_ctrl'] = CALA
+
+    # AFTER:
     if learning_ctrl == 'CALA':
         from learner import CALA_control
-        CALA = CALA_control.CALA(Agents.nAgents) # just one param per agent now (expand latter)
-        
-        #Load
+        CALA = CALA_control.CALA(config)
         Learners['CALA_ctrl'] = CALA
      
+    #if tactic_type == 'lemni':
+    #    with open(config_path, 'r') as planner_lemni_tests:
+    #        configs = json.load(planner_lemni_tests)
+    #    if configs['lemni']['learning'] == 'CALA':
+    #        import learner.CALA_control as lemni_CALA
+    #        lemni_CALA_xz = lemni_CALA.CALA(Agents.nAgents)
+    #        # Load
+    #        Learners['lemni_CALA_xz'] = lemni_CALA_xz
+    
     if tactic_type == 'lemni':
-        with open(config_path, 'r') as planner_lemni_tests:
-            configs = json.load(planner_lemni_tests)
-        if configs['lemni']['learning'] == 'CALA':
+        planner_configs = config.get('planner', {})
+        lemni_config = planner_configs.get('techniques', {}).get('lemni', {})
+        if lemni_config.get('learning') == 'CALA':
             import learner.CALA_control as lemni_CALA
-            lemni_CALA_xz = lemni_CALA.CALA(Agents.nAgents)
-            # Load
+            lemni_CALA_xz = lemni_CALA.CALA(config)
             Learners['lemni_CALA_xz'] = lemni_CALA_xz
+
              
     # pinning control case
+    #if tactic_type == 'pinning':
+    #    
+    #    with open(config_path, 'r') as planner_pinning_tests:
+    #        configs = json.load(planner_pinning_tests)
+    #        planner_configs = configs['planner']['techniques']['pinning']
+    
+    # 
     if tactic_type == 'pinning':
+        planner_configs = config['planner']['techniques']['pinning']
         
-        with open(config_path, 'r') as planner_pinning_tests:
-            configs = json.load(planner_pinning_tests)
-            planner_configs = configs['planner']['techniques']['pinning']
-            
+        do = True
+        if do:
+
             # see what kind of learning is enabled
             lattice_consensus = planner_configs['hetero_lattice']
             lattice_learner = planner_configs['learning']
@@ -102,7 +127,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config_path):
             '''
       
     
-    configs_tools.update_orch_configs(config_path,learner_objs=Learners)
+    #configs_tools.update_orch_configs(config_path,learner_objs=Learners)
         
     return Learners
         

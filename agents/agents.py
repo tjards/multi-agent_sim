@@ -11,75 +11,113 @@ Created on Wed Nov 29 19:07:07 2023
 import numpy as np
 from scipy.spatial.distance import cdist
 import random 
+import json
+import os
+
+'''
+parameters''
 
 # agent dynamics
 # --------------
-#dynamics = 'quadcopter'
-dynamics = 'double integrator' 
-    # 'double integrator' 
-    # 'quadcopter'
+    dynamics = 'double_integrator'
+    #dynamics = 'double integrator' 
+        # 'double integrator' 
+        # 'quadcopter'
 
-nAgents = 13 # 7    # number of agents
-rAgents = 0.5   # physical radius of agents 
-iSpread = 40 #20 #80 # 20   # initial spread of agents
-init_conditions = 'random'   # mesh, random, evenly_spaced
-        
-# constraints
-vmax = 5
-vmin = -5
+    nAgents = 4 # 7    # number of agents
+    rAgents = 0.5   # physical radius of agents 
+    iSpread = 20 #20 #80 # 20   # initial spread of agents
+    init_conditions = 'random'   # mesh, random, evenly_spaced
+            
+    # constraints
+    vmax = 5
+    vmin = -5
+'''
+
+# for the quadcopter case, I need to pull out some configs (clean up later)
+config_path = os.path.join('config', 'config.json')
+with open(config_path, 'r') as f:
+    config_data = json.load(f)
+agents_config = config_data.get('agents', None)
+simulation_config = config_data.get('simulation', None)
+
 
 
 # store the config
-config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
+#config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
 
 # some dependencies for quadcopter
-if dynamics == 'quadcopter':
+if agents_config.get('dynamics', None) == 'quadcopter':
     
     from .quadcopter_module import config as quadcopter_config_file 
     from .quadcopter_module.quad import Quadcopter
     from .quadcopter_module.ctrl import Control as Quadcopter_Control
     quadcopter_config = quadcopter_config_file.config()
-    config_agents['quad_orient'] = quadcopter_config.orient
-    config_agents['quad_usePrecession'] = quadcopter_config.usePrecession
-    config_agents['quad_Ts'] = quadcopter_config.Ts
-    from .quadcopter_module.ctrl import return_gains as quadcopter_gains
-    config_agents.update(quadcopter_gains())
-    config_agents['heading_type']        = quadcopter_config.heading_type 
-    config_agents['v_heading_adjust']    = quadcopter_config.v_heading_adjust
-    config_agents['v_heading_saturate']  = quadcopter_config.v_heading_saturate
-    heading_type = config_agents['heading_type']        
-    v_heading_adjust = config_agents['v_heading_adjust']    
-    v_heading_saturate = config_agents['v_heading_saturate']  
+
+    # extract quadcopter configs into the agent config (clean up later)
+    heading_type = quadcopter_config.heading_type
+    v_heading_adjust = quadcopter_config.v_heading_adjust
+    v_heading_saturate = quadcopter_config.v_heading_saturate
+
+    #config_agents['quad_orient'] = quadcopter_config.orient
+    #config_agents['quad_usePrecession'] = quadcopter_config.usePrecession
+    #config_agents['quad_Ts'] = quadcopter_config.Ts
     
+    # get gains 
+    from .quadcopter_module.ctrl import return_gains as quadcopter_gains
+    quadcopter_gains_dict = quadcopter_gains()
+
+    #config_agents.update(quadcopter_gains())
+    #config_agents['heading_type']        = quadcopter_config.heading_type 
+    #config_agents['v_heading_adjust']    = quadcopter_config.v_heading_adjust
+    #config_agents['v_heading_saturate']  = quadcopter_config.v_heading_saturate
+    #heading_type = config_agents['heading_type']        
+    #v_heading_adjust = config_agents['v_heading_adjust']    
+    #v_heading_saturate = config_agents['v_heading_saturate']  
+    
+    # get other params
     from .quadcopter_module.initQuad import sys_params
     quad_params = sys_params(quadcopter_config)
     for key, value in quad_params.items():
         if isinstance(value, np.ndarray):
             quad_params[key] = value.tolist()
-    config_agents['quad_params'] = quad_params
+    #config_agents['quad_params'] = quad_params
     
 
 class Agents:
     
-    def __init__(self,tactic_type, dimens):
+    #def __init__(self,tactic_type, dimens):
+    def __init__(self):
         
         # initite attributes 
         # ------------------
-        self.nAgents        = nAgents      # number of vehicles
-        self.rVeh           = rAgents     # physical radius of vehicle
-        self.tactic_type    = tactic_type    
-        self.dynamics_type  = dynamics
-        self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
-        self.dimens         = dimens
+        #self.nAgents        = nAgents      # number of vehicles
+        #self.rVeh           = rAgents     # physical radius of vehicle
+        #self.tactic_type    = tactic_type    
+        #self.dynamics_type  = dynamics
+        #self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
+        #self.dimens         = dimens
         
-        config_agents.update({'tactic_type': self.tactic_type})
+        #config_agents.update({'tactic_type': self.tactic_type})
+
+        self.nAgents = agents_config.get('nAgents', None)
+        self.rAgents = agents_config.get('rAgents', None)
+        self.iSpread = agents_config.get('iSpread', None)
+        self.init_conditions = agents_config.get('init_conditions', None)
+        self.dynamics = agents_config.get('dynamics', None)
+        self.dynamics_type = agents_config.get('dynamics', None) # redundant, used by data manager
+        self.vmax = agents_config.get('vmax', None)
+        self.vmin = agents_config.get('vmin', None)
+        self.tactic_type = simulation_config.get('strategy', None)
+        self.dimens = simulation_config.get('dimens', None)
+        self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
         
         # Vehicles states
         # ---------------
         
         d_sep = 10
         
-        if init_conditions == 'evenly_spaced':
+        if self.init_conditions == 'evenly_spaced':
             self.state = np.zeros((6, self.nAgents))
     
             # Calculate the number of rows and columns required
@@ -97,7 +135,7 @@ class Agents:
             self.state[1, :] = positions[:, 1]  # position (y)
             
             # Assign z positions (if applicable)
-            self.state[2, :] = iSpread * np.random.rand(1, self.nAgents) + 15  # position (z)
+            self.state[2, :] = self.iSpread * np.random.rand(1, self.nAgents) + 15  # position (z)
             if self.dimens == 2:
                 self.state[2, :] = 0 * self.state[2, :]
             
@@ -115,13 +153,13 @@ class Agents:
         
         
         
-        if init_conditions == 'random':
+        if self.init_conditions == 'random':
         
             self.state = np.zeros((6,self.nAgents))
-            self.state[0,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (x)
-            self.state[1,:] = iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (y)
+            self.state[0,:] = self.iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (x)
+            self.state[1,:] = self.iSpread*(np.random.rand(1,self.nAgents)-0.5)                   # position (y)
             #self.state[2,:] = np.maximum((iSpread*np.random.rand(1,self.nAgents)-0.5),2)+8  # position (z)
-            self.state[2,:] = iSpread*np.random.rand(1,self.nAgents) + 15   # position (z)
+            self.state[2,:] = self.iSpread*np.random.rand(1,self.nAgents) + 15   # position (z)
             if self.dimens == 2:
                 self.state[2,:] = 0*self.state[2,:]
                 
@@ -137,17 +175,17 @@ class Agents:
         
         # Vehicle states(mesh)
         # --------------
-        mesh_distance = iSpread
+        mesh_distance = self.iSpread
         
-        if init_conditions == 'mesh':
+        if self.init_conditions == 'mesh':
 
-            side_length = int(np.ceil(nAgents ** (1/3)))
+            side_length = int(np.ceil(self.nAgents ** (1/3)))
             x_vals, y_vals, z_vals = np.meshgrid(mesh_distance * np.arange(side_length), 
                                           mesh_distance * np.arange(side_length),
                                           mesh_distance * np.arange(side_length))
-            x_vals = x_vals.flatten()[:nAgents]
-            y_vals = y_vals.flatten()[:nAgents]
-            z_vals = z_vals.flatten()[:nAgents]
+            x_vals = x_vals.flatten()[:self.nAgents]
+            y_vals = y_vals.flatten()[:self.nAgents]
+            z_vals = z_vals.flatten()[:self.nAgents]
             if self.dimens == 2:
                 z_vals = 0*z_vals
                 
@@ -164,7 +202,7 @@ class Agents:
         
         # agent dynamics
         # --------------
-        if dynamics == 'quadcopter':
+        if self.dynamics == 'quadcopter':
             
             # quadcopter objects
             # ------------------
@@ -193,7 +231,7 @@ class Agents:
                 self.llctrlList.append(Quadcopter_Control(self.quadList[quad_i], "yaw")) # nominally, "yaw" at end
                 self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
         
-        self.config_agents = config_agents    
+        #self.config_agents = config_agents    
     
     def compute_centroid(self, points):
         length = points.shape[0]
@@ -303,7 +341,7 @@ class Agents:
         #vmax = 5
         #vmin = -5
 
-        if dynamics == 'quadcopter':
+        if self.dynamics == 'quadcopter':
             
             # note: eventually we will move this into the quadcopter module
             
@@ -395,7 +433,7 @@ class Agents:
             self.state[3:6,:] = self.state[3:6,:] + cmd[:,:]*Ts
             
             #clip
-            self.state[3:6,:] = np.clip(self.state[3:6,:], vmin, vmax)
+            self.state[3:6,:] = np.clip(self.state[3:6,:], self.vmin, self.vmax)
             #self.state[3:6,:] = clip_vector_magnitude(self.state[3:6,:], vmin, vmax)
             
             

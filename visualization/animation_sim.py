@@ -29,23 +29,34 @@ from data import data_manager
 # with open(config_path, 'r') as config_file:
 #     config_agents = json.load(config_file)
     
-config_path = os.path.join("config", "configs.json")
+#config_path = os.path.join("config", "configs.json")
+config_path = os.path.join("config", "config.json")
 with open(config_path, 'r') as config_file:
     config = json.load(config_file)
     config_agents = config['agents']
     
     # pull out a radius (if avail)
-    r_range = config.get('saber', {}).get('r', 0)
+    #r_range = config.get('saber', {}).get('r', 0)
+    r_range = config.get('planner', {}).get('techniques', {}).get('saber', {}).get('r', 0)
 
 
 
 # pull the quadcopter config (if applicable in the config)
 plot_quadcopter = 1 if config_agents.get('dynamics') == 'quadcopter' else 0
+#if plot_quadcopter:
+#    quad_params = {
+#        "dxm": config_agents['quad_params']['dxm'],
+#        "dym": config_agents['quad_params']['dym'],
+#        "dzm": config_agents['quad_params']['dzm']
+#    }
+
 if plot_quadcopter:
+    # Import quad_params directly from agents module (loaded if dynamics == 'quadcopter')
+    from agents import agents as agents_module
     quad_params = {
-        "dxm": config_agents['quad_params']['dxm'],
-        "dym": config_agents['quad_params']['dym'],
-        "dzm": config_agents['quad_params']['dzm']
+        "dxm": agents_module.quad_params['dxm'],
+        "dym": agents_module.quad_params['dym'],
+        "dzm": agents_module.quad_params['dzm']
     }
 
 # =============================================================================

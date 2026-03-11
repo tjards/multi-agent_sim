@@ -20,102 +20,144 @@ Note: in here, angles are -pi to pi
 
 """
 
+
 #%% Import stuff
 # ---------------
 import numpy as np
 import matplotlib.pyplot as plt
-import config.configs_tools as configs_tools
+#import config.configs_tools as configs_tools
 from planner.techniques.utils import quaternions as quat
-config_path=configs_tools.config_path
+#config_path=configs_tools.config_path
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial import ConvexHull
 #import copy 
 
-#%% Simulations parameters
-# ---------------------
+import config.config as cfg
 
-actions_range = 'angular'                   # 'linear', 'angular' (impacts clipping)
-action_min      = -np.pi/4  # 0             # minimum of action space
-action_max      = np.pi/4   # 2*np.pi       # maximum of action space
+'''
+Parameters examples:
+
+    #%% Simulations parameters
+    # ---------------------
+
+    actions_range = 'angular'                   # 'linear', 'angular' (impacts clipping)
+    action_min      = -np.pi/4  # 0             # minimum of action space
+    action_max      = np.pi/4   # 2*np.pi       # maximum of action space
 
 
-#%% Hyperparameters
-# -----------------
+    #%% Hyperparameters
+    # -----------------
 
-# learning 
-learning_rate   = 0.5 #0.1      # rate at which policy updates
-variance_init   = 0.4 #0.4      # initial variance
-variance_ratio  = 0.5 #0.1      # default 1, permits faster (>1) /slower (<1)  variance updates
-variance_min    = 0.0001         # default 0.001, makes sure variance doesn't go too low
-variance_max    = 10            # highest variance 
-epsilon         = 1e-6
-counter_max     = 100           # when to stop accumualating experience in a trial
-counter_synch   = True          # True = all agents have same counter; False = all agents random counters (not tested)
-counter_delay   = 500           # number of timesteps to delay learning (gives time for dynamic systems to reach equilibrium)
+    # learning 
+    learning_rate   = 0.5 #0.1      # rate at which policy updates
+    variance_init   = 0.4 #0.4      # initial variance
+    variance_ratio  = 0.5 #0.1      # default 1, permits faster (>1) /slower (<1)  variance updates
+    variance_min    = 0.0001         # default 0.001, makes sure variance doesn't go too low
+    variance_max    = 10            # highest variance 
+    epsilon         = 1e-6
+    counter_max     = 100           # when to stop accumualating experience in a trial
+    counter_synch   = True          # True = all agents have same counter; False = all agents random counters (not tested)
+    counter_delay   = 500           # number of timesteps to delay learning (gives time for dynamic systems to reach equilibrium)
 
-# exploration
-explore_dirs            = True  # bias learning in certain direction?
-explore_persistence     = 0.7   # if using explore dirs, tune 0.8–0.95 for smoothness
+    # exploration
+    explore_dirs            = True  # bias learning in certain direction?
+    explore_persistence     = 0.7   # if using explore dirs, tune 0.8–0.95 for smoothness
 
-# MAS coordination 
-leader_follower         = True  # true = define a leader; false = consensus-based (not working yet)
-leader                  = 0
+    # MAS coordination 
+    leader_follower         = True  # true = define a leader; false = consensus-based (not working yet)
+    leader                  = 0
 
-# rewards
-reward_mode         = 'target'      # 'target' = change orientation of swarm to track target 
-reward_coupling     = 2             # states per agent, default = 2 (only 2 works right now, look at decoupling later) 
-reward_reference    = 'global'      # 'global' (default),   'local' (not working yet)
-reward_form         = 'sharp'       # 'dot'(default),       'angle' (not working yet), 'sharp' (prototype)                    
-reward_k_theta      = 12.0          # for 'sharp'; steepness for 'sharp' (bigger -> harsher)
-momentum            = False         # if using momentum 
-momentum_beta       = 0.8           # beta param for momentum (0 to 1)
-annealing           = False         # anneal variance down with time?
-annealing_rate      = 0.99          # nominally around 0.99
-kicking             = False         # if kicking (stops reward chasing down)
-kicking_factor      = 1.3           # slighly greater than 1
-sigmoidize          = False         # apply sigmoid in latter stages of learning
-
+    # rewards
+    reward_mode         = 'target'      # 'target' = change orientation of swarm to track target 
+    reward_coupling     = 2             # states per agent, default = 2 (only 2 works right now, look at decoupling later) 
+    reward_reference    = 'global'      # 'global' (default),   'local' (not working yet)
+    reward_form         = 'sharp'       # 'dot'(default),       'angle' (not working yet), 'sharp' (prototype)                    
+    reward_k_theta      = 12.0          # for 'sharp'; steepness for 'sharp' (bigger -> harsher)
+    momentum            = False         # if using momentum 
+    momentum_beta       = 0.8           # beta param for momentum (0 to 1)
+    annealing           = False         # anneal variance down with time?
+    annealing_rate      = 0.99          # nominally around 0.99
+    kicking             = False         # if kicking (stops reward chasing down)
+    kicking_factor      = 1.3           # slighly greater than 1
+    sigmoidize          = False         # apply sigmoid in latter stages of learning
+'''
 
 #%% Learning Class
 # ----------------
 class CALA:
     
     # initialize
-    def __init__(self, num_agents):
+    #def __init__(self, num_agents):
+    def __init__(self, config):    
         
+        CALA_config = cfg.get_config(config, 'learner.CALA')
+        agents_config = cfg.get_config(config, 'agents')
+
+        self.num_agents = agents_config.get('nAgents', None)
+        self.reward_coupling = CALA_config.get('reward_coupling', None)
+        self.num_states = self.num_agents * self.reward_coupling
+
         # each agent has a state for each degree of freedom (linked to coupling term)
-        num_states = num_agents * reward_coupling
+        #num_states = num_agents * reward_coupling
         
         # load parameters into class
-        self.num_agents     = num_agents
-        self.num_states     = num_states 
-        self.action_min     = action_min
-        self.action_max     = action_max
-        self.learning_rate  = learning_rate
-        self.means          = 0.75*np.random.uniform(action_min, action_max, num_states)    #means
-        self.variances      = np.full(num_states, variance_init)                            #variances
-        self.prev_update    = np.zeros(num_states)              # previous update (used for momentum)
-        self.prev_reward    = np.zeros(num_states)              # previous reward (used for kicking)
-        self.explore_dirs   = np.zeros_like(self.means)         # used for directional exploration
+        #self.num_agents     = num_agents
+        #self.num_states     = num_states 
+        self.action_min     = CALA_config.get('action_min', None)
+        self.action_max     = CALA_config.get('action_max', None)
+        self.learning_rate  = CALA_config.get('learning_rate', None)
+        self.means          = 0.75*np.random.uniform(self.action_min, self.action_max, self.num_states)    #means
+        self.variance_init   = CALA_config.get('variance_init', None)
+        self.variances      = np.full(self.num_states, CALA_config.get('variance_init', None))  
+        self.variance_ratio = CALA_config.get('variance_ratio', None)
+        self.variance_min = CALA_config.get('variance_min', None) 
+        self.variance_max = CALA_config.get('variance_max', None)                         #variances
+        self.prev_update    = np.zeros(self.num_states)              # previous update (used for momentum)
+        self.prev_reward    = np.zeros(self.num_states)              # previous reward (used for kicking)
+        self.explore_dirs   = np.zeros_like(self.means)        # used for directional exploration
+        self.explore_dirs_option = CALA_config.get('explore_dirs', None) # how to set exploration direction (if using)
+        self.explore_persistence = CALA_config.get('explore_persistence', None) # how much to persist in exploration direction (if using)
 
         # inject non-uniform influence or bias across states (used for MAS coordination)
-        self.asymmetry  = np.random.rand(num_states)
+        self.asymmetry  = np.random.rand(self.num_states)
         #self.asymmetry  /= np.sum(self.asymmetry)  # Normalize to sum to 1
         
-        # initialize actions 
-        self.action_set = 0*np.ones((num_states))
-        self.reference = 0*np.ones((num_states)) # for when references are needed
+        # initialize actions
+        self.actions_range = CALA_config.get('actions_range', None)
+        self.action_set = 0*np.ones((self.num_states))
+        self.reference = 0*np.ones((self.num_states)) # for when references are needed
 
         # counter        
-        self.counter_max    = counter_max 
-        if counter_synch:    
-            self.counter = np.zeros(num_states) - counter_delay 
+        self.counter_max    = CALA_config.get('counter_max', None)
+        self.counter_synch   = CALA_config.get('counter_synch', None)
+        self.counter_delay   = CALA_config.get('counter_delay', None)
+
+
+        if self.counter_synch:    
+            self.counter = np.zeros(self.num_states) - self.counter_delay 
         else:
-            self.counter = np.random.uniform(0, self.counter_max, num_states).astype(int) - counter_delay
+            self.counter = np.random.uniform(0, self.counter_max, self.num_states).astype(int) - self.counter_delay
             
         # store environment variables throughout the trial
-        self.reward_mode      = reward_mode
-        self.environment_vars = np.zeros(num_states)        
+        self.reward_mode      = CALA_config.get('reward_mode', None)
+        self.reward_reference   = CALA_config.get('reward_reference', None)
+        self.reward_form        = CALA_config.get('reward_form', None)
+        self.reward_k_theta     = CALA_config.get('reward_k_theta', None)
+        self.environment_vars = np.zeros(self.num_states)        
+
+        # other
+        self.leader_follower = CALA_config.get('leader_follower', None) 
+        self.leader         = CALA_config.get('leader', None)
+        self.sigmoidize      = CALA_config.get('sigmoidize', None)
+
+        self.momentum        = CALA_config.get('momentum', None)
+        self.momentum_beta   = CALA_config.get('momentum_beta', None)
+        self.annealing        = CALA_config.get('annealing', None)
+        self.annealing_rate   = CALA_config.get('annealing_rate', None)
+        self.kicking          = CALA_config.get('kicking', None)
+        self.kicking_factor     = CALA_config.get('kicking_factor', None)
+
+        self.epsilon = CALA_config.get('epsilon', None)
 
         # store stuff
         self.mean_history       = []
@@ -123,6 +165,7 @@ class CALA:
         self.reward_history     = []
         self.action_history = []
         
+        '''
         # store the configs
         configs_tools.update_configs('CALA', [
             ('num_states', num_states),
@@ -163,6 +206,7 @@ class CALA:
             ('sigmoidize', sigmoidize)
         ])
 
+        '''
 
 
     #%% helper functions
@@ -217,7 +261,7 @@ class CALA:
         
         # update the policy
         self.step(state, reward)
-        if reward_coupling == 2:
+        if self.reward_coupling == 2:
             self.step(state + self.num_agents, reward)
             
         # negotiate with neighbours
@@ -227,13 +271,13 @@ class CALA:
     def negotiate_with_neighbours(self, state, neighbours):
         
         # leader/follower negotiation
-        if leader_follower:
+        if self.leader_follower:
             
             self.share_statistics(state, [None, None], 'actions')
             self.share_statistics(state, [None, None], 'rewards')
-            if reward_coupling == 2:
-                self.share_statistics(state + self.num_agents, [None, None], 'actions', leader + self.num_agents)
-                self.share_statistics(state + self.num_agents, [None, None], 'rewards', leader + self.num_agents)
+            if self.reward_coupling == 2:
+                self.share_statistics(state + self.num_agents, [None, None], 'actions', self.leader + self.num_agents)
+                self.share_statistics(state + self.num_agents, [None, None], 'rewards', self.leader + self.num_agents)
     
         # consensus negotation
         elif neighbours is not None and len(neighbours) > 1:
@@ -242,7 +286,7 @@ class CALA:
             lead = neighbours[(idx + 1) % len(neighbours)]
             self.share_statistics(state, [lag, lead], 'actions')
             self.share_statistics(state, [lag, lead], 'rewards')
-            if reward_coupling == 2:
+            if self.reward_coupling == 2:
                 state += self.num_agents
                 lag += self.num_agents
                 lead += self.num_agents
@@ -250,10 +294,10 @@ class CALA:
                 self.share_statistics(state, [lag, lead], 'rewards')
         
     # seek consensus between neighbouring rewards (state, list[neighbours])
-    def share_statistics(self, state, neighbours, which, leader_node = leader):
+    def share_statistics(self, state, neighbours, which, leader_node = 0):
         
         # share leader statistics
-        if leader_follower:
+        if self.leader_follower:
             if state != leader_node:
                 source = leader_node
                 if which == 'actions':
@@ -296,14 +340,14 @@ class CALA:
         variance    = self.variances[state]
         
         # if biasing in a direction (smoother)
-        if explore_dirs:
+        if self.explore_dirs_option:
             
             #if self.explore_dirs[state] == 0:
             #    self.explore_dirs[state] = np.random.normal(0, 1)
             
             self.explore_dirs[state] = (
-                explore_persistence * self.explore_dirs[state] + 
-                (1 - explore_persistence) * np.random.normal(0, 1))
+                self.explore_persistence * self.explore_dirs[state] + 
+                (1 - self.explore_persistence) * np.random.normal(0, 1))
             
             action = self.means[state] + self.explore_dirs[state] * np.sqrt(self.variances[state])
 
@@ -313,11 +357,11 @@ class CALA:
             action = np.random.normal(mean, np.sqrt(variance))
         
         # return the action, onstrained using clip()
-        if actions_range == 'linear':
+        if self.actions_range == 'linear':
         
             return np.clip(action, self.action_min, self.action_max)
         
-        elif actions_range == 'angular':
+        elif self.actions_range == 'angular':
             
             #return np.mod(action, 2 * np.pi)
             #return (action + np.pi) % (2 * np.pi) - np.pi
@@ -331,7 +375,7 @@ class CALA:
         # reward
         # ------
                     
-        if sigmoidize:     
+        if self.sigmoidize:     
             
             r_linear = reward
 
@@ -341,7 +385,7 @@ class CALA:
 
             # compute blend weight based on variance
             avg_var = np.mean(self.variances)               # average variance across all states
-            w = 1 - np.clip(avg_var / variance_init, 0, 1)    # weight increases as variance drops
+            w = 1 - np.clip(avg_var / self.variance_init, 0, 1)    # weight increases as variance drops
 
             # Hybrid reward
             reward = (1 - w) * r_linear + w * r_sigmoid
@@ -350,41 +394,41 @@ class CALA:
         # distribution
         # ------------
         
-        if kicking:
+        if self.kicking:
             if reward < self.prev_reward[state]-0.05:
-                self.variances[state] *= kicking_factor
+                self.variances[state] *= self.kicking_factor
             self.prev_reward[state] = reward
         
-        if annealing:
-            self.variances[state] *= annealing_rate
+        if self.annealing:
+            self.variances[state] *= self.annealing_rate
 
         # pull mean and variance for given state
         mean        = self.means[state]
         variance    = self.variances[state]
         
         # update mean and variance based on reward signal
-        if momentum:
+        if self.momentum:
             delta                   = reward * (action - mean)
-            delta                   = momentum_beta * self.prev_update[state] + (1 - momentum_beta) * delta
+            delta                   = self.momentum_beta * self.prev_update[state] + (1 - self.momentum_beta) * delta
             self.prev_update[state] = delta
             self.means[state]       += self.learning_rate * delta
         else:
             self.means[state]       += self.learning_rate * reward * (action - mean)
         
         # after updating self.means[state]
-        if actions_range == 'angular':
+        if self.actions_range == 'angular':
             self.means[state] = self.wrap2pi(self.means[state])
             self.means[state] = np.clip(self.means[state], self.action_min, self.action_max)
-        elif actions_range == 'linear':
+        elif self.actions_range == 'linear':
             self.means[state] = np.clip(self.means[state], self.action_min, self.action_max)
                 
-        self.variances[state]   += variance_ratio * self.learning_rate * reward * ((action - mean) ** 2 - variance)
+        self.variances[state]   += self.variance_ratio * self.learning_rate * reward * ((action - mean) ** 2 - variance)
         
         # constaints
         # ----------
         
-        self.variances[state] = max(variance_min, self.variances[state])
-        self.variances[state] = min(self.variances[state], variance_max)
+        self.variances[state] = max(self.variance_min, self.variances[state])
+        self.variances[state] = min(self.variances[state], self.variance_max)
         
 
     # ****************************
@@ -410,39 +454,39 @@ class CALA:
             # when coupled
             # =============
             
-            if reward_coupling == 2:
+            if self.reward_coupling == 2:
                 
-                if reward_reference == 'global':
+                if self.reward_reference == 'global':
                     
                     v1 = v_heading
                     v2 = v_target
             
-                    if reward_form == 'dot':
+                    if self.reward_form == 'dot':
         
-                        v1 /= (np.linalg.norm(v1) + epsilon)
-                        v2 /= (np.linalg.norm(v2) + epsilon)
+                        v1 /= (np.linalg.norm(v1) + self.epsilon)
+                        v2 /= (np.linalg.norm(v2) + self.epsilon)
                         reward = (np.dot(v1, v2) + 1) / 2
     
     
-                    elif reward_form == 'angle':
+                    elif self.reward_form == 'angle':
                         
                         reward_sigma = 0.5
-                        v1 /= (np.linalg.norm(v1) + epsilon)
-                        v2 /= (np.linalg.norm(v2) + epsilon)
+                        v1 /= (np.linalg.norm(v1) + self.epsilon)
+                        v2 /= (np.linalg.norm(v2) + self.epsilon)
                         angle_diff = np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
                         reward = np.exp(-angle_diff**2 / reward_sigma**2)  # Gaussian bump at 0
                         
-                    elif reward_form == 'sharp': 
+                    elif self.reward_form == 'sharp': 
                         
                         # helper functions
-                        _norm = lambda v: v / (np.linalg.norm(v) + epsilon)
+                        _norm = lambda v: v / (np.linalg.norm(v) + self.epsilon)
                         _angle = lambda a, b: np.arccos(np.clip(np.dot(_norm(a), _norm(b)), -1.0, 1.0))
                         
                         # high-contrast alignment: exp(-k * theta^2)
                         theta = _angle(v1, v2)
-                        reward = np.exp(-reward_k_theta * theta**2) 
+                        reward = np.exp(-self.reward_k_theta * theta**2) 
                 
-                elif reward_reference == 'local':
+                elif self.reward_reference == 'local':
                         
                         print('not done yet')
                        
@@ -451,7 +495,7 @@ class CALA:
             # ===============
             
             # if this is just one axis (i.e., not representing coupled axes)
-            elif reward_coupling == 1:
+            elif self.reward_coupling == 1:
             
                 print('not done yet')
                 
@@ -584,7 +628,7 @@ class CALA:
     
         # Choose states to plot
         if just_leader:
-            states_to_plot = [leader, leader + self.num_agents]
+            states_to_plot = [self.leader, self.leader + self.num_agents]
         else:
             states_to_plot = list(range(self.num_states))
     
@@ -691,7 +735,7 @@ class CALA:
     
         # Choose which states to animate
         if just_leader:
-            states_to_plot = [leader, leader+self.num_agents]
+            states_to_plot = [self.leader, self.leader+self.num_agents]
         else:
             states_to_plot = list(range(self.num_states))
     
@@ -780,9 +824,9 @@ class CALA:
         """
         # Select which states to plot (leader pair if coupled)
         if just_leader:
-            x_actions = self.action_history[leader]
-            y_actions = self.action_history[leader + self.num_agents]
-            rewards = self.reward_history[leader]  # assume same reward for coupled pair
+            x_actions = self.action_history[self.leader]
+            y_actions = self.action_history[self.leader + self.num_agents]
+            rewards = self.reward_history[self.leader]  # assume same reward for coupled pair
         else:
             # Combine all states
             x_actions = []
@@ -836,9 +880,9 @@ class CALA:
     
         # Select states (X=leader, Y=leader+num_agents if coupled)
         if just_leader:
-            x_actions = np.array(self.action_history[leader])
-            y_actions = np.array(self.action_history[leader + self.num_agents])
-            rewards = np.array(self.reward_history[leader])
+            x_actions = np.array(self.action_history[self.leader])
+            y_actions = np.array(self.action_history[self.leader + self.num_agents])
+            rewards = np.array(self.reward_history[self.leader])
         else:
             # Combine all agents
             x_actions, y_actions, rewards = [], [], []
@@ -923,9 +967,9 @@ class CALA:
         
         # Select which states to plot (leader pair if coupled)
         if just_leader:
-            x_actions = self.action_history[leader]
-            y_actions = self.action_history[leader + self.num_agents]
-            rewards = self.reward_history[leader]  # assume same reward for coupled pair
+            x_actions = self.action_history[self.leader]
+            y_actions = self.action_history[self.leader + self.num_agents]
+            rewards = self.reward_history[self.leader]  # assume same reward for coupled pair
         else:
             # Combine all states
             x_actions, y_actions, rewards = [], [], []

@@ -7,7 +7,7 @@
     },
     "simulation": {
         "Ti": 0,
-        "Tf": 60,
+        "Tf": 30,
         "Ts": 0.02,
         "dimens": 2,
         "verbose": 1,
@@ -19,24 +19,28 @@
     },
     "agents": {
         "nAgents": 13,
-        "dynamics": "double_integrator",
-        "max_velocity": 2.0,
-        "communication_range": 5.0,
-        "control_gain": 0.5,
-        "quadcopter": {
-            "enabled": false,
-            "mass": 1.0,
-            "gravity": 9.81,
-            "motor_max_thrust": 20.0
-        }
+        "dynamics": "double integrator",
+        "rAgents": 0.5,
+        "iSpread": 20,
+        "init_conditions": "random",
+        "vmax": 5,
+        "vmin": -5
     },
     "targets": {
-        "target_type": "static",
-        "movement_speed": 0.5
+        "tSpeed": 0,
+        "initial_position": [0, 0, 15]
     },
     "obstacles": {
-        "num_obstacles": 0,
-        "obstacle_type": "circular"
+        "nObs": 1,
+        "vehObs": 0,
+        "oSpread": 20,
+        "manual": true,
+        "manual_positions": {
+            "x": -2.4,
+            "y": 1.2,
+            "z": 25,
+            "radius": 0.5
+        }
     },
     "orchestrator": {
         "pin_update_rate": 10,
@@ -73,7 +77,7 @@
                 "learning": null,
                 "learning_axes": "xz",
                 "learning_coupling": true,
-                "lemni_type": 0
+                "lemni_type": 4
             },
             "reynolds": {
                 "escort": 1,
@@ -197,29 +201,38 @@
         }
     },
     "learner": {
-        "algorithm": "CALA",
         "CALA": {
-            "num_states": 10,
-            "action_min": -1.0,
-            "action_max": 1.0,
-            "learning_rate": 0.01,
-            "variance_init": 0.5,
-            "variance_ratio": 0.8,
-            "variance_min": 0.01,
-            "variance_max": 1.0,
-            "epsilon": 0.3,
+            "actions_range": "angular",
+            "action_min": -0.7853981633974483,
+            "action_max": 0.7853981633974483,
+            "learning_rate": 0.5,
+            "variance_init": 0.4,
+            "variance_ratio": 0.5,
+            "variance_min": 0.0001,
+            "variance_max": 10,
+            "epsilon": 1e-6,
             "counter_max": 100,
             "counter_synch": true,
-            "counter_delay": 10,
-            "leader_follower": false,
-            "leader": 0
+            "counter_delay": 500,
+            "explore_dirs": true,
+            "explore_persistence": 0.7,
+            "leader_follower": true,
+            "leader": 0,
+            "reward_mode": "target",
+            "reward_coupling": 2,
+            "reward_reference": "global",
+            "reward_form": "sharp",
+            "reward_k_theta": 12.0,
+            "momentum": false,
+            "momentum_beta": 0.8,
+            "annealing": false,
+            "annealing_rate": 0.99,
+            "kicking": false,
+            "kicking_factor": 1.3,
+            "sigmoidize": false
         },
         "QL_learning_lattice": {
-            "alpha": 0.1,
-            "gamma": 0.9,
-            "epsilon": 0.2,
-            "num_states": 20,
-            "num_actions": 4
+            "param1": 1.0
         },
         "consensus": {
             "param1": 1.0

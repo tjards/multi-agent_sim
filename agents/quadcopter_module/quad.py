@@ -244,20 +244,22 @@ class Quadcopter:
     
         # State Derivative Vector
         # ---------------------------
-        sdot     = np.zeros([21])
-        sdot[0]  = DynamicsDot[0]
-        sdot[1]  = DynamicsDot[1]
-        sdot[2]  = DynamicsDot[2]
-        sdot[3]  = DynamicsDot[3]
-        sdot[4]  = DynamicsDot[4]
-        sdot[5]  = DynamicsDot[5]
-        sdot[6]  = DynamicsDot[6]
-        sdot[7]  = DynamicsDot[7]
-        sdot[8]  = DynamicsDot[8]
-        sdot[9]  = DynamicsDot[9]
-        sdot[10] = DynamicsDot[10]
-        sdot[11] = DynamicsDot[11]
-        sdot[12] = DynamicsDot[12]
+        #sdot     = np.zeros([21])
+        sdot = np.zeros(21, dtype=float)
+        sdot[:13] = DynamicsDot.flatten()
+        # sdot[0]  = DynamicsDot[0]
+        # sdot[1]  = DynamicsDot[1]
+        # sdot[2]  = DynamicsDot[2]
+        # sdot[3]  = DynamicsDot[3]
+        # sdot[4]  = DynamicsDot[4]
+        # sdot[5]  = DynamicsDot[5]
+        # sdot[6]  = DynamicsDot[6]
+        # sdot[7]  = DynamicsDot[7]
+        # sdot[8]  = DynamicsDot[8]
+        # sdot[9]  = DynamicsDot[9]
+        # sdot[10] = DynamicsDot[10]
+        # sdot[11] = DynamicsDot[11]
+        # sdot[12] = DynamicsDot[12]
         sdot[13] = wdotM1
         sdot[14] = wddotM1
         sdot[15] = wdotM2
