@@ -80,10 +80,16 @@ def twist_explicit(twist, lemni_type = 3, invert = False):
     return twist_quat
 
 
-# custom class
-class Planner:
+from planner.base import BasePlanner 
+class Planner(BasePlanner):
+    
+    def __init__(self, config_data, **kwargs):
+        super().__init__(config_data, **kwargs)
 
-    def __init__(self, config_data, circle):
+# custom class
+#class Planner:
+#
+#    def __init__(self, config_data, circle):
 
         lemni_config = cfg.get_config(config_data, 'planner.techniques.lemniscates')
 
@@ -98,7 +104,7 @@ class Planner:
         self.last_twist         = np.zeros([2, self.nVeh])  # initialize twist storage
 
         # encirclement parameters we'll use
-        self.circle = circle
+        self.circle = kwargs.get('encirclement')  
 
         # can be tuned
         self.unit_lem    = quat.rotate(self.circle.quat_0, np.array([1, 0, 0]).reshape((3, 1)))     # x-axis reference
@@ -150,12 +156,29 @@ class Planner:
             targets[2,:] += self.circle.r_desired/2
         return targets 
 
-    def compute_cmd(self, states_q, states_p, targets_enc, targets_v_enc, k_node):
+    #def compute_cmd(self, states_q, states_p, targets_enc, targets_v_enc, k_node):
+    def compute_cmd(self, states, targets, index, **kwargs):
+
+        # extract
+        states_q        = states[0:3, :]    # positions
+        states_p        = states[3:6, :]    # velocities
+        targets_enc     = targets[0:3, :]
+        targets_v_enc   = targets[3:6, :]
+        k_node          = index
         
         u_enc           = np.zeros((3,states_q.shape[1]))     
         u_enc[:,k_node] = - self.c1_d*sigma_1(states_q[:,k_node]-targets_enc[:,k_node])-self.c2_d*(states_p[:,k_node] - targets_v_enc[:,k_node])    
         
         return u_enc[:,k_node]
+
+    def update_trajectory(self, Trajectory, targets, **kwargs):
+
+        state   = kwargs.get('state')
+        t       = kwargs.get('t')
+        i       = kwargs.get('i')
+        learn_actions = kwargs.get('lemni_learn_actions')
+        
+        Trajectory.trajectory, Trajectory.lemni, Trajectory.sorted_neighs = self.lemni_target(state, targets, i, t, learn_actions)
 
     def lemni_target(self, state,targets,i,t, learn_actions_coupled):    
         

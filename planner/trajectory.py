@@ -31,54 +31,18 @@ class Trajectory:
     def load_planners(self, planners):
         self.planners = planners
 
-    def update(self, tactic_type, state, targets, t, i, **kwargs):
+    def update(self, tactic_type, state, targets, **kwargs):
 
         # eventually I will remove these conditionals and just call relevant str(tactic_type)
         kwargs['state'] = state
 
-        #if flocking or similar
-        if tactic_type == 'flocking_reynolds' or tactic_type == 'flocking_saber' or tactic_type == 'flocking_starling' or tactic_type == 'pinning_lattice' or tactic_type == 'shepherding':
-            self.trajectory = targets.copy() 
-        
-        # if encircling
-        elif tactic_type == 'encirclement':
-            #self.trajectory, _, _ = self.planners['encirclement'].encircle_target(targets, state)
-            self.planners['encirclement'].update_trajectory(self, targets, **kwargs)
-        
-        # if lemniscating
-        elif tactic_type == 'lemniscates':
+        # these two adjust teh trajectory; use polymorphism. 
+        if tactic_type == 'encirclement' or tactic_type == 'lemniscates':
+
+            self.planners[tactic_type].update_trajectory(self, targets, **kwargs)
+
+        else:
             
-            learn_actions = kwargs.get('lemni_learn_actions')
-            self.trajectory, self.lemni, self.sorted_neighs = self.planners['lemniscates'].lemni_target(state,targets,i,t,learn_actions)
-            
-        elif tactic_type == 'malicious_agent':
-            
+            # temporary. once all techniques are under the base class, I can just call all with update_trajectory
             self.trajectory = targets.copy()
-            
-# helpers
-# def update_trajectory_args(Agents, Trajectory, Controller, tactic_type, kwargs):
-    
-#     #kwargs['sorted_neighs'] = Trajectory.sorted_neighs
-
-
-#     # we'll need the record of lemni parameters  
-#     if tactic_type == 'lemniscates':
-        
-#         #kwargs['sorted_neighs'] = Trajectory.sorted_neighs
-        
-#         # new bidrirectional controller
-#         if 'lemni_CALA_xz' in Controller.Learners:
-            
-#             # CASE 2: bidirectional
-#             kwargs['lemni_learn_actions'] = {
-#                 'xz': Controller.Learners['lemni_CALA_xz'].action_set,
-#                 }
-#         else:
-#             kwargs['lemni_learn_actions'] = {
-#                'xz': np.zeros((2*Agents.state.shape[1]))
-#                }
-            
-            
-#     return kwargs            
-            
-            
+  

@@ -156,6 +156,9 @@ class Controller:
             self.planners['shepherding'] = shepherding.Planner(config._data, state) 
         
         # the planners that rely on saber tools for obstacle avoidance
+
+        # note: initial a planner dedicated to obstacle avoidance (i.e., what flocking_saber is doing now)
+
         if config.strategy in ['flocking_saber', 'encirclement', 'lemniscates', 'flocking_reynolds']:
             from planner.techniques import flocking_saber
             self.planners['flocking_saber'] = flocking_saber.Planner(config._data)
@@ -172,7 +175,8 @@ class Controller:
                 from planner.techniques import encirclement 
                 from planner.techniques import lemniscates
                 self.planners['encirclement']     = encirclement.Planner(config._data)
-                self.planners['lemniscates']      = lemniscates.Planner(config._data, self.planners['encirclement'])
+                embedding = {'encirclement': self.planners['encirclement']}
+                self.planners['lemniscates']      = lemniscates.Planner(config._data, **embedding)
 
         
         # cao has it's own class and a separate graph for connected (in addition to in range)    
@@ -220,7 +224,7 @@ class Controller:
             
             # update connectivity parameters 
             if tactic_type == 'flocking_saber':
-                r_matrix = self.planners['flocking_saber'].d*np.ones((state.shape[1],state.shape[1]))
+                r_matrix = self.planners['flocking_saber'].d*np.ones((state.shape[1],state.shape[1])) # not used
 
             elif tactic_type == 'encirclement':
                 r_matrix = self.planners['encirclement'].desired_separation*np.ones((state.shape[1],state.shape[1]))
@@ -310,7 +314,8 @@ class Controller:
             # ---------------------------- 
             if tactic_type == 'lemniscates':    
                 
-                u_enc[:,k_node] = self.planners['lemniscates'].compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
+                #u_enc[:,k_node] = self.planners['lemniscates'].compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
+                u_enc[:,k_node] = self.planners['lemniscates'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node)
 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------

@@ -130,8 +130,11 @@ while round(t,3) < config.Tf:
     # --------------------
 
     #kwargs = planner.trajectory.update_trajectory_args(Agents, Trajectory, Controller, config.strategy, kwargs)
-    kwargs['sorted_neighs'] = Trajectory.sorted_neighs     
-    Trajectory.update(config.strategy, Agents.state, Targets.targets, t, i, **kwargs)
+    kwargs['sorted_neighs'] = Trajectory.sorted_neighs
+    kwargs['i'] = i
+    kwargs['t'] = t
+
+    Trajectory.update(config.strategy, Agents.state, Targets.targets, **kwargs)
                         
     # Compute the commads (next step)
     # --------------------------------  
