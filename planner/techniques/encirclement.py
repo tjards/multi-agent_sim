@@ -60,6 +60,13 @@ def centroid(points):
     centroid = np.array((sum_x/length, sum_y/length, sum_z/length), ndmin = 2)
     return centroid.transpose() 
 
+'''
+from planner.base import BasePlanner 
+class Planner(BasePlanner):
+    
+    def __init__(self, config_data, **kwargs):
+        super().__init__(config_data, **kwargs)
+'''
 
 class Planner:
     
@@ -88,6 +95,8 @@ class Planner:
         self.desired_separation = self.compute_desired_sep(self.r_desired, nAgents)  
 
     def compute_cmd(self, states_q, states_p, targets_enc, targets_v_enc, k_node):
+
+    
         
         u_enc = np.zeros((3,states_q.shape[1]))     
         u_enc[:,k_node] = - self.c1_d*sigma_1(states_q[:,k_node]-targets_enc[:,k_node])-self.c2_d*(states_p[:,k_node] - targets_v_enc[:,k_node])    

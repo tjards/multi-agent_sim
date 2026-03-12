@@ -26,11 +26,21 @@ from abc import ABC, abstractmethod
 
 class BasePlanner(ABC):
     
-    def __init__(self, config, states, *args, **kwargs):
+    def __init__(self, config, **kwargs):
+
+        '''
+        Initialize base planner
+        subclasses MUST call super().__init__(config, **kwargs). Example:
+
+            class CustomPlanner(BasePlanner):
+                def __init__(self, config, **kwargs):
+                    super().__init__(config, **kwargs)  # initializes base planner attributes
+                    self.custom_parameter = kwargs.get('custom_parameter')
+
+        '''
 
         # number of agents
         self.config = config 
-        self.nAgents = states.shape[1]
 
         # interactions
         self.sensor_range_matrix    = None # matrix representing range at which neighbours can sense: currently, "r_matrix"
@@ -43,26 +53,56 @@ class BasePlanner(ABC):
         # pins
         self.pin_assignments            = None # Agents named as pins: currently, "pin_matrix"
 
+    # ================= #
+    # MANDATORY METHODS #
+    # ================= #
+
     @abstractmethod
-    def compute_cmd(self, states, targets, obstacles, index, *args, **kwargs):
-
-        # index is the agent being examined (typically against interaction graph)
-
+    def compute_cmd(self, states, targets, index, **kwargs):
+        """
+        Compute control command for an agent
+        Args:
+            states: Agents position/velocity 
+            targets: Targets positions/velocities (per agent)
+            index: Agent index to compute command for 
+            **kwargs: Strategy-specific parameters (e.g., obstacle, centroid, trajectory, walls, etc.)
+        """
         pass
 
-    def update_graphs(self, A_interaction, A_connectivity, *args, **kwargs):
+    # ================ #
+    # OPTIONAL METHODS #
+    # ================ #
+
+    # we can differentiate between updating the trajectory (states) and producing commands (accelerations)
+    def update_trajectory(self, Trajectory, targets, **kwargs):
+
+        '''
+         Currently in trajectory.py, but, given dependencies, it might make more sense to have it here
+        '''
+
+        # defaults to just copy targets, but can be overridden by other planners
+        Trajectory.trajectory = targets.copy() 
+
+    # update the interaction and connection graphs (if required)
+    def update_graphs(self, A_interaction, A_connectivity, **kwargs):
 
         self.interaction_graph = A_interaction
         self.connection_graph = A_connectivity
 
-    def update_pins(self, pin_matrix, *args, **kwargs):
+    # update the pin assignments (if required)
+    def update_pins(self, pin_matrix, **kwargs):
 
         self.pin_assignments = pin_matrix
 
-    def update_learning(self, learned_params, *args, **kwargs):
+    # update learning (if required)
+    def update_learning(self, **kwargs):
 
         pass
 
+    # return planner-specific parameters (if required)
+    def get_params(self):
+
+        return None
 
 
 

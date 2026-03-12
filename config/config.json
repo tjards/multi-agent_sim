@@ -7,12 +7,12 @@
     },
     "simulation": {
         "Ti": 0,
-        "Tf": 30,
+        "Tf": 60,
         "Ts": 0.02,
         "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "pinning_lattice",
+        "strategy": "encirclement",
         "random_seed": 42,
         "f": 0,
         "experimental_save": false
