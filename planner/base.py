@@ -83,6 +83,9 @@ class BasePlanner(ABC):
         # defaults to just copy targets, but can be overridden by other planners
         Trajectory.trajectory = targets.copy() 
 
+        #example: encirclement/lemni also adjusts trajectory.lemni and trajectory.sorted_neighs
+
+
     # update the interaction and connection graphs (if required)
     def update_graphs(self, A_interaction, A_connectivity, **kwargs):
 

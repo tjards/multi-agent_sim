@@ -259,6 +259,7 @@ class Controller:
         # *************** #
         # COMMAND UPDATES #
         # *************** #
+        
 
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'flocking_reynolds':
@@ -297,7 +298,9 @@ class Controller:
             # ---------------------------- 
             if tactic_type == 'encirclement':       
                 
-                u_enc[:,k_node] = self.planners['encirclement'].compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
+                #u_enc[:,k_node] = self.planners['encirclement'].compute_cmd(state[0:3,:], state[3:6,:], trajectory[0:3,:],trajectory[3:6,:], k_node)
+                u_enc[:,k_node] = self.planners['encirclement'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node)
+
 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------

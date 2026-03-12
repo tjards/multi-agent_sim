@@ -24,7 +24,7 @@ class Trajectory:
         
         self.trajectory = copy.deepcopy(targets)
         #self.lemni = np.zeros([1, nAgents])
-        self.lemni = np.zeros([2, nAgents])
+        self.lemni = np.zeros([2, nAgents]) # consider renaming to "past" parameter or something 
         self.sorted_neighs = list(range(nAgents))
         self.tactic_type = tactic_type
 
@@ -33,13 +33,17 @@ class Trajectory:
 
     def update(self, tactic_type, state, targets, t, i, **kwargs):
 
+        # eventually I will remove these conditionals and just call relevant str(tactic_type)
+        kwargs['state'] = state
+
         #if flocking or similar
         if tactic_type == 'flocking_reynolds' or tactic_type == 'flocking_saber' or tactic_type == 'flocking_starling' or tactic_type == 'pinning_lattice' or tactic_type == 'shepherding':
             self.trajectory = targets.copy() 
         
         # if encircling
         elif tactic_type == 'encirclement':
-            self.trajectory, _, _ = self.planners['encirclement'].encircle_target(targets, state)
+            #self.trajectory, _, _ = self.planners['encirclement'].encircle_target(targets, state)
+            self.planners['encirclement'].update_trajectory(self, targets, **kwargs)
         
         # if lemniscating
         elif tactic_type == 'lemniscates':

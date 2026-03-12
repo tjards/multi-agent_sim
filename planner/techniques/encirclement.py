@@ -60,17 +60,16 @@ def centroid(points):
     centroid = np.array((sum_x/length, sum_y/length, sum_z/length), ndmin = 2)
     return centroid.transpose() 
 
-'''
+
 from planner.base import BasePlanner 
 class Planner(BasePlanner):
     
     def __init__(self, config_data, **kwargs):
         super().__init__(config_data, **kwargs)
-'''
 
-class Planner:
-    
-    def __init__(self, config_data):
+#class Planner:
+#    
+#    def __init__(self, config_data):
 
         circle_config = cfg.get_config(config_data, 'planner.techniques.encirclement')
         
@@ -94,9 +93,22 @@ class Planner:
         print(nAgents)
         self.desired_separation = self.compute_desired_sep(self.r_desired, nAgents)  
 
-    def compute_cmd(self, states_q, states_p, targets_enc, targets_v_enc, k_node):
+    def update_trajectory(self, Trajectory, targets, **kwargs):
 
-    
+        state = kwargs.get('state')
+
+        Trajectory.trajectory, _, _ = self.encircle_target(targets, state)
+                          
+
+    #def compute_cmd(self, states_q, states_p, targets_enc, targets_v_enc, k_node):
+    def compute_cmd(self, states, targets, index, **kwargs):
+
+        # extract
+        states_q        = states[0:3, :]    # positions
+        states_p        = states[3:6, :]    # velocities
+        targets_enc     = targets[0:3, :]
+        targets_v_enc   = targets[3:6, :]
+        k_node          = index
         
         u_enc = np.zeros((3,states_q.shape[1]))     
         u_enc[:,k_node] = - self.c1_d*sigma_1(states_q[:,k_node]-targets_enc[:,k_node])-self.c2_d*(states_p[:,k_node] - targets_v_enc[:,k_node])    

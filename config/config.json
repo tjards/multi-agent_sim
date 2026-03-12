@@ -9,10 +9,10 @@
         "Ti": 0,
         "Tf": 60,
         "Ts": 0.02,
-        "dimens": 2,
+        "dimens": 3,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "encirclement",
+        "strategy": "lemniscates",
         "random_seed": 42,
         "f": 0,
         "experimental_save": false
