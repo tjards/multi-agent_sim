@@ -37,7 +37,7 @@ class Trajectory:
         kwargs['state'] = state
 
         # these two adjust teh trajectory; use polymorphism. 
-        if tactic_type == 'encirclement' or tactic_type == 'lemniscates':
+        if tactic_type == 'encirclement' or tactic_type == 'lemniscates' or tactic_type == 'flocking_reynolds':
 
             self.planners[tactic_type].update_trajectory(self, targets, **kwargs)
 

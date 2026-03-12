@@ -9,10 +9,10 @@
         "Ti": 0,
         "Tf": 60,
         "Ts": 0.02,
-        "dimens": 3,
+        "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "lemniscates",
+        "strategy": "flocking_reynolds",
         "random_seed": 42,
         "f": 0,
         "experimental_save": false

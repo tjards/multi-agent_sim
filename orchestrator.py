@@ -33,6 +33,7 @@ import os
 import json
 
 # custom packages
+from planner import trajectory
 from planner.techniques import pinning_lattice
 import utils.swarmgraph as graphical 
 import config.config as cfg
@@ -161,7 +162,7 @@ class Controller:
 
         if config.strategy in ['flocking_saber', 'encirclement', 'lemniscates', 'flocking_reynolds']:
             from planner.techniques import flocking_saber
-            self.planners['flocking_saber'] = flocking_saber.Planner(config._data)
+            self.planners['obstacle_avoidance'] = flocking_saber.Planner(config._data) # steal obstacle avoidance
             if config.strategy == 'flocking_reynolds':
                 from planner.techniques import flocking_reynolds
                 self.planners['flocking_reynolds'] = flocking_reynolds.Planner(config._data)
@@ -276,11 +277,14 @@ class Controller:
             # Reynolds Flocking
             # ------------------
             if tactic_type == 'flocking_reynolds':
-               cmd_i[:,k_node] = self.planners['flocking_reynolds'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, distances)
+               #cmd_i[:,k_node] = self.planners['flocking_reynolds'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, distances)
+               kwargs_cmd['centroid'] = centroid
+               kwargs_cmd['distances'] = distances
+               cmd_i[:,k_node] = self.planners['flocking_reynolds'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
 
                # steal obstacle avoidance term from saber
                # ----------------------------------------
-               u_obs[:,k_node] = self.planners['flocking_saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+               u_obs[:,k_node] = self.planners['obstacle_avoidance'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
             
             # Saber Flocking
             # ---------------                                
@@ -308,7 +312,7 @@ class Controller:
 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                u_obs[:,k_node] = self.planners['flocking_saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                u_obs[:,k_node] = self.planners['obstacle_avoidance'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
                      
             # Lemniscatic term (phi_lima)
             # ---------------------------- 
@@ -319,7 +323,7 @@ class Controller:
 
                 # steal obstacle avoidance term from saber
                 # ----------------------------------------
-                u_obs[:,k_node] = self.planners['flocking_saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                u_obs[:,k_node] = self.planners['obstacle_avoidance'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
 
             # Starling
             # --------

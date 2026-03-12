@@ -20,9 +20,11 @@ def norm_sat(u,maxu):
     return u_out
 
 # custom class
-class Planner:
-
-    def __init__(self, config):
+from planner.base import BasePlanner
+class Planner(BasePlanner):
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
+    
         # load the configs
         reynolds_config =cfg.get_config(config, 'planner.techniques.flocking_reynolds')
         self.escort          = reynolds_config['escort']          # escort (i.e. target tracking?): 0 = no, 1 = yes
@@ -55,7 +57,15 @@ class Planner:
     # Compute commands
     # ----------------
 
-    def compute_cmd(self, targets, centroid, states_q, states_p, k_node, distances):
+    def compute_cmd(self, states, targets, index, **kwargs):
+
+        # Extract 
+        states_q = states[0:3, :]     # positions
+        states_p = states[3:6, :]     # velocities
+        targets_q = targets[0:3, :]   # target positions
+        centroid = kwargs.get('centroid')
+        distances = kwargs.get('distances')
+        k_node = index
 
         # Reynolds Flocking
         # ------------------ 
@@ -176,7 +186,7 @@ class Planner:
             cd_4 = self.cd_track
             if cd_4 == 0:
                 print('WARNING: no gain set for tracking target, please set a gain > 0')
-            temp_u_nav = (targets[:,k_node]-states_q[:,k_node])
+            temp_u_nav = (targets_q[:,k_node]-states_q[:,k_node])
         else:
             temp_u_nav = (centroid.transpose()-states_q[:,k_node])
         

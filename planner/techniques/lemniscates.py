@@ -86,11 +86,6 @@ class Planner(BasePlanner):
     def __init__(self, config_data, **kwargs):
         super().__init__(config_data, **kwargs)
 
-# custom class
-#class Planner:
-#
-#    def __init__(self, config_data, circle):
-
         lemni_config = cfg.get_config(config_data, 'planner.techniques.lemniscates')
 
         # get lemni hyperparameters
