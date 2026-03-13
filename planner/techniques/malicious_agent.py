@@ -220,6 +220,7 @@ class Planner(BasePlanner):
         self.Q      = 1.1*compute_E(states_q, states_p, self.r)
         # chose a malicious agent (i.e., the pin)
         malicious = np.where(np.diag(pin_matrix) == 1)[0][0] 
+        #print('malicious agent identified: ', malicious)
         #malicious = self.malicious
         self.malicious = malicious 
         self.status[malicious] = 'malicious'

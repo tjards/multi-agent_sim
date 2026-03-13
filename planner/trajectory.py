@@ -36,19 +36,7 @@ class Trajectory:
         # eventually I will remove these conditionals and just call relevant str(tactic_type)
         kwargs['state'] = state
 
-        # these two adjust teh trajectory; use polymorphism. 
-        if tactic_type == 'encirclement' or \
-            tactic_type == 'lemniscates' or \
-                tactic_type == 'flocking_reynolds' or \
-                    tactic_type == 'flocking_starling' or \
-                        tactic_type == 'flocking_saber' or \
-                            tactic_type == 'pinning_lattice' or \
-                                tactic_type == 'malicious_agent':
+        self.planners[tactic_type].update_trajectory(self, targets, **kwargs)
 
-            self.planners[tactic_type].update_trajectory(self, targets, **kwargs)
 
-        else:
-            
-            # temporary. once all techniques are under the base class, I can just call all with update_trajectory
-            self.trajectory = targets.copy()
   

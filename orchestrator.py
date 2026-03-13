@@ -91,18 +91,6 @@ class Controller:
         self.config = config
         self.Ts     = config.Ts
 
-        # initialize graphs and pins
-        criteria_table = cfg.get_config(config._data, 'orchestrator.criteria_table')
-        self.Graphs                 = graphical.Swarmgraph(state, criteria_table)  
-        self.Graphs_connectivity    = graphical.Swarmgraph(state, criteria_table)
-
-        self.r_matrix = np.zeros((config.nAgents,config.nAgents))   # range at which agents can sense each other 
-        self.lattice = np.zeros((config.nAgents,config.nAgents))    # range at which agents are connected     
-        self.pin_matrix = np.zeros((config.nAgents,config.nAgents)) # which agents are pinned (1 = pinned)   
-
-        # initialize planner dictionary
-        self.planners            = {} # dictionary for planners
-
         # commands
         self.dimens  = config.dimens
         self.cmd = np.zeros((3,config.nAgents))
@@ -114,69 +102,35 @@ class Controller:
             self.cmd[2] = 0*self.cmd[2]
 
         # general purpose counter (nominally, pin reset)
-        self.counter = 0                
-        
-        if config.strategy == 'pinning_lattice':
-            from planner.techniques import pinning_lattice
-            self.planners['pinning_lattice'] = pinning_lattice.Planner(config._data)
-            #self.pin_matrix = np.ones((self.nAgents,self.nAgents))# make all pins
-            self.pin_matrix = np.ones((config.nAgents,config.nAgents))# make all pins
-            #d_init = pinning_tools.return_lattice_param()
-            d_init = self.planners['pinning_lattice'].d_init
-            self.d_init= d_init
-            i = 0
-            #while (i < self.nAgents):
-            while (i < config.nAgents):
-                self.lattice[i,:] = d_init
-                i+=1
-            #self.Graphs_connectivity = graphical.Swarmgraph(state, criteria_table)
-        
-        # starling
-        if config.strategy == 'flocking_starling':
-            from planner.techniques import flocking_starling
-            self.planners['flocking_starling'] = flocking_starling.Planner(config._data)
-            #self.params = np.zeros((4, config.nAgents)) 
+        self.counter = 0
 
-        kwargs_cmd_init = {'states': state}
-        if config.strategy == 'malicious_agent':
-            from planner.techniques import malicious_agent
-            self.planners['malicious_agent'] = malicious_agent.Planner(config._data, **kwargs_cmd_init)
-            #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
-            self.lattice = self.planners['malicious_agent'].d*np.ones((state.shape[1],state.shape[1]))
-            self.pin_matrix = np.ones((config.nAgents,config.nAgents))
-
-        # sheparding has its own class (differentiating shepherd and herd)
-        if config.strategy == 'shepherding':
-            #self.shepherdClass = shep.Shepherding(state)
-            from planner.techniques import shepherding
-            self.planners['shepherding'] = shepherding.Planner(config._data, **kwargs_cmd_init) 
-        
-        
-
-        # note: initial a planner dedicated to obstacle avoidance (i.e., what flocking_saber is doing now)
-        # note: compress this w/polymorphism later
-
-        if config.strategy in ['flocking_saber', 'encirclement', 'lemniscates', 'flocking_reynolds']:
-            from planner.techniques import flocking_saber
-            self.planners['obstacle_avoidance'] = flocking_saber.Planner(config._data) # steal obstacle avoidance
-            if config.strategy == 'flocking_reynolds':
-                from planner.techniques import flocking_reynolds
-                self.planners['flocking_reynolds'] = flocking_reynolds.Planner(config._data)
-            if config.strategy == 'flocking_saber':
-                self.planners['flocking_saber'] = flocking_saber.Planner(config._data) 
-                #self.lattice = self.planners['saber'].return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                self.lattice = self.planners['flocking_saber'].d*np.ones((state.shape[1],state.shape[1]))
-            if config.strategy == 'encirclement':
-                from planner.techniques import encirclement
-                self.planners['encirclement'] = encirclement.Planner(config._data)
-            if config.strategy == 'lemniscates':
+        # now import the planners (leverage polymorphism as much as possible)
+        self.planners            = {} 
+        kwargs_init = {'states': state} 
+        import importlib
+        if config.strategy == 'lemniscates':
                 from planner.techniques import encirclement 
                 from planner.techniques import lemniscates
                 self.planners['encirclement']     = encirclement.Planner(config._data)
                 embedding = {'encirclement': self.planners['encirclement']}
                 self.planners['lemniscates']      = lemniscates.Planner(config._data, **embedding)
+        else:
+            planner_module = importlib.import_module(f'planner.techniques.{config.strategy}')
+            self.planners[config.strategy] = planner_module.Planner(config._data,**kwargs_init)
+        obstacle_avoidance_module = importlib.import_module(f'planner.techniques.{config.obstacle_avoidance_strategy}')
+        self.planners['obstacle_avoidance'] = obstacle_avoidance_module.Planner(config._data) 
 
-           
+        # initialize graphs and pins
+        criteria_table = cfg.get_config(config._data, 'orchestrator.criteria_table')
+        self.connectivity_slack = cfg.get_config(config._data, 'orchestrator.connectivity_slack') # some slack to assess connectedness
+        self.Graphs                 = graphical.Swarmgraph(state, criteria_table)  
+        self.Graphs_connectivity    = graphical.Swarmgraph(state, criteria_table)
+
+        self.r_matrix = self.planners[config.strategy].sensor_range_matrix   # range at which agents can sense each other 
+        self.lattice = self.planners[config.strategy].connection_range_matrix    # range at which agents are connected     
+        self.pin_matrix = self.planners[config.strategy].pin_assignments  # initialize the pin matrix based on the planner (if applicable)
+
+
     # integrate learninging agents (learning updates happen at the Controller object)
     # ----------------------------
     def learning_agents(self, tactic_type, Learners):
@@ -206,55 +160,6 @@ class Controller:
         # GRAPH UPDATES #
         # ************* #
         
-        # note: a lot of this can be consolidated and cleaned up
-        
-        # update connectivity
-        self.counter += 1                    # increment the counter 
-        if self.counter == self.config.pin_update_rate:  # only update the pins at Ts/(tunable parameter)
-            self.counter = 0                 # reset counter
-            
-            # update connectivity parameters 
-            if tactic_type == 'flocking_saber':
-                r_matrix = self.planners['flocking_saber'].d*np.ones((state.shape[1],state.shape[1])) # not used
-
-            elif tactic_type == 'encirclement':
-                r_matrix = self.planners['encirclement'].desired_separation*np.ones((state.shape[1],state.shape[1]))
-
-            elif tactic_type == 'malicious_agent':
-                #r_matrix = cao_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                r_matrix = self.planners['malicious_agent'].r*np.ones((state.shape[1],state.shape[1]))
-                # new, define a different graph for "connected", which is slightly different than "in range"
-                #separation_matrix = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
-                self.Graphs_connectivity.update_A(state[0:3,:], self.lattice+1, **kwargs_cmd)
-                
-            elif tactic_type == 'pinning_lattice':
-                # in pull parameters from consensus class
-                if 'consensus_lattice' in self.Learners:
-                    kwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
-                # or just pass the current lattice parameters
-                else:
-                    kwargs_cmd['d_weighted'] = self.lattice # redundant below
-                kwargs_cmd['aperature'] = self.config.sensor_aperature
-                #r_matrix = kwargs_cmd['d_weighted']  # if we want the graph based on lattice parameters
-                #r_matrix = pinning_tools.return_ranges()*np.ones((state.shape[1],state.shape[1]))
-                r_matrix = self.planners['pinning_lattice'].r_max*np.ones((state.shape[1],state.shape[1]))
-                self.Graphs_connectivity.update_A(state[0:3,:], self.lattice, **kwargs_cmd)
-            else:
-                r_matrix = 0*np.ones((state.shape[1],state.shape[1]))
-
-            # update the graph
-            self.Graphs.update_A(state[0:3,:], r_matrix, **kwargs_cmd)
-            #self.Graphs.update_A(state[0:3,:], self.lattice, **kwargs_cmd)
-
-            self.Graphs.find_connected_components()
-            self.Graphs.update_pins(state[0:3,:], r_matrix, self.config.pin_selection_method, **kwargs_cmd)
-            self.pin_matrix = self.Graphs.pin_matrix
-
-
-        # *************** #
-        # COMMAND UPDATES #
-        # *************** #
-        
         kwargs_cmd['centroid'] = centroid 
         kwargs_cmd['obstacles_plus'] = obstacles_plus
         kwargs_cmd['walls'] = walls
@@ -262,6 +167,34 @@ class Controller:
         kwargs_cmd['A_connectivity']     = self.Graphs_connectivity.A
         kwargs_cmd['pin_matrix']  = self.pin_matrix
         kwargs_cmd['Ts'] = self.Ts
+        if tactic_type == 'pinning_lattice':
+            # in pull parameters from consensus class
+            if 'consensus_lattice' in self.Learners:
+                kwargs_cmd['d_weighted'] = self.Learners['consensus_lattice'].d_weighted
+            # or just pass the current lattice parameters
+            else:
+                kwargs_cmd['d_weighted'] = self.lattice # redundant below
+    
+        # update connectivity
+        self.counter += 1                    # increment the counter 
+        if self.counter == self.config.pin_update_rate:  # only update the pins at Ts/(tunable parameter)
+            self.counter = 0                 # reset counter
+            
+            # update the range parameters (unlikely to change)
+            self.r_matrix = self.planners[tactic_type].sensor_range_matrix 
+
+            # update the graphs
+            self.Graphs.update_A(state[0:3,:], self.r_matrix, **kwargs_cmd)
+            self.Graphs_connectivity.update_A(state[0:3,:], self.lattice+self.connectivity_slack, **kwargs_cmd)
+            self.Graphs.find_connected_components()
+            self.Graphs.update_pins(state[0:3,:], self.r_matrix, self.config.pin_selection_method, **kwargs_cmd)
+            self.pin_matrix = self.Graphs.pin_matrix
+
+
+        # *************** #
+        # COMMAND UPDATES #
+        # *************** #
+        
 
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'flocking_reynolds':

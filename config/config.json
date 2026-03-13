@@ -12,10 +12,11 @@
         "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "shepherding",
+        "strategy": "pinning_lattice",
         "random_seed": 42,
         "f": 0,
-        "experimental_save": false
+        "experimental_save": false,
+        "obstacle_avoidance_strategy": "flocking_saber"
     },
     "agents": {
         "nAgents": 13,
@@ -43,14 +44,15 @@
         }
     },
     "orchestrator": {
-        "pin_update_rate": 10,
+        "pin_update_rate": 5,
         "pin_selection_method": "degree_leafs",
         "criteria_table": {
             "radius": true,
             "aperature": false
         },
         "sensor_aperature": 140,
-        "learning_ctrl": null
+        "learning_ctrl": null,
+        "connectivity_slack": 1
     },
     "planner": {
         "techniques": {
