@@ -156,9 +156,10 @@ class Controller:
             from planner.techniques import shepherding
             self.planners['shepherding'] = shepherding.Planner(config._data, state) 
         
-        # the planners that rely on saber tools for obstacle avoidance
+        
 
         # note: initial a planner dedicated to obstacle avoidance (i.e., what flocking_saber is doing now)
+        # note: compress this w/polymorphism later
 
         if config.strategy in ['flocking_saber', 'encirclement', 'lemniscates', 'flocking_reynolds']:
             from planner.techniques import flocking_saber
@@ -167,6 +168,7 @@ class Controller:
                 from planner.techniques import flocking_reynolds
                 self.planners['flocking_reynolds'] = flocking_reynolds.Planner(config._data)
             if config.strategy == 'flocking_saber':
+                self.planners['flocking_saber'] = flocking_saber.Planner(config._data) 
                 #self.lattice = self.planners['saber'].return_ranges()*np.ones((state.shape[1],state.shape[1]))
                 self.lattice = self.planners['flocking_saber'].d*np.ones((state.shape[1],state.shape[1]))
             if config.strategy == 'encirclement':
@@ -266,6 +268,9 @@ class Controller:
         # *************** #
         
         kwargs_cmd['centroid'] = centroid 
+        kwargs_cmd['obstacles_plus'] = obstacles_plus
+        kwargs_cmd['walls'] = walls
+
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'flocking_reynolds':
             distances = self.planners['flocking_reynolds'].order(state[0:3,:])
@@ -288,7 +293,10 @@ class Controller:
             # Saber Flocking
             # ---------------                                
             if tactic_type == 'flocking_saber':
-                   
+
+                cmd_i[:,k_node] = self.planners['flocking_saber'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
+                
+                '''
                 # Lattice Flocking term (phi_alpha)
                 # ---------------------------------  
                 u_int[:,k_node] = self.planners['flocking_saber'].compute_cmd_a(state[0:3,:], state[3:6,:], k_node)
@@ -300,6 +308,8 @@ class Controller:
                 # Obstacle Avoidance term (phi_beta)
                 # ---------------------------------   
                 u_obs[:,k_node] = self.planners['flocking_saber'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                '''
+                
 
             # Encirclement term (phi_delta)
             # ---------------------------- 
@@ -434,7 +444,7 @@ class Controller:
             # ******* # 
 
             if tactic_type == 'flocking_saber':
-                cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
+                cmd_i[:,k_node] = cmd_i[:,k_node] #u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
             elif tactic_type == 'flocking_reynolds':
                 cmd_i[:,k_node] = cmd_i[:,k_node] + u_obs[:,k_node] # adds the saber obstacle avoidance 
             elif tactic_type == 'encirclement':

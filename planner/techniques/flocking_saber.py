@@ -35,9 +35,10 @@ def norm_sat(u,maxu):
     return u_out
 
 # custom class
-class Planner:
-
-    def __init__(self, config):
+from planner.base import BasePlanner
+class Planner(BasePlanner):
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
  
         # load the configs
         saber_config =cfg.get_config(config, 'planner.techniques.flocking_saber')
@@ -115,6 +116,26 @@ class Planner:
     def return_ranges(self):
         return self.d
     
+    def compute_cmd(self, states, targets, index, **kwargs):
+    
+        # Extract 
+        states_q = states[0:3, :]      # positions
+        states_p = states[3:6, :]      # velocities
+        targets_q = targets[0:3, :]    # target positions
+        targets_p = targets[3:6, :]    # target velocities
+        obstacles = kwargs.get('obstacles_plus')
+        walls = kwargs.get('walls')
+        k_node = index
+        
+        # three force components
+        u_int = self.compute_cmd_a(states_q, states_p, k_node)
+        u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_p, k_node)
+        u_obs = self.compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
+        
+        # Return combined command
+        return u_int + u_nav + u_obs
+
+
     def compute_cmd_a(self, states_q, states_p, k_node):
         u_int = np.zeros((3, states_q.shape[1]))
         
