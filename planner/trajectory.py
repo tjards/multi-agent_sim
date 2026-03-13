@@ -40,7 +40,10 @@ class Trajectory:
         if tactic_type == 'encirclement' or \
             tactic_type == 'lemniscates' or \
                 tactic_type == 'flocking_reynolds' or \
-                    tactic_type == 'flocking_starling':
+                    tactic_type == 'flocking_starling' or \
+                        tactic_type == 'flocking_saber' or \
+                            tactic_type == 'pinning_lattice' or \
+                                tactic_type == 'malicious_agent':
 
             self.planners[tactic_type].update_trajectory(self, targets, **kwargs)
 

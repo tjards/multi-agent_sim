@@ -117,6 +117,12 @@ class Planner(BasePlanner):
         #self.lemni              = np.zeros([2, self.nVeh])  
         #self.sorted_neighs      = np.zeros((self.nVeh, self.nVeh))
 
+        #graph parameters (standardized in base class)
+        circle_config = cfg.get_config(config_data, 'planner.techniques.encirclement')
+        r_max = circle_config.get('r_max', 50) 
+        self.sensor_range_matrix = r_max * np.ones((self.nVeh, self.nVeh))
+        self.connection_range_matrix = r_max * np.ones((self.nVeh, self.nVeh))
+
 
         #%% safety checks
         if self.learning == 'CALA':

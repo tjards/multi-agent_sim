@@ -23,6 +23,8 @@ Common attributes:
 
 # I want to enforce certain things 
 from abc import ABC, abstractmethod
+import numpy as np
+import config.config as cfg
 
 class BasePlanner(ABC):
     
@@ -41,17 +43,24 @@ class BasePlanner(ABC):
 
         # number of agents
         self.config = config 
+        nAgents = cfg.get_config(config, 'agents.nAgents')
 
         # interactions
-        self.sensor_range_matrix    = None # matrix representing range at which neighbours can sense: currently, "r_matrix"
+        self.sensor_range_matrix    = 0* np.ones((nAgents, nAgents)) # matrix representing range at which neighbours can sense: currently, "r_matrix"
         self.interaction_graph      = None # Graph representation for the purpose of interactions: currently, "A"
 
         # connections 
-        self.connection_range_matrix    = None # matrix representing range at which neighbours are connected (could be same as sensor range, but not necessarily): currently, "lattice"
+        self.connection_range_matrix    = 0 * np.ones((nAgents, nAgents)) # matrix representing range at which neighbours are connected (could be same as sensor range, but not necessarily): currently, "lattice"
         self.connection_graph           = None # Graph representation for the purpose of connections: currently, "A_connectivity"
         
-        # pins
-        self.pin_assignments            = None # Agents named as pins: currently, "pin_matrix"
+        # set the default graphs (if not updated by specific planner)
+        #A_default = np.ones((nAgents, nAgents)) - np.eye(nAgents) 
+        #self.update_graphs(A_default, A_default, **kwargs)
+
+        # pins (default no pins)
+        self.pin_assignments            = np.zeros((nAgents,nAgents))
+
+
 
     # ================= #
     # MANDATORY METHODS #

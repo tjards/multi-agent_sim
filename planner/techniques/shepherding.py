@@ -112,10 +112,17 @@ def b_ik(q_i, q_ik, d_b):
 
 #%% define overall class
 # -----------------
-class Planner:
+
+from planner.base import BasePlanner
+class Planner(BasePlanner):
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
+
+#class Planner:
     
-    def __init__(self, config, state):
+#    def __init__(self, config, state):
         
+        state = kwargs.get('states', None)
         self.state    = state
         shep_config = cfg.get_config(config, 'planner.techniques.shepherding')
         self.nShepherds = shep_config.get('nShepherds', 3)
@@ -168,6 +175,10 @@ class Planner:
         # cmd adjustment (based on sample time, later, import this)
         self.cmd = np.zeros((1,3))
 
+        # graph parameters (standardized in base class)
+        self.sensor_range_matrix = self.r_A * np.ones((self.nAgents, self.nAgents))
+        self.connection_range_matrix = self.r_S * np.ones((self.nAgents, self.nAgents))
+
 
     # define separation
     # ------------------ 
@@ -197,7 +208,8 @@ class Planner:
     # compute commands (called from outside)
     # ----------------
     #def compute_cmd(self, Targets, i):
-    def compute_cmd(self, targets, i):
+    #def compute_cmd(self, targets, i):
+    def compute_cmd(self, states, targets, index, **kwargs):
         
         #if not self.spawned:
         #    self.state = state
@@ -205,6 +217,7 @@ class Planner:
         #    self.spawned = True 
 
         # store the agent being examined
+        i = index
         self.i = i
         
         # store the targets
@@ -224,7 +237,9 @@ class Planner:
             
             self.shepherds.compute_cmd(self)
         
-        self.cmd = self.cmd_adjust*self.cmd     
+        self.cmd = self.cmd_adjust*self.cmd
+
+        return self.cmd     
 
     #%% define the herd
     # ---------------        

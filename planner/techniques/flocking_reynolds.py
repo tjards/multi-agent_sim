@@ -41,6 +41,10 @@ class Planner(BasePlanner):
         self.r               = reynolds_config['r']               # range at which neighbours can be sensed  
         self.r_prime         = reynolds_config['r_prime']         # range at which obstacles can be sensed
 
+        nAgents = cfg.get_config(config, 'agents.nAgents')
+        self.sensor_range_matrix = self.r * np.ones((nAgents, nAgents))
+        self.connection_range_matrix = self.r * np.ones((nAgents, nAgents))
+
     def order(self, states_q):
         distances = np.zeros((states_q.shape[1],states_q.shape[1])) # to store distances between nodes
         

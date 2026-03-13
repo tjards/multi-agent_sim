@@ -91,16 +91,19 @@ class Controller:
         self.config = config
         self.Ts     = config.Ts
 
-        # initialize graphs
+        # initialize graphs and pins
         criteria_table = cfg.get_config(config._data, 'orchestrator.criteria_table')
         self.Graphs                 = graphical.Swarmgraph(state, criteria_table)  
         self.Graphs_connectivity    = graphical.Swarmgraph(state, criteria_table)
+
+        self.r_matrix = np.zeros((config.nAgents,config.nAgents))   # range at which agents can sense each other 
+        self.lattice = np.zeros((config.nAgents,config.nAgents))    # range at which agents are connected     
+        self.pin_matrix = np.zeros((config.nAgents,config.nAgents)) # which agents are pinned (1 = pinned)   
 
         # initialize planner dictionary
         self.planners            = {} # dictionary for planners
 
         # commands
-        # --------
         self.dimens  = config.dimens
         self.cmd = np.zeros((3,config.nAgents))
         self.cmd[0] = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (x)
@@ -113,15 +116,6 @@ class Controller:
         # general purpose counter (nominally, pin reset)
         self.counter = 0                
         
-        # [legacy] general purpose parameters variable (retire this eventually, just used for starling now)
-        #self.params = np.zeros((4,config.nAgents))             # store dynamic parameters
-        
-        # lattice parameters (not always used, move into pinning) 
-        self.lattice = np.zeros((config.nAgents,config.nAgents))      # stores lattice parameters
-        
-        # pins and components (not always used)
-        self.pin_matrix = np.zeros((config.nAgents,config.nAgents))
-                
         if config.strategy == 'pinning_lattice':
             from planner.techniques import pinning_lattice
             self.planners['pinning_lattice'] = pinning_lattice.Planner(config._data)
@@ -143,9 +137,10 @@ class Controller:
             self.planners['flocking_starling'] = flocking_starling.Planner(config._data)
             #self.params = np.zeros((4, config.nAgents)) 
 
+        kwargs_cmd_init = {'states': state}
         if config.strategy == 'malicious_agent':
             from planner.techniques import malicious_agent
-            self.planners['malicious_agent'] = malicious_agent.Planner(config._data, state[0:3,:], state[3:6,:])
+            self.planners['malicious_agent'] = malicious_agent.Planner(config._data, **kwargs_cmd_init)
             #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
             self.lattice = self.planners['malicious_agent'].d*np.ones((state.shape[1],state.shape[1]))
             self.pin_matrix = np.ones((config.nAgents,config.nAgents))
@@ -154,7 +149,7 @@ class Controller:
         if config.strategy == 'shepherding':
             #self.shepherdClass = shep.Shepherding(state)
             from planner.techniques import shepherding
-            self.planners['shepherding'] = shepherding.Planner(config._data, state) 
+            self.planners['shepherding'] = shepherding.Planner(config._data, **kwargs_cmd_init) 
         
         
 
@@ -181,14 +176,7 @@ class Controller:
                 embedding = {'encirclement': self.planners['encirclement']}
                 self.planners['lemniscates']      = lemniscates.Planner(config._data, **embedding)
 
-        
-        # cao has it's own class and a separate graph for connected (in addition to in range)    
-        #if config.strategy == 'cao':
-        #    self.caoClass = cao_tools.Flock(state[0:3,:],state[3:6,:])
-        #    self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1])) 
-        #    self.pin_matrix = np.ones((config.nAgents,config.nAgents))
-            
-   
+           
     # integrate learninging agents (learning updates happen at the Controller object)
     # ----------------------------
     def learning_agents(self, tactic_type, Learners):
@@ -270,6 +258,10 @@ class Controller:
         kwargs_cmd['centroid'] = centroid 
         kwargs_cmd['obstacles_plus'] = obstacles_plus
         kwargs_cmd['walls'] = walls
+        kwargs_cmd['A']     = self.Graphs.A
+        kwargs_cmd['A_connectivity']     = self.Graphs_connectivity.A
+        kwargs_cmd['pin_matrix']  = self.pin_matrix
+        kwargs_cmd['Ts'] = self.Ts
 
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'flocking_reynolds':
@@ -339,8 +331,6 @@ class Controller:
             if tactic_type == 'flocking_starling':
                
                 # compute command 
-                #cmd_i[:,k_node], self.params = starling_tools.compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, self.params, 0.02)
-                #cmd_i[:, k_node] = self.planners['flocking_starling'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node)
                 cmd_i[:, k_node] = self.planners['flocking_starling'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
 
             # Pinning
@@ -351,24 +341,27 @@ class Controller:
                 # ---------
                 
                 # initialize some custom arguments 
-                kwargs_pinning = {}
+                #kwargs_pinning = {}
                 # pin matrix
-                kwargs_pinning['pin_matrix'] = self.pin_matrix
+                kwargs_cmd['pin_matrix'] = self.pin_matrix
                 # headings (if applicable)
                 if dynamics_type == 'quadcopter':
-                    kwargs_pinning['quads_headings'] = kwargs_cmd['quads_headings']
+                    kwargs_cmd['quads_headings'] = kwargs_cmd['quads_headings']
                 
                 # pass in args required for learning
-                kwargs_pinning = learner.conductor.pinning_update_args(self, kwargs_pinning)
+                kwargs_cmd = learner.conductor.pinning_update_args(self, kwargs_cmd)
                 # info about graph
-                kwargs_pinning['directional_graph']         = self.Graphs.directional_graph
-                kwargs_pinning['A']                         = self.Graphs.A
-                kwargs_pinning['D']                         = self.Graphs.D
-                kwargs_pinning['local_k_connectivity']      = self.Graphs.local_k_connectivity
+                kwargs_cmd['directional_graph']         = self.Graphs.directional_graph
+                kwargs_cmd['A']                         = self.Graphs.A
+                kwargs_cmd['D']                         = self.Graphs.D
+                kwargs_cmd['local_k_connectivity']      = self.Graphs.local_k_connectivity
                 
                 # compute command
                 #_, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = pinning_tools.compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
-                _, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = self.planners['pinning_lattice'].compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
+                #_, u_int[:,k_node], u_nav[:,k_node], u_obs[:,k_node] = self.planners['pinning_lattice'].compute_cmd(centroid, state[0:3,:], state[3:6,:], obstacles_plus, walls,  targets[0:3,:], targets[3:6,:], k_node, **kwargs_pinning)
+                cmd_i[:, k_node] = self.planners['pinning_lattice'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
+
+                
                 # learning update 
                 learner.conductor.pinning_update_lattice(self)
                        
@@ -377,14 +370,10 @@ class Controller:
             if tactic_type == 'shepherding':
                 
                 # compute command, pin_matrix records shepherds = 1, herd = 0
-                # ----------------------------------------------------------
+                # ----------------------------------------------------------                
 
-                # compute the commands
-                self.planners['shepherding'].compute_cmd(targets, k_node)
-                
-                # pull out results
-                cmd_i[:,k_node]                 = self.planners['shepherding'].cmd
-                
+                cmd_i[:,k_node] = self.planners['shepherding'].compute_cmd(state[0:6,:], targets[0:6,:], k_node, **kwargs_cmd) 
+
                 # assign the pin matrix (roles)
                 self.pin_matrix[k_node, k_node] = self.planners['shepherding'].index[k_node]
 
@@ -392,20 +381,8 @@ class Controller:
             # flocking with a malicious agent 
             # -------------------------------
             if tactic_type == 'malicious_agent':
-                             
-                kwargs_cao          = {}
-                kwargs_cao['A']     = self.Graphs.A
-                kwargs_cao['A_connectivity']     = self.Graphs_connectivity.A
-                kwargs_cao['pin_matrix']  = self.pin_matrix
-                kwargs_cao['Ts'] = self.Ts
-                #cmd_i[:,k_node] = cao_tools.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
-                #cmd_i[:,k_node] = self.caoClass.compute_cmd(targets[0:3,:],state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
-                #self.lattice = cao_tools.return_desired_sep()*np.ones((state.shape[1],state.shape[1]))
-                #print(self.caoClass.status)
-                #print(self.caoClass.layer)
-
-                cmd_i[:,k_node] = self.planners['malicious_agent'].compute_cmd(targets[0:3,:], state[0:3,:], state[3:6,:], k_node, **kwargs_cao)
-
+                            
+                cmd_i[:,k_node] = self.planners['malicious_agent'].compute_cmd(state[0:6,:], targets[0:6,:], k_node, **kwargs_cmd)
             
             # Apply controller learning (move all this inside learner later)
             #---------------------------
@@ -454,8 +431,8 @@ class Controller:
             elif tactic_type == 'flocking_starling':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
             elif tactic_type == 'pinning_lattice':
-                #cmd_i[:,k_node] = cmd_i[:,k_node]
-                cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
+                cmd_i[:,k_node] = cmd_i[:,k_node]
+                #cmd_i[:,k_node] = u_int[:,k_node] + u_obs[:,k_node] + u_nav[:,k_node] 
             elif tactic_type == 'shepherding':
                 cmd_i[:,k_node] = cmd_i[:,k_node]
             elif tactic_type == 'malicious_agent':

@@ -87,7 +87,13 @@ class Planner(BasePlanner):
         # compute desired separation (for analyzing results)
         nAgents = cfg.get_config(config_data, 'agents.nAgents')
         print(nAgents)
-        self.desired_separation = self.compute_desired_sep(self.r_desired, nAgents)  
+        self.desired_separation = self.compute_desired_sep(self.r_desired, nAgents)
+
+        # graph parameters (standardized in base class)
+        self.sensor_range_matrix = self.r_max * np.ones((nAgents, nAgents))
+        self.connection_range_matrix = self.r_max * np.ones((nAgents, nAgents))
+
+
 
     def update_trajectory(self, Trajectory, targets, **kwargs):
 

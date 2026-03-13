@@ -89,9 +89,11 @@ from planner.techniques import pinning_gradients_others
 #%% control systems functions
 # -------------------------
 
-class Planner:
-
-    def __init__(self, config): 
+from planner.base import BasePlanner
+class Planner(BasePlanner):
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
+  
 
         pinning_config =cfg.get_config(config, 'planner.techniques.pinning_lattice')
 
@@ -150,6 +152,10 @@ class Planner:
             term_indices = np.random.randint(0, len(flocking_options), size=(1, self.nAgents))
             self.term_selected = [flocking_options[i] for i in term_indices.flatten()]
             print(f"Mixed flocking assignments: {self.term_selected}")
+
+        # graph parameters (standardized in base class)
+        self.sensor_range_matrix = self.r_max * np.ones((self.nAgents, self.nAgents))
+        self.connection_range_matrix = self.d_init * np.ones((self.nAgents, self.nAgents))
         
     # form the lattice
     # -----------------
@@ -288,8 +294,18 @@ class Planner:
 
     # consolidate control signals
     # ---------------------------
-    def compute_cmd(self, centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
-            
+    #def compute_cmd(self, centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
+    def compute_cmd(self, states, targets, index, **kwargs):
+
+        # Extract from states
+        states_q = states[0:3, :]      # positions
+        states_p = states[3:6, :]      # velocities
+        targets_q = targets[0:3, :]    # target positions
+        targets_v = targets[3:6, :]    # target velocities
+        obstacles = kwargs.get('obstacles_plus')
+        walls = kwargs.get('walls')
+        k_node = index
+
         directional         = kwargs.get('directional_graph')
         
         # ensure there are heading available, if needed
@@ -310,14 +326,14 @@ class Planner:
         # initialize 
         cmd_i = np.zeros((3,states_q.shape[1]))
         
-        u_int = self.compute_cmd_a(states_q, states_p, targets, targets_v, k_node, reward_values, **kwargs)
+        u_int = self.compute_cmd_a(states_q, states_p, targets_q, targets_v, k_node, reward_values, **kwargs)
         u_obs = self.compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
-        u_nav = self.compute_cmd_g(states_q, states_p, targets, targets_v, k_node, kwargs.get('pin_matrix'))
+        u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, kwargs.get('pin_matrix'))
         
         cmd_i[:,k_node] = u_int + u_obs + u_nav
         
         #if cmd_i[2,:].any() != 0:
         #    print('debug needed: 3D cmds in 2D')
         
-        return cmd_i[:,k_node], u_int, u_nav, u_obs
+        return cmd_i[:,k_node] #, u_int, u_nav, u_obs
 

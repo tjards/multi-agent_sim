@@ -145,6 +145,9 @@ class Planner(BasePlanner):
         self.sigma = np.sqrt(np.divide(np.square(self.r_sep-self.r_h),self.sigma_param)) #std dev of the gaussion set, such that at that separation zone, near zero
         self.sigma_sqr = np.square(self.sigma)
 
+        self.sensor_range_matrix = self.R_max * np.ones((self.nAgents, self.nAgents))
+        self.connection_range_matrix = self.R_max * np.ones((self.nAgents, self.nAgents))
+
 
     # Compute commands for Starling Flocking
     # --------------------------------------

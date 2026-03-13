@@ -59,6 +59,10 @@ class Planner(BasePlanner):
         self.r       = saber_config['r']        # range at which neighbours can be sensed
         self.r_prime = saber_config['r_prime']  # range at which obstacles can be sensed
 
+        nAgents = cfg.get_config(config, 'agents.nAgents')
+        self.sensor_range_matrix = self.r * np.ones((nAgents, nAgents))
+        self.connection_range_matrix = self.d * np.ones((nAgents, nAgents))
+
     # methods that depend on class attributes/methods
     def sigma_norm(self, z):    
         norm_sig = (1/self.eps) * (np.sqrt(1 + self.eps*np.linalg.norm(z)**2) - 1)

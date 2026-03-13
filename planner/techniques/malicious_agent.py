@@ -93,12 +93,20 @@ import config.config as cfg
 
 #%% CUSTOM CLASS 
 
-class Planner:
+
+from planner.base import BasePlanner
+class Planner(BasePlanner):
+    def __init__(self, config_data, **kwargs):
+        super().__init__(config_data, **kwargs)
+
+#class Planner:
     
-    def __init__(self, config_data, states_q, states_p):
+#    def __init__(self, config_data, states_q, states_p):
         
         # Extract cao configuration section
         cao_config = cfg.get_config(config_data, 'planner.techniques.malicious_agent')
+        states_q = kwargs.get('states')[0:3, :]
+        states_p = kwargs.get('states')[3:6, :]
         
         # Normal agent parameters
         self.d = cao_config.get('d', 5)
@@ -165,6 +173,11 @@ class Planner:
         self.C_filtered = np.zeros((3, 3))
         self.C_estimate = np.zeros((3, 3))
         self.k_vector_hat = np.array([self.mal_kv_hat, self.mal_ka_hat, self.mal_kr_hat])
+
+        # graph parameters (standardized in base class)
+        nAgents = cfg.get_config(config_data, 'agents.nAgents')
+        self.sensor_range_matrix = self.r * np.ones((nAgents, nAgents))
+        self.connection_range_matrix = self.d * np.ones((nAgents, nAgents))
 
         
     # checks if layer 2 has at least 2 agents (Assumption 3)
@@ -253,12 +266,18 @@ class Planner:
         
     # compute commands (Eqn (12) from [1] )
     # -------------------------------------
-    def compute_cmd(self, targets, states_q, states_p, k_node, **kwargs):
+    #def compute_cmd(self, targets, states_q, states_p, k_node, **kwargs):
+    def compute_cmd(self, states, targets, index, **kwargs):
         
         # extract stuff
         A               = kwargs['A']
         pin_matrix      = kwargs['pin_matrix']
         Ts              = kwargs['Ts']
+        states_q        = states[0:3, :]
+        states_p        = states[3:6, :]
+        k_node          = index
+        targets_q       = targets[0:3, :]
+
         
         # upon first assembly, build layers
         if np.sum(pin_matrix) == 1 and self.assembled == 0:           
@@ -274,7 +293,7 @@ class Planner:
         cmd_i = np.zeros((3))
         
         # compute navigation (if not assembled, draws towards goal when gain_p, gain_v set)
-        cmd_i -= pin_matrix[k_node,k_node]*compute_navigation(self.gain_p, self.gain_v, states_q, states_p, targets, k_node)
+        cmd_i -= pin_matrix[k_node,k_node]*compute_navigation(self.gain_p, self.gain_v, states_q, states_p, targets_q, k_node)
 
         # if no responding to malicious agent
         # ----------------------------------
