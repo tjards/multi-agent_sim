@@ -106,9 +106,10 @@ def gaussian_set(d_ij,r_h, sigma_sqr):
         return np.exp(-np.divide(np.square(d_ij-r_h),sigma_sqr))
     
 # custom class
-class Planner:
-
-    def __init__(self, config):
+from planner.base import BasePlanner
+class Planner(BasePlanner):
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
  
         # load the configs
         starling_config =cfg.get_config(config, 'planner.techniques.flocking_starling')
@@ -149,7 +150,15 @@ class Planner:
     # --------------------------------------
 
     # this is run for each node
-    def compute_cmd(self,targets, centroid, states_q, states_p, k_node):
+    #def compute_cmd(self,targets, centroid, states_q, states_p, k_node):
+    def compute_cmd(self, states, targets, index, **kwargs):
+
+        # extract
+        states_q = states[0:3, :]      # positions
+        states_p = states[3:6, :]      # velocities
+        targets_q = targets[0:3, :]    # target positions
+        centroid = kwargs.get('centroid')
+        k_node = index
 
         #initialize commands 
         # ------------------

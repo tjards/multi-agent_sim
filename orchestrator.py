@@ -265,20 +265,19 @@ class Controller:
         # COMMAND UPDATES #
         # *************** #
         
-
+        kwargs_cmd['centroid'] = centroid 
         # reynolds requires a matrix of distances between agents
         if tactic_type == 'flocking_reynolds':
             distances = self.planners['flocking_reynolds'].order(state[0:3,:])
    
         # for each vehicle/node/agent in the network
         # ------------------------------------
-        for k_node in range(state[0:3,:].shape[1]): 
+        for k_node in range(state[0:3,:].shape[1]):
                      
             # Reynolds Flocking
             # ------------------
             if tactic_type == 'flocking_reynolds':
                #cmd_i[:,k_node] = self.planners['flocking_reynolds'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, distances)
-               kwargs_cmd['centroid'] = centroid
                kwargs_cmd['distances'] = distances
                cmd_i[:,k_node] = self.planners['flocking_reynolds'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
 
@@ -331,7 +330,8 @@ class Controller:
                
                 # compute command 
                 #cmd_i[:,k_node], self.params = starling_tools.compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node, self.params, 0.02)
-                cmd_i[:, k_node] = self.planners['flocking_starling'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node)
+                #cmd_i[:, k_node] = self.planners['flocking_starling'].compute_cmd(targets[0:3,:], centroid, state[0:3,:], state[3:6,:], k_node)
+                cmd_i[:, k_node] = self.planners['flocking_starling'].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
 
             # Pinning
             # --------
