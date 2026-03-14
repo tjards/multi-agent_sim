@@ -8,13 +8,11 @@ Summary This project is a consolidation of numerous other smaller projects. I am
 
 - ~~Define a custom venv with documented deps/requirements.~~
 - ~~Build a single config file that feeds the entire simulation.~~
-- Make the code more modular.
 - ~~I use a mix of scripting and object-oriented modules; make better use of object-oriented design.~~
 - Treat the simulation like a pipeline.
 - The reinforcement learning modules, in particular, are hard to follow; make these more modular.
-- Standardize the data in/out.
+- ~~ Standardize the planners in/out ~~.
 - Be more efficient in how data is stored online.
-- The whole thing is a memory hog; streamline. 
 
 # Project 2: Learning 
 
@@ -136,22 +134,20 @@ Essentially, we are attempting to maximize the value of the dot product between 
 
 #### Results so far 
 
-It's learning, but not very well.
+It's learning...
 
 <p float="center">
-    <img src="./visualization/public/kleber/RL_animation_kleber.gif" width="60%"> 
+    <img src="./visualization/public/kleber/CALA_distributions.gif" width="60%"> 
     <figcaption style="font-size: 1em; margin-top: 5px;">Fig.1 - Probability Distribution Function (PDF) of altitude (blue) and azimuth (orange) parameters. </figcaption>
 </p>
 
 <p float="center">
-    <img src="./visualization/public/kleber/RL_plots_kleber.png" width="60%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized, but not well. </figcaption>
+    <img src="./visualization/public/kleber/CALA_plots_set.png" width="60%"> 
+    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized. </figcaption>
 </p>
 
-Update (21 Sep at 19:58), I simply sharpened the reward function and got better results:
-
 <p float="center">
-    <img src="./visualization/public/kleber/RL_plots2_kleber.png" width="60%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized a bit better. </figcaption>
+    <img src="./visualization/public/kleber/CALA_exploration_contours_hull.png" width="60%"> 
+    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 3 - What is being explored. </figcaption>
 </p>
 

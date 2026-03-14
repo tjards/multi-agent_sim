@@ -15,8 +15,8 @@ Agents make decentralized decisions asynchronously based on local information on
 
 Notes: 
 - This latest release is a major overhaul of the codebase. Some modules are still being updated. Detailed development notes are available in [devnotes.md](./devnotes.md).
-- Inputs/outputs for the various modules are still being standardized.
-- Learning modules are still untested. 
+- All planners now have common inputs/outputs, enforced by a base class. 
+- Learning modules (especially Q-lattice learning) are still prototypes and untested. 
 - Now with virtual environment and requirements.txt for easier setup.
 
 ---
@@ -33,7 +33,6 @@ The quadcopters make use of 3 nested control loops (translational velocity, angu
 
 
 ```
-├── venv/                    # python virtual environment
 ├── requirements.txt         # python package dependencies
 ├── agents/                  # agent definitions
 ├── config/                  # location of configuration file
@@ -46,6 +45,7 @@ The quadcopters make use of 3 nested control loops (translational velocity, angu
 │   └── techniques/          # technique definitions
 ├── targets/                 # target definitions
 ├── utils/                   # utility scripts 
+├── venv/                    # python virtual environment
 ├── visualization/           # animations and plots
 ├── orchestrator.py          # master controller (integrates all other components)
 ├── main.py                  # main script
@@ -55,7 +55,7 @@ The quadcopters make use of 3 nested control loops (translational velocity, angu
 
 # Setup
 
-Activate the virtual environment:
+Create and activate the virtual environment:
 
 ```bash
 source venv/bin/activate
@@ -156,10 +156,10 @@ Vol. 51 (3), 2006.
 
 The code is opensource but, if you reference this work in your own research, please cite me. I have provided an example bibtex citation below:
 
-`@techreport{Jardine-2025,
+`@techreport{Jardine-2026,
   title={Multi-agent Coordination Simulator},
   author={Jardine, P.T.},
-  year={2025},
+  year={2026},
   institution={Queen's University, Kingston, Ontario},
   type={GitHub Repository},
 }`
