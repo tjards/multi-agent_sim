@@ -210,9 +210,9 @@ class Planner(BasePlanner):
     # -----------------------------------------
     def build_layers(self, states_q, states_p, k_node, **kwargs):
         
-        A               = kwargs['A']
+        A               = self.interaction_graph #kwargs['A']
         #A               = kwargs['A_connectivity'] 
-        pin_matrix      = kwargs['pin_matrix']
+        pin_matrix      = self.pin_assignments #kwargs['pin_matrix']
         
         # mark as assembled
         self.assembled = 1
@@ -271,9 +271,9 @@ class Planner(BasePlanner):
     def compute_cmd(self, states, targets, index, **kwargs):
         
         # extract stuff
-        A               = kwargs['A']
-        pin_matrix      = kwargs['pin_matrix']
-        Ts              = kwargs['Ts']
+        A               = self.interaction_graph #kwargs['A']
+        pin_matrix      = self.pin_assignments #kwargs['pin_matrix']
+        Ts              = self.Ts #kwargs['Ts']
         states_q        = states[0:3, :]
         states_p        = states[3:6, :]
         k_node          = index
@@ -395,6 +395,11 @@ class Planner(BasePlanner):
             # for layer 1 (malicious agent) + everyone else 
             # ----------------------------
             elif self.layer[k_node] <= 1:
+                
+                # initialize C terms (used for filtering later)
+                #C1 = np.zeros(3)
+                #C2 = np.zeros(3)
+                #C3 = np.zeros(3)
                 
                 # search through each neighbour
                 for k_neigh in range(states_q.shape[1]):

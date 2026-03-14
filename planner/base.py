@@ -43,6 +43,7 @@ class BasePlanner(ABC):
 
         # number of agents
         self.config = config 
+        self.Ts = None # sample rate (will be set by controller)
         nAgents = cfg.get_config(config, 'agents.nAgents')
 
         # interactions
@@ -54,11 +55,12 @@ class BasePlanner(ABC):
         self.connection_graph           = None # Graph representation for the purpose of connections: currently, "A_connectivity"
         
         # set the default graphs (if not updated by specific planner)
-        #A_default = np.ones((nAgents, nAgents)) - np.eye(nAgents) 
-        #self.update_graphs(A_default, A_default, **kwargs)
+        A_default = np.ones((nAgents, nAgents)) - np.eye(nAgents) 
+        self.update_graphs(A_default, A_default, **kwargs)
 
         # pins (default no pins)
         self.pin_assignments            = np.zeros((nAgents,nAgents))
+
 
 
 

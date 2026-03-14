@@ -304,7 +304,7 @@ class Planner(BasePlanner):
         # RANDOM VECTOR
         # ==============
         
-        np.random.seed(k_node)  # each node had its own unique noise (bias)
+        #np.random.seed(k_node)  # each node had its own unique noise (bias)
         u_rand = self.m*self.w_rand*2*(np.random.rand(3,1)-0.5) # random is between -1 and 1
         
         # CONSOLIDATION

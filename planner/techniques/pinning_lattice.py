@@ -74,7 +74,7 @@ import numpy as np
 import random
 import os
 import json
-import random 
+#import random 
 import copy
 
 
@@ -166,11 +166,11 @@ class Planner(BasePlanner):
         headings                = kwargs.get('quads_headings')
         consensus_agent         = kwargs.get('consensus_lattice') # rename this object 
         learning_agent          = kwargs.get('learning_lattice')
-        gradient_agent          = kwargs.get('estimator_gradients')
+        #gradient_agent          = kwargs.get('estimator_gradients')
         directional             = kwargs.get('directional_graph')
-        A                       = kwargs.get('A')
-        local_k_connectivity    = kwargs.get('local_k_connectivity')
-        pin_matrix              = kwargs.get('pin_matrix')
+        A                       = self.interaction_graph #= kwargs.get('A')
+        #local_k_connectivity    = kwargs.get('local_k_connectivity')
+        #pin_matrix              = self.pin_assignments #kwargs.get('pin_matrix')
         
         # safety checks
         # -------------
@@ -328,7 +328,8 @@ class Planner(BasePlanner):
         
         u_int = self.compute_cmd_a(states_q, states_p, targets_q, targets_v, k_node, reward_values, **kwargs)
         u_obs = self.compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
-        u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, kwargs.get('pin_matrix'))
+        #u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, kwargs.get('pin_matrix'))
+        u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, self.pin_assignments)
         
         cmd_i[:,k_node] = u_int + u_obs + u_nav
         

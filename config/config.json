@@ -7,7 +7,7 @@
     },
     "simulation": {
         "Ti": 0,
-        "Tf": 60,
+        "Tf": 30,
         "Ts": 0.02,
         "dimens": 2,
         "verbose": 1,
@@ -19,7 +19,7 @@
         "obstacle_avoidance_strategy": "flocking_saber"
     },
     "agents": {
-        "nAgents": 13,
+        "nAgents":13,
         "dynamics": "double integrator",
         "rAgents": 0.5,
         "iSpread": 40,
@@ -40,12 +40,12 @@
             "x": -2.4,
             "y": 1.2,
             "z": 25,
-            "radius": 0.5
+            "radius": 1
         }
     },
     "orchestrator": {
         "pin_update_rate": 5,
-        "pin_selection_method": "degree_leafs",
+        "pin_selection_method": "degree",
         "criteria_table": {
             "radius": true,
             "aperature": false
@@ -86,7 +86,7 @@
                 "cd_1": 0.3,
                 "cd_2": 0.4,
                 "cd_3": 0.2,
-                "cd_track": 0.1,
+                "cd_track": 0.2,
                 "maxu": 10,
                 "maxv": 100,
                 "recovery": 0,

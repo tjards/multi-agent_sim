@@ -43,6 +43,7 @@ import json
 import h5py
 import os
 from datetime import datetime
+import random
 
 # custom packages
 import config.config as cfg
@@ -57,13 +58,15 @@ config_path = os.path.join(config_directory, 'config.json')
 # create an immutable config object
 config = cfg.Config(config_path)
 
+# reproducibility
+np.random.seed(config.random_seed)
+random.seed(config.random_seed)
+
 # define data paths
 data_directory = config.data_dir
 data_file = config.data_file
 data_file_path = os.path.join(data_directory, data_file)
 
-# reproducibility
-np.random.seed(config.random_seed)
 
 #%% build the system
 # ------------------
@@ -151,6 +154,7 @@ if config.verbose == 1:
 data_manager.save_data_HDF5(Database, data_file_path)
 if hasattr(Controller, 'Learners'):
     for learner in Controller.Learners:
+    #if 'consensus_lattice' in Controller.Learners:
         data_manager.save_data_HDF5(Controller.Learners[learner], os.path.join(data_directory, f"data_learner_{learner}.h5"))
 
 if config.verbose == 1:

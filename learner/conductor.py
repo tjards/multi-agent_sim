@@ -192,4 +192,24 @@ def pinning_update_lattice(Controller):
             #print(self.Learners['estimator_gradients'].C_sum_bypin)
         #print(self.Learners['estimator_gradients'].C_sum_bypin[:, :])
 
-        
+def lemniscate_update(Controller, state, targets, k_node, **kwargs_cmd):
+
+    if 'lemni_CALA_xz' in Controller.Learners:
+    
+        Controller.Learners['lemni_CALA_xz'].learn_lemni(
+            state=k_node,
+            state_array=state,
+            centroid=kwargs_cmd['centroid'],
+            focal=targets[0:3,k_node],
+            target=kwargs_cmd['obstacles_plus'],
+            neighbours=kwargs_cmd['sorted_neighs'],
+            mode = 'xz',
+            allow_ext_reward = False, 
+            ext_reward = 0
+            )
+
+
+
+
+
+
