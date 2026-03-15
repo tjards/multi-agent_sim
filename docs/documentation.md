@@ -978,16 +978,6 @@ Trajectory and state estimation functions.
 
 ---
 
-## References
-
-1. Craig Reynolds, ["Flocks, Herds, and Schools: A Distributed Behavioral Model"](https://www.red3d.com/cwr/papers/1987/boids.html), *Computer Graphics, 21(4)*, 1987.
-2. Reza Olfati-Saber, ["Flocking for Multi-Agent Dynamic Systems: Algorithms and Theory"](https://ieeexplore.ieee.org/document/1605401), *IEEE TAC*, Vol. 51(3), 2006.
-3. H. Hildenbrandt et al., ["Self-organized aerial displays of thousands of starlings"](https://academic.oup.com/beheco/article/21/6/1349), *Behavioral Ecology*, 21(6), 2010.
-4. P. T. Jardine & S. N. Givigi, ["Swarm Learning as Lemniscatic Path Following"](https://ieeexplore.ieee.org/document/9931405), *IEEE TNSE*, 2022.
-5. C. Zhang, H. Yang, B. Jiang, M. Cao, ["Flocking Control Against Malicious Agent"](https://ieeexplore.ieee.org/document/10264142), *IEEE TAC*, vol. 69(5), 2024.
-
----
-
 ## Notes
 
 - Most parameters are tuned through empirical testing; start with defaults and adjust gains (c1, c2, etc.) to see effects
@@ -999,4 +989,4 @@ Trajectory and state estimation functions.
 ---
 
 **Last Updated**: March 2026  
-**Maintained By**: P.T. Jardine, Queen's University
+**Maintained By**: Claude Haiku 4.5
