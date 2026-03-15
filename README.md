@@ -2,9 +2,9 @@
   <img src="./visualization/public/m-a_s.png" width="30%"/>
 </p>
 
-# Multi-agent Simulator
+# Multi-agent Swarming Simulator
 
-An open architecture multi-agent simulator for use by academic researchers. Implemented techniques currently include:
+An open architecture multi-agent simulator for use by academic researchers. Implemented techniques include:
 
 - Flocking (reynolds, starling, and olfati-saber)
 - Structured swarming (lemniscates, encirclement)
@@ -13,11 +13,9 @@ An open architecture multi-agent simulator for use by academic researchers. Impl
 
 Agents make decentralized decisions asynchronously based on local information only. There is no global plan. 
 
-Notes: 
-- This latest release is a major overhaul of the codebase. Some modules are still being updated. Detailed development notes are available in [devnotes.md](./devnotes.md).
-- All planners now have common inputs/outputs, enforced by a base class. 
-- Learning modules (especially Q-lattice learning) are still prototypes and untested. 
-- Now with virtual environment and requirements.txt for easier setup.
+Documentation:
+- Detailed project documentation is generated automatically by an LLM agent (most recently, Claude Haiku 4.5) after significant updates and pushed [here](./docs/documentation.md). 
+- I also maintain rough development notes for myself [here](./docs/devnotes.md).
 
 ---
 
@@ -53,6 +51,18 @@ The quadcopters make use of 3 nested control loops (translational velocity, angu
 
 ---
 
+# Examples
+
+Below are some thematic examples, including visualizations.
+
+- [Basic Interactions](./docs/readme_subpages/interactions.md) 
+- [Dynamic Structures with Reinforcement Learning](./docs/readme_subpages/dynamic_structures.md) 
+- [Malicious Agents](./docs/readme_subpages/malicious_agents.md) 
+
+
+
+---
+
 # Setup
 
 Create and activate the virtual environment:
@@ -78,65 +88,7 @@ To run a simulation, adjust the parameters as desired and then run as follows fr
 ```bash
  python main.py
 ```
-
-
 ---
-
-# Examples
-
-<p float="center">
-    <img src="./visualization/public/hetero_lattice/animation2D_prism_big.gif" width="40%"> 
-    <img src="./visualization/public/hetero_lattice/animation2D_prism_big_plot.png" width="40%">
-    <figcaption style="font-size: 1em; margin-top: 5px;"><strong> Assembly: </strong> 50 agents with conflicting initial lattice parameters automatically negotiating and assembling. </figcaption>
-</p>
-
-<p float="center">
-    <img src="./visualization/public/hetero_lattice/animation_ranges.gif" width="80%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;"><strong> Assembly: </strong> 12 agents conflicting initial lattice parameters, showing sensor ranges. </figcaption>
-</p>
-
-<p float="center">
-    <img src="./visualization/public/pinning/animation_quads.gif" width="20%"> 
-    <img src="./visualization/public/pinning/animation2D_pinning4.gif" width="20%">
-    <img src="./visualization/public/hetero_lattice/animation2D.gif" width="20%">
-    <img src="./visualization/public/hetero_lattice/animation2D_prism.gif" width="20%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;"><strong> Lattice variations: </strong> Other examples with quadcopters, obstacles, and various lattice types. </figcaption>
-</p>
-
-<p float="center">
-    <img src="./visualization/public/shepherding/animation3D_shepherding.gif" width="20%">
-    <img src="./visualization/public/encircle/animation_circle.gif" width="20%">
-    <img src="./visualization/public/lemniscate/animation3D_projs.gif" width="20%">
-    <img src="./visualization/public/lemniscate/dance_animation3D_HD.gif" width="20%">
-    <figcaption style="font-size: 1em; margin-top: 5px;"><strong> Dynamic Structures: </strong> Shepherding, encirclment, and lemniscate trajectories. </figcaption>
-</p>
-
-<p float="center">
-    <img src="./visualization/public/malicious/cao_animation3D_00.gif" width="20%">  
-    <img src="./visualization/public/malicious/cao_malicious_0.png" width="20%">
-    <img src="./visualization/public/malicious/cao_animation3D_11.gif" width="20%">  
-    <img src="./visualization/public/malicious/cao_malicious_1.png" width="20%">
-    <figcaption style="font-size: 1em; margin-top: 5px;"><strong> Malicious Agents: </strong> Compensating for the presence of malicious agents. </figcaption>
-</p>
-
----
-
-# Some other special features:
-
-*  2D and 3D simulations
-*  Various agent shapes (dots, prisms, ... etc)
-*  Double-integrator and quadcopter dynamics 
-*  Interconnectedness is represented as a Graph
-*  Flocking with heterogeneous lattice scales
-*  [Reinforcement learning to adjust flocking scale](https://github.com/tjards/assembly_via_Q-learning)
-*  Lemniscates formed as [twisted circles](https://github.com/tjards/twisted_circles)
-*  [Malicious agents](https://github.com/tjards/flocking_malicious)
-*  [Various potential functions](https://github.com/tjards/survey_potential_functions)
-* [Linearization and Dimensionality Reduction using UMAP](https://github.com/tjards/UMAP_twisted_circles) 
-* [Learning and control of swarm orientation in lower-dimensional hypospace](https://github.com/tjards/hypospace_learning)
-
-
---- 
 
 # References 
 
@@ -149,15 +101,16 @@ Vol. 51 (3), 2006.
 6. S. Van Havermaet et al. ["Steering herds away from dangers in dynamic environments"](https://royalsocietypublishing.org/doi/10.1098/rsos.230015) in *Royal Society Open Science*, 2023
 7. C. Zhang, H. Yang, B. Jiang and M. Cao, ["Flocking Control Against Malicious Agent"](https://ieeexplore.ieee.org/document/10264142) in *IEEE Transactions on Automatic Control*, vol. 69, no. 5, pp. 3278-3285, May 2024
 8. P. T. Jardine and S. Givigi, ["Emergent homeomorphic curves in swarms"](https://doi.org/10.1016/j.automatica.2025.112221) in *Automatica*, vol. 176, 2025
-9. Credit goes to [bobzwik](https://github.com/bobzwik) for providing the majority of the [Quadcopter dynamics module](https://github.com/tjards/multi-agent_sim/tree/master/agents/quadcopter_module) code under MIT licence, which I modified to suit this application (portions of the code are annotated appropriately)
-10. Credit goes to [ericjhkim](https://github.com/ericjhkim) for providing code for prism agent shape
+9. P. T. Jardine and S. Givigi, ["Agree to Disagree: Consensus-free Flocking under Constraints"](https://arxiv.org/abs/2601.19119) in *arXiv*
+10. Credit goes to [bobzwik](https://github.com/bobzwik) for providing the majority of the [Quadcopter dynamics module](https://github.com/tjards/multi-agent_sim/tree/master/agents/quadcopter_module) code under MIT licence, which I modified to suit this application (portions of the code are annotated appropriately)
+11. Credit goes to [ericjhkim](https://github.com/ericjhkim) for providing code for prism agent shape
 
 # Citing
 
-The code is opensource but, if you reference this work in your own research, please cite me. I have provided an example bibtex citation below:
+If you'd like to cite this work, here's a bibtex example:
 
 `@techreport{Jardine-2026,
-  title={Multi-agent Coordination Simulator},
+  title={m-a_s: Multi-agent Swarming Simulator},
   author={Jardine, P.T.},
   year={2026},
   institution={Queen's University, Kingston, Ontario},

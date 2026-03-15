@@ -117,10 +117,6 @@ from planner.base import BasePlanner
 class Planner(BasePlanner):
     def __init__(self, config, **kwargs):
         super().__init__(config, **kwargs)
-
-#class Planner:
-    
-#    def __init__(self, config, state):
         
         state = kwargs.get('states', None)
         self.state    = state
@@ -163,7 +159,6 @@ class Planner(BasePlanner):
         self.herd       = self.Herd(self)
         self.shepherds  = self.Shepherds(self) 
     
-    #def spawn(self):
 
         # compute distances between all
         self.compute_seps()
@@ -207,15 +202,8 @@ class Planner(BasePlanner):
         
     # compute commands (called from outside)
     # ----------------
-    #def compute_cmd(self, Targets, i):
-    #def compute_cmd(self, targets, i):
     def compute_cmd(self, states, targets, index, **kwargs):
         
-        #if not self.spawned:
-        #    self.state = state
-        #    self.spawn()
-        #    self.spawned = True 
-
         # store the agent being examined
         i = index
         self.i = i

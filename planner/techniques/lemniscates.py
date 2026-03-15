@@ -24,9 +24,9 @@ from .utils import quaternions as quat
 lemni_type descriptions:
             
     # Implicit definition of rotation (https://ieeexplore.ieee.org/document/9931405)
-    #   0 = lemniscate of Gerono - 'surveillance (/^\)'
-    #   1 = lemniscate of Gerono - 'rolling (/^\ -> \_/)'
-    #   2 = lemniscate of Gerono - 'mobbing (\_/)'
+    #   0 = lemniscate of Gerono - 'surveillance'
+    #   1 = lemniscate of Gerono - 'rolling'
+    #   2 = lemniscate of Gerono - 'mobbing'
         
     # Explicit definition (see https://github.com/tjards/twisted_circles)
     #   3 = lemniscate of Gerono (with shift)
@@ -111,11 +111,6 @@ class Planner(BasePlanner):
         self.z_e = self.twist_perp / np.linalg.norm(self.twist_perp)
         self.y_e = np.cross(self.z_e, self.x_e)
         self.y_e /= np.linalg.norm(self.y_e)
-
-        # exported parameters
-        #self.targets_encircle   = np.zeros((6, self.nVeh))
-        #self.lemni              = np.zeros([2, self.nVeh])  
-        #self.sorted_neighs      = np.zeros((self.nVeh, self.nVeh))
 
         #graph parameters (standardized in base class)
         circle_config = cfg.get_config(config_data, 'planner.techniques.encirclement')

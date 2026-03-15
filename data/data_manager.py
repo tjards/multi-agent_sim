@@ -33,31 +33,6 @@ def convert_to_json_serializable(obj):
         return [convert_to_json_serializable(item) for item in obj]
     else:
         return obj
-
-# def initialize_data_JSON(data):
-    
-#     with open(file_path, 'w') as file:
-#         json.dump(data, file)
-
-# def save_data_JSON(data, Agents, Targets, Obstacles, History):
-
-#     #data['Agents']      = Agents.__dict__
-#     #if Agents.dynamics_type == 'quadcopter':
-#     #    del data['Agents']['quadList']
-#     #    del data['Agents']['llctrlList']
-#     #    del data['Agents']['sDesList']
-#     #data['Targets']     = Targets.__dict__
-#     #data['Obstacles']   = Obstacles.__dict__
-    
-#     data['History']     = History.__dict__
-    
-#     data = convert_to_json_serializable(data)
-    
-#     with open(file_path, 'w') as file:
-#         json.dump(data, file)
-    
-#     with open(file_path, 'r') as file:
-#         data_json = json.load(file)
     
 def save_data_HDF5(data, file_path):
     
@@ -74,12 +49,6 @@ def save_data_HDF5(data, file_path):
 
 def load_data_HDF5(group, key, file_path_h5):
     
-    # get current working directory
-    #cwd = os.getcwd()
-
-    # specify relative path to the HDF5 file
-    #file_path_h5 = os.path.join(cwd,'data','data.h5')
-
     # open the HDF5 file
     with h5py.File(file_path_h5, 'r') as file:
         
@@ -176,11 +145,7 @@ class History:
         
         # I want to start violations of censensus lattice constraints
         if 'consensus_lattice' in Controller.Learners:
-            #self.lattice_mins = np.zeros([nSteps, Agents.nAgents, Agents.nAgents]) 
-            #self.lattice_maxs = np.zeros([nSteps, Agents.nAgents, Agents.nAgents])
             self.lattice_violations = np.zeros([nSteps, Agents.nAgents, Agents.nAgents]) 
-            #self.lattice_mins[0,:,:] = Controller.Learners['consensus_lattice'].d_min
-            #self.lattice_maxs[0,:,:] = Controller.Learners['consensus_lattice'].d_max
         else:
             self.lattice_violations = np.zeros([nSteps, Agents.nAgents, Agents.nAgents]) 
         
@@ -224,8 +189,6 @@ class History:
             self.lattice_violations[i,:,:] = Controller.Graphs.A*Controller.Learners['consensus_lattice'].compute_violations(Agents.state[0:3,:])
        
             
-            
-        
         # if there are quadcopters
         dynamics = Agents.dynamics_type
         if dynamics == 'quadcopter': 

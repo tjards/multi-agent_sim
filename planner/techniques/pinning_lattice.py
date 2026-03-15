@@ -52,18 +52,6 @@ Some default parameters:
                     # 'gromacs_soft_core'
                     # 'mixed' - randomly mix these
 
-
-Dev notes:
-    
-    24 Nov 25 - gradient estimation is working, but now I wantto feed these back to 
-    pin, so it can stop the motion (i.e., pin adds up all differences and forces stop).
-    The pin will then be able to bring everyone back.
-    so, sum of: gradient_agent.gain_gradient_control * gradient_agent.C_filtered[0:gradient_agent.dimens, k_node, k_neigh]
-    
-    23 Feb 25 - now supports constrained gradient-based lattice consensus seeking 
-    
-    20 May 25 - need to return all coh/ali/obs terms for consistency in orchestrator
-
 @author: tjards
 
 """
@@ -76,8 +64,6 @@ import os
 import json
 #import random 
 import copy
-
-
 import config.config as cfg
 
 from planner.techniques.pinning_gradients_default import velocity_alignment as alignment_term
@@ -192,19 +178,6 @@ class Planner(BasePlanner):
             
             kwargs['learning_grid_size'] = self.learning_grid_size # consider adapting this with time
             learning_agent.update_step(reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
-        
-        # estimate neighbouring gradients (legacy, delete later)
-        # -------------------------------
-        '''
-        if hetero_gradient == 1:
-            # compute accelerations
-            gradient_agent.observed_gradients[:,k_node,:] = (states_p[0:gradient_agent.dimens,:] - gradient_agent.last_velos[0:gradient_agent.dimens, k_node, :]) #/gradient_agent.Ts
-            # load last velo (for next time)
-            gradient_agent.last_velos[0:gradient_agent.dimens, k_node, :] = states_p[0:gradient_agent.dimens,:]
-            # now update
-            observed_gradients = gradient_agent.observed_gradients[:,k_node,:]
-            gradient_agent.update_estimates(states_q[0:gradient_agent.dimens,:], states_p[0:gradient_agent.dimens, :], observed_gradients, A, k_node)       
-    '''  
     
 
     # initialize parameters

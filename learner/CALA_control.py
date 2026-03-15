@@ -37,16 +37,13 @@ import config.config as cfg
 '''
 Parameters examples:
 
-    #%% Simulations parameters
-    # ---------------------
+    # Simulations parameters
 
     actions_range = 'angular'                   # 'linear', 'angular' (impacts clipping)
     action_min      = -np.pi/4  # 0             # minimum of action space
     action_max      = np.pi/4   # 2*np.pi       # maximum of action space
 
-
-    #%% Hyperparameters
-    # -----------------
+    # Hyperparameters
 
     # learning 
     learning_rate   = 0.5 #0.1      # rate at which policy updates
@@ -88,8 +85,6 @@ show_plots = False
 # ----------------
 class CALA:
     
-    # initialize
-    #def __init__(self, num_agents):
     def __init__(self, config):    
         
         CALA_config = cfg.get_config(config, 'learner.CALA')
@@ -99,12 +94,6 @@ class CALA:
         self.reward_coupling = CALA_config.get('reward_coupling', None)
         self.num_states = self.num_agents * self.reward_coupling
 
-        # each agent has a state for each degree of freedom (linked to coupling term)
-        #num_states = num_agents * reward_coupling
-        
-        # load parameters into class
-        #self.num_agents     = num_agents
-        #self.num_states     = num_states 
         self.action_min     = CALA_config.get('action_min', None)
         self.action_max     = CALA_config.get('action_max', None)
         self.learning_rate  = CALA_config.get('learning_rate', None)
@@ -167,49 +156,6 @@ class CALA:
         self.reward_history     = []
         self.action_history = []
         
-        '''
-        # store the configs
-        configs_tools.update_configs('CALA', [
-            ('num_states', num_states),
-            ('action_min', action_min),
-            ('action_max', action_max)
-        ] )
-
-        # Store CALA hyperparams reward settings
-        configs_tools.update_configs('CALA', [
-            
-            # learning
-            ('learning_rate', learning_rate),
-            ('variance_init', variance_init),
-            ('variance_ratio', variance_ratio),
-            ('variance_min', variance_min),
-            ('variance_max', variance_max),
-            ('epsilon', epsilon),
-            ('counter_max', counter_max),
-            ('counter_synch', counter_synch),
-            ('counter_delay', counter_delay),
-        
-            # MAS coordination
-            ('leader_follower', leader_follower),
-            ('leader', leader),
-        
-            # rewards
-            ('reward_mode', reward_mode),
-            ('reward_coupling', reward_coupling),
-            ('reward_reference', reward_reference),
-            ('reward_form', reward_form),
-            ('reward_k_theta', reward_k_theta),
-            ('momentum', momentum),
-            ('momentum_beta', momentum_beta),
-            ('annealing', annealing),
-            ('annealing_rate', annealing_rate),
-            ('kicking', kicking),
-            ('kicking_factor', kicking_factor),
-            ('sigmoidize', sigmoidize)
-        ])
-
-        '''
-
 
     #%% helper functions
     # ----------------
@@ -573,19 +519,6 @@ class CALA:
             self._log_state(state, self.action_set[state], reward)
 
 
-        # check if update threshold reached
-        '''if self.counter[state] >= self.counter_max:
-      
-            # update the policy
-            self.update_policy(state, self.action_set[state], reward)
-            # reset counter
-            self.counter[state] = 0  
-            #select a new action
-            self.action_set[state] = self.select_action(state)
-
-        # log history
-        self._log_state(state, self.action_set[state], reward)'''
-
     # store current step info into history buffers
     def _log_state(self, state, action, reward):
     
@@ -681,46 +614,7 @@ class CALA:
         if not show_plots:
             plt.close(fig)
 
-        
-    # plot the distributions 
-    # def plot_distributions_over_time_set(self, steps_to_plot=[0, 10, 25, 50]):
-        
-    #     from scipy.stats import norm
-    #     x = np.linspace(self.action_min - 0.5, self.action_max + 0.5, 500)
-    
-    #     # Compute a shared y-axis limit (max PDF value over all states and selected steps)
-    #     y_max = 0
-    #     for state in range(self.num_states):
-    #         for step in steps_to_plot:
-    #             mu = self.mean_history[state][step]
-    #             sigma = np.sqrt(self.variance_history[state][step])
-    #             if sigma > 0:
-    #                 y = norm.pdf(mu, mu, sigma)
-    #                 y_max = max(y_max, y)
-    #     y_max *= 1.1  # add some headroom
-    
-    #     # create the figure
-    #     fig, axs = plt.subplots(self.num_states, 1, figsize=(10, 3 * self.num_states))
-    
-    #     for state in range(self.num_states):
-    #         ax = axs[state] if self.num_states > 1 else axs
-    #         color = self.state_colors[state] if hasattr(self, 'state_colors') else None
-    #         for idx, step in enumerate(steps_to_plot):
-    #             mu = self.mean_history[state][step]
-    #             var = self.variance_history[state][step]
-    #             sigma = np.sqrt(var)
-    #             y = norm.pdf(x, mu, sigma)
-    #             alpha = 0.1 + 0.8 * (idx / (len(steps_to_plot) - 1))
-    #             ax.fill_between(x, y, color=color, alpha=alpha, label=f"step {step}" if idx == len(steps_to_plot)-1 else None)
-    
-    #         ax.set_title(f"State {state} Distribution Evolution")
-    #         ax.set_xlim(self.action_min - 0.5, self.action_max + 0.5)
-    #         ax.set_ylim(0, y_max)  # ← key fix to match the animation
-    
-    #     plt.tight_layout()
-    #     plt.show()
-        
-    
+   
     def animate_distributions_set(self, interval=50, save_path='visualization/animations/CALA_distributions.gif', just_leader = True):
         
         import matplotlib.animation as animation
@@ -1074,10 +968,4 @@ class CALA:
         self.animate_distributions_set(save_path=save_path, just_leader = just_leader)
         #anim = self.animate_distributions_set(interval=50, save_path='RL_animation.gif')
 
-
-#%% manual calls
-# ------------
-# Controller.Learners['lemni_CALA'].animate_distributions_set()
-# Controller.Learners['lemni_CALA'].all_plots_set()
-#Controller.Learners['lemni_CALA'].plot_reward_surface_set(reward_fn=compute_reward)
 

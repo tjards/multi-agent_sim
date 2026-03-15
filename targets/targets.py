@@ -41,13 +41,7 @@ class Targets:
         self.targets[3,:] = 0
         self.targets[4,:] = 0
         self.targets[5,:] = 0
-        
-        #self.trajectory = self.targets.copy()
-        #self.trajectory = copy.deepcopy(self.targets)
-        
-        #self.config_targets = {'tSpeed': self.tSpeed , 'initial_target_positions': list(self.targets[:,0])} 
-        
-        
+                
     def evolve(self, t):
         
         self.targets[0,:] = 100*np.sin(self.tSpeed*t)                 # targets[0,:] + tSpeed*0.002

@@ -42,44 +42,6 @@ import os
 import json
 import config.config as cfg
 
-# Hyperparameters
-# ----------------
-
-
-
-
-#%save configs
-# --------------
-'''
-from config.configs_tools import update_configs
-
-configs_entries = [
-    ('v_o', v_o),
-    ('m', m),
-    ('tau', tau),
-    ('del_u', del_u),
-    ('s', s),
-    ('R_max', R_max),
-    ('n_c', n_c),
-    ('r_sep', r_sep),
-    ('r_h', r_h),
-    ('r_roost', r_roost),
-    ('w_s', w_s),
-    ('w_c', w_c),
-    ('w_a', w_a),
-    ('w_roost_h', w_roost_h),
-    ('w_roost_v', w_roost_v),
-    ('w_rand', w_rand),
-    ('C_c', C_c),
-    ('alpha', alpha),
-    ('eps', eps),
-    ('sigma', sigma),
-    ('sigma_sqr', sigma_sqr)
-]
-
-update_configs('starling', configs_entries)
-'''
-
 # Some useful functions
 # ---------------------
 

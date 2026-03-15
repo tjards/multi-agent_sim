@@ -15,19 +15,17 @@ import json
 import os
 
 '''
-parameters''
+PARAMETERS:
 
-# agent dynamics
-# --------------
-    dynamics = 'double_integrator'
-    #dynamics = 'double integrator' 
+    # agent dynamics
+    dynamics = 'double integrator'
         # 'double integrator' 
         # 'quadcopter'
 
-    nAgents = 4 # 7    # number of agents
-    rAgents = 0.5   # physical radius of agents 
-    iSpread = 20 #20 #80 # 20   # initial spread of agents
-    init_conditions = 'random'   # mesh, random, evenly_spaced
+    nAgents = 4                 # number of agents
+    rAgents = 0.5               # physical radius of agents 
+    iSpread = 20                # initial spread of agents
+    init_conditions = 'random'  # mesh, random, evenly_spaced
             
     # constraints
     vmax = 5
@@ -41,11 +39,6 @@ with open(config_path, 'r') as f:
 agents_config = config_data.get('agents', None)
 simulation_config = config_data.get('simulation', None)
 
-
-
-# store the config
-#config_agents = {'nAgents': nAgents , 'rAgents': rAgents, 'initial_spread': iSpread, 'dynamics': dynamics} 
-
 # some dependencies for quadcopter
 if agents_config.get('dynamics', None) == 'quadcopter':
     
@@ -58,47 +51,22 @@ if agents_config.get('dynamics', None) == 'quadcopter':
     heading_type = quadcopter_config.heading_type
     v_heading_adjust = quadcopter_config.v_heading_adjust
     v_heading_saturate = quadcopter_config.v_heading_saturate
-
-    #config_agents['quad_orient'] = quadcopter_config.orient
-    #config_agents['quad_usePrecession'] = quadcopter_config.usePrecession
-    #config_agents['quad_Ts'] = quadcopter_config.Ts
     
     # get gains 
     from .quadcopter_module.ctrl import return_gains as quadcopter_gains
     quadcopter_gains_dict = quadcopter_gains()
 
-    #config_agents.update(quadcopter_gains())
-    #config_agents['heading_type']        = quadcopter_config.heading_type 
-    #config_agents['v_heading_adjust']    = quadcopter_config.v_heading_adjust
-    #config_agents['v_heading_saturate']  = quadcopter_config.v_heading_saturate
-    #heading_type = config_agents['heading_type']        
-    #v_heading_adjust = config_agents['v_heading_adjust']    
-    #v_heading_saturate = config_agents['v_heading_saturate']  
-    
     # get other params
     from .quadcopter_module.initQuad import sys_params
     quad_params = sys_params(quadcopter_config)
     for key, value in quad_params.items():
         if isinstance(value, np.ndarray):
             quad_params[key] = value.tolist()
-    #config_agents['quad_params'] = quad_params
-    
+
 
 class Agents:
     
-    #def __init__(self,tactic_type, dimens):
     def __init__(self):
-        
-        # initite attributes 
-        # ------------------
-        #self.nAgents        = nAgents      # number of vehicles
-        #self.rVeh           = rAgents     # physical radius of vehicle
-        #self.tactic_type    = tactic_type    
-        #self.dynamics_type  = dynamics
-        #self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
-        #self.dimens         = dimens
-        
-        #config_agents.update({'tactic_type': self.tactic_type})
 
         self.nAgents = agents_config.get('nAgents', None)
         self.rAgents = agents_config.get('rAgents', None)
@@ -112,11 +80,7 @@ class Agents:
         self.dimens = simulation_config.get('dimens', None)
         self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
         
-        # Vehicles states
-        # ---------------
-        
         d_sep = 10
-        
         if self.init_conditions == 'evenly_spaced':
             self.state = np.zeros((6, self.nAgents))
     
@@ -149,9 +113,6 @@ class Agents:
             # Compute centroid and velocity centroid
             self.centroid = self.compute_centroid(self.state[0:3, :].transpose())
             self.centroid_v = self.compute_centroid(self.state[3:6, :].transpose())
-
-        
-        
         
         if self.init_conditions == 'random':
         
@@ -174,9 +135,7 @@ class Agents:
             self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
         
         # Vehicle states(mesh)
-        # --------------
-        mesh_distance = self.iSpread
-        
+        mesh_distance = self.iSpread  
         if self.init_conditions == 'mesh':
 
             side_length = int(np.ceil(self.nAgents ** (1/3)))
@@ -230,9 +189,7 @@ class Agents:
                 self.sDesList.append(np.zeros(21))
                 self.llctrlList.append(Quadcopter_Control(self.quadList[quad_i], "yaw")) # nominally, "yaw" at end
                 self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
-        
-        #self.config_agents = config_agents    
-    
+     
     def compute_centroid(self, points):
         length = points.shape[0]
         sum_x = np.sum(points[:, 0])
@@ -270,10 +227,7 @@ class Agents:
         
         # distance from targets or agents
         # ---------------------
-        # note: replace target_q with states_q to get separation between agents
-        #seps=cdist(states_q.transpose(), np.reshape(target_q[:,0],(-1,1)).transpose())
         seps=cdist(states_q.transpose(), states_q.transpose()) 
-        
         seps = np.multiply(seps,A)
 
         #vals = np.unique(seps[np.where(seps!=0)])
@@ -288,7 +242,6 @@ class Agents:
         maxes = np.max(vals)
         mines = np.min(vals)
         
-        #print(mines)
         
         # distance from obstacles
         # -----------------------
@@ -306,11 +259,6 @@ class Agents:
     # -----------------------
     def spacing(self, states_q, radius):
         
-        # visibility radius
-        #radius = Controller.d_init + 0.5
-        #radius= 5
-
-
         seps=cdist(states_q.transpose(), states_q.transpose())    
         #vals = np.unique(seps[np.where(seps!=0)])
         vals = seps[np.where(seps>0.5)]
@@ -337,9 +285,6 @@ class Agents:
     # -----------------------------    
     def evolve(self, cmd, pin_matrix, t, Ts):
         
-        # constraints
-        #vmax = 5
-        #vmin = -5
 
         if self.dynamics == 'quadcopter':
             
@@ -436,16 +381,6 @@ class Agents:
             self.state[3:6,:] = np.clip(self.state[3:6,:], self.vmin, self.vmax)
             #self.state[3:6,:] = clip_vector_magnitude(self.state[3:6,:], vmin, vmax)
             
-            
-            
-        
- 
+
         self.centroid = self.compute_centroid(self.state[0:3,:].transpose())
         self.centroid_v = self.compute_centroid(self.state[3:6,:].transpose())
-        
-            #state[3:6,:] = np.minimum(np.maximum(state[3:6,:] + cmd[:,:]*Ts, -vmax), vmax)
-            #state[3:6,:] = np.minimum(np.maximum(state[3:6,:] + cmd[:,:]*Ts, vmin), vmax)
-            #state[3:6,:] = clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax)
-            #state[3:6,:] = clamp_norm_min(clamp_norm(state[3:6,:] + cmd[:,:]*Ts,vmax),vmin)
-        
- 

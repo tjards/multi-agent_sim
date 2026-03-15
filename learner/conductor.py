@@ -28,29 +28,11 @@ from agents.quadcopter_module import config
 def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
     
     Learners = {}
-    
-    # if using CALA to tune controller parameters (placeholder for future dev)
-    #if learning_ctrl == 'CALA':
-    #    from learner import CALA_control
-    #    CALA = CALA_control.CALA(Agents.nAgents) # just one param per agent now (expand latter)
-        
-    #    #Load
-    #    Learners['CALA_ctrl'] = CALA
 
-    # AFTER:
     if learning_ctrl == 'CALA':
         from learner import CALA_control
         CALA = CALA_control.CALA(config)
         Learners['CALA_ctrl'] = CALA
-     
-    #if tactic_type == 'lemni':
-    #    with open(config_path, 'r') as planner_lemni_tests:
-    #        configs = json.load(planner_lemni_tests)
-    #    if configs['lemni']['learning'] == 'CALA':
-    #        import learner.CALA_control as lemni_CALA
-    #        lemni_CALA_xz = lemni_CALA.CALA(Agents.nAgents)
-    #        # Load
-    #        Learners['lemni_CALA_xz'] = lemni_CALA_xz
     
     if tactic_type == 'lemniscates':
         planner_configs = config.get('planner', {})
@@ -60,15 +42,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
             lemni_CALA_xz = lemni_CALA.CALA(config)
             Learners['lemni_CALA_xz'] = lemni_CALA_xz
 
-             
-    # pinning control case
-    #if tactic_type == 'pinning':
-    #    
-    #    with open(config_path, 'r') as planner_pinning_tests:
-    #        configs = json.load(planner_pinning_tests)
-    #        planner_configs = configs['planner']['techniques']['pinning']
-    
-    # 
+
     if tactic_type == 'pinning_lattice':
         planner_configs = config['planner']['techniques']['pinning_lattice']
         
@@ -111,23 +85,7 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
                         
                     # LOAD    
                     Learners['learning_lattice'] = Learning_agent
-            
-            # see if I have to integrate different potential functions (legacy - remove)
-            '''
-            potential_function_learner = planner_configs['hetero_gradient']
-            if potential_function_learner == 1:
-                
-                # import the gradient estimator
-                import learner.gradient_estimator as gradient_estimator
-                
-                Gradient_agent = gradient_estimator.GradientEstimator(Agents.nAgents, Agents.dimens, Ts)
-                
-                # load
-                Learners['estimator_gradients'] = Gradient_agent
-            '''
-      
-    
-    #configs_tools.update_orch_configs(config_path,learner_objs=Learners)
+
         
     return Learners
         
@@ -136,8 +94,6 @@ def update_args(Agents, Controller, tactic_type, kwargs):
     
     # we'll need the record of lemni parameters  
     if tactic_type == 'lemniscates':
-        
-        #kwargs['sorted_neighs'] = Trajectory.sorted_neighs
         
         # new bidrirectional controller
         if 'lemni_CALA_xz' in Controller.Learners:

@@ -75,7 +75,6 @@ Some default params
     k_vector_hat = np.array([mal_kv_hat,mal_ka_hat,mal_kr_hat])
     C_estimate = np.zeros((3,3))
 
-
 dev notes:
     
     17 Nov 24 - doesn't  work in 2D yet. Need to stop filter from causing exp growth to inf (no measurements)
@@ -91,17 +90,11 @@ import numpy as np
 import config.config as cfg
 
 
-#%% CUSTOM CLASS 
-
 
 from planner.base import BasePlanner
 class Planner(BasePlanner):
     def __init__(self, config_data, **kwargs):
         super().__init__(config_data, **kwargs)
-
-#class Planner:
-    
-#    def __init__(self, config_data, states_q, states_p):
         
         # Extract cao configuration section
         cao_config = cfg.get_config(config_data, 'planner.techniques.malicious_agent')

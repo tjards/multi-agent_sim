@@ -93,16 +93,12 @@ class Planner(BasePlanner):
         self.sensor_range_matrix = self.r_max * np.ones((nAgents, nAgents))
         self.connection_range_matrix = self.r_max * np.ones((nAgents, nAgents))
 
-
-
     def update_trajectory(self, Trajectory, targets, **kwargs):
 
         state = kwargs.get('state')
 
         Trajectory.trajectory, _, _ = self.encircle_target(targets, state)
                           
-
-    #def compute_cmd(self, states_q, states_p, targets_enc, targets_v_enc, k_node):
     def compute_cmd(self, states, targets, index, **kwargs):
 
         # extract

@@ -23,8 +23,25 @@ import json
 
 #%% parameters
 # ------------
+
+# global 
 save_plots = True 
 show_plots= False 
+
+# individual plots
+plot_proximity = True
+plot_distance_from_target = True
+plot_obstacles = True
+plot_k_connect = True
+plot_energy = True
+plot_spacing = True
+plot_constraints = True
+plot_heatmap = True
+plot_CALA_learners = True
+
+
+
+
 
 
 #%% paths
@@ -44,8 +61,7 @@ def handle_plot(fig, name):
     if show_plots:
         plt.show()
 
-#%% graph analysis
-# ---------------
+
 
 # find connected components
 # -------------------------
@@ -74,8 +90,6 @@ def find_connected_components(A):
 
 
 
-
-
 #%% produce plots
 # -------------
 def plotMe(data_file_path):
@@ -92,70 +106,81 @@ def plotMe(data_file_path):
     plot_start = int(1/Ts)
 
 
-    # separtion 
-    fig, ax = plt.subplots()
-    ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,1],'-b')
-    ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,5],':b')
-    ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,6],':b')
-    ax.fill_between(t_all[plot_start::], metrics_order_all[plot_start::,5], metrics_order_all[plot_start::,6], color = 'blue', alpha = 0.1)
-    #note: can include region to note shade using "where = Y2 < Y1
-    ax.set(xlabel='Time [s]', ylabel='Mean Distance (with Min/Max Bounds) [m]',
-            title='Proximity of Connected Agents')
-    #ax.plot([70, 70], [100, 250], '--b', lw=1)
-    #ax.hlines(y=5, xmin=Ti, xmax=Tf, linewidth=1, color='r', linestyle='--')
-    ax.grid()
-    #plt.show()
-    handle_plot(fig, 'proximity')
+    # ******************************
+    # PROXIMITY OF CONNECTED AGENTS
+    # ******************************
 
-    
-    # radii from target
-    radii = np.zeros([states_all.shape[2],states_all.shape[0]])
-    for i in range(0,states_all.shape[0]):
-        for j in range(0,states_all.shape[2]):
-            radii[j,i] = np.linalg.norm(states_all[i,:,j] - targets_all[i,:,j])
-            
-    fig, ax = plt.subplots()
-    for j in range(0,states_all.shape[2]):
-        ax.plot(t_all[4::],radii[j,4::].ravel(),'-b')
-    ax.set(xlabel='Time [s]', ylabel='Distance from Target for Each Agent [m]',
-            title='Distance from Target')
-    #plt.axhline(y = 5, color = 'k', linestyle = '--')
-    #plt.show()
-    handle_plot(fig, 'distance_from_target')
-    
-    #%% radii from obstacles
-    if obstacles_all.shape[2] >  0:
-    
-        radii_o = np.zeros([states_all.shape[2],states_all.shape[0],obstacles_all.shape[2]])
-        radii_o_means = np.zeros([states_all.shape[2],states_all.shape[0]])
-        radii_o_means2 =  np.zeros([states_all.shape[0]])
-        
-        for i in range(0,states_all.shape[0]):              # the time samples
-            for j in range(0,states_all.shape[2]):          # the agents
-                for k in range(0,obstacles_all.shape[2]):   # the obstacles
-                    radii_o[j,i,k] = np.linalg.norm(states_all[i,0:3,j] - obstacles_all[i,0:3,k])
-        
-                radii_o_means[j,i] = np.mean(radii_o[j,i,:])
-            radii_o_means2[i] = np.mean(radii_o_means[:,i])
-        
+    if plot_proximity:
+        fig, ax = plt.subplots()
+        ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,1],'-b')
+        ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,5],':b')
+        ax.plot(t_all[plot_start::],metrics_order_all[plot_start::,6],':b')
+        ax.fill_between(t_all[plot_start::], metrics_order_all[plot_start::,5], metrics_order_all[plot_start::,6], color = 'blue', alpha = 0.1)
+        #note: can include region to note shade using "where = Y2 < Y1
+        ax.set(xlabel='Time [s]', ylabel='Mean Distance (with Min/Max Bounds) [m]',
+                title='Proximity of Connected Agents')
+        #ax.plot([70, 70], [100, 250], '--b', lw=1)
+        #ax.hlines(y=5, xmin=Ti, xmax=Tf, linewidth=1, color='r', linestyle='--')
+        ax.grid()
+        #plt.show()
+        handle_plot(fig, 'proximity')
+
+    # ******************************
+    # DISTANCES FROM TARGETS 
+    # ******************************
+
+    if plot_distance_from_target:
+        # radii from target
+        radii = np.zeros([states_all.shape[2],states_all.shape[0]])
+        for i in range(0,states_all.shape[0]):
+            for j in range(0,states_all.shape[2]):
+                radii[j,i] = np.linalg.norm(states_all[i,:,j] - targets_all[i,:,j])
                 
         fig, ax = plt.subplots()
-        #start = int(0/0.02)
-        start = plot_start
-        
         for j in range(0,states_all.shape[2]):
-            ax.plot(t_all[start::],radii_o_means2[start::].ravel(),'-g')
-        ax.set(xlabel='Time [s]', ylabel='Mean Distance from Obstacles[m]',
-                title='Distance from Obstacles')
+            ax.plot(t_all[4::],radii[j,4::].ravel(),'-b')
+        ax.set(xlabel='Time [s]', ylabel='Distance from Target for Each Agent [m]',
+                title='Distance from Target')
         #plt.axhline(y = 5, color = 'k', linestyle = '--')
-        
         #plt.show()
-        handle_plot(fig, 'obstacles')
+        handle_plot(fig, 'distance_from_target')
+
+    # ******************************
+    # MEAN DISTANCE FROM OBSTACLES 
+    # ******************************
+
+    # radii from obstacles
+    if plot_obstacles:
+        if obstacles_all.shape[2] >  0:
+        
+            radii_o = np.zeros([states_all.shape[2],states_all.shape[0],obstacles_all.shape[2]])
+            radii_o_means = np.zeros([states_all.shape[2],states_all.shape[0]])
+            radii_o_means2 =  np.zeros([states_all.shape[0]])
             
+            for i in range(0,states_all.shape[0]):              # the time samples
+                for j in range(0,states_all.shape[2]):          # the agents
+                    for k in range(0,obstacles_all.shape[2]):   # the obstacles
+                        radii_o[j,i,k] = np.linalg.norm(states_all[i,0:3,j] - obstacles_all[i,0:3,k])
             
-    #%% local k-connectivity
-    
-    plot_k_connect = True
+                    radii_o_means[j,i] = np.mean(radii_o[j,i,:])
+                radii_o_means2[i] = np.mean(radii_o_means[:,i])
+            
+            fig, ax = plt.subplots()
+            #start = int(0/0.02)
+            start = plot_start
+            
+            for j in range(0,states_all.shape[2]):
+                ax.plot(t_all[start::],radii_o_means2[start::].ravel(),'-g')
+            ax.set(xlabel='Time [s]', ylabel='Mean Distance from Obstacles[m]',
+                    title='Distance from Obstacles')
+            #plt.axhline(y = 5, color = 'k', linestyle = '--')
+            
+            #plt.show()
+            handle_plot(fig, 'obstacles')
+                
+    # ******************************
+    # LOCAL K-CONNECTIVITY
+    # ******************************
     if plot_k_connect:
     
         _, t_all = data_manager.load_data_HDF5('History', 't_all', data_file_path)
@@ -183,61 +208,52 @@ def plotMe(data_file_path):
         handle_plot(fig, 'k-connectivity')
         
         
-    #%% Energy
-    # --------
-    plot_energy = False
+    # ******************************
+    # ENEREGY 
+    # ******************************
+
     if plot_energy:
-    
-        fig, ax = plt.subplots()
-        
-        # set forst axis
-        
-        max1 = 1 #np.max(metrics_order_all[start::,7])
-        
-        ax.plot(t_all[start::],metrics_order_all[start::,7]/max1,'-g')
-        #ax.plot(t_all[4::],metrics_order_all[4::,7]+metrics_order_all[4::,8],':g')
-        #ax.plot(t_all[4::],metrics_order_all[4::,7]-metrics_order_all[4::,8],':g')
-        ax.fill_between(t_all[start::], metrics_order_all[start::,7]/max1, color = 'green', alpha = 0.1)
-        
-        #note: can include region to note shade using "where = Y2 < Y1
-        ax.set(xlabel='Time [s]', title='Energy Consumption')
-        ax.set_ylabel('Total Acceleration [m^2]', color = 'g')
-        ax.tick_params(axis='y',colors ='green')
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        max1 = 1
+        ax.plot(t_all[plot_start:], metrics_order_all[plot_start:, 7] / max1, '-g')
+        ax.fill_between(t_all[plot_start:], metrics_order_all[plot_start:, 7] / max1,
+                        color='green', alpha=0.1)
+
+        ax.set_xlabel('Time [s]')
+        ax.set_title('Energy Consumption')
+        ax.set_ylabel('Total Acceleration [m^2]', color='g')
+        ax.tick_params(axis='y', colors='green')
         ax.set_xlim([0, Tf])
-        #ax.set_ylim([0, 1])
-        #ax.plot([70, 70], [100, 250], '--b', lw=1)
-        #ax.hlines(y=5, xmin=Ti, xmax=Tf, linewidth=1, color='r', linestyle='--')
+
         total_e = np.sqrt(np.sum(cmds_all**2))
-        # ax.text(3, 2, 'Total Energy: ' + str(round(total_e,1)), style='italic',
-        #         bbox={'facecolor': 'green', 'alpha': 0.1, 'pad': 1})
-        
-        
-        # set second axis
-        
-        max2 = 1 #np.max(1 - metrics_order_all[start::,0])
-        
+
+        max2 = 1
         ax2 = ax.twinx()
         ax2.set_xlim([0, Tf])
-        #ax2.set_ylim([0, 1])
-        ax2.plot(t_all[start::],(1-metrics_order_all[start::,0])/max2, color='tab:blue', linestyle = '--')
-        #ax2.fill_between(t_all[4::], 1-metrics_order_all[4::,0], color = 'tab:blue', alpha = 0.1)
-        ax2.set(title='Energy Consumption')
+        ax2.plot(t_all[plot_start:], (1 - metrics_order_all[plot_start:, 0]) / max2,
+                color='tab:blue', linestyle='--')
         ax2.set_ylabel('Disorder of the Swarm', color='tab:blue')
-        #ax2.invert_yaxis()
-        ax2.tick_params(axis='y',colors ='tab:blue')
-        ax2.text(Tf-Tf*0.3, 0.1, 'Total Energy: ' + str(round(total_e,1)), style='italic',
-                bbox={'facecolor': 'green', 'alpha': 0.1, 'pad': 1})
-        
+        ax2.tick_params(axis='y', colors='tab:blue')
+
+        ax2.text(
+            0.70, 0.05,
+            f'Total Energy: {round(total_e,1)}',
+            transform=ax2.transAxes,
+            style='italic',
+            bbox={'facecolor': 'green', 'alpha': 0.1, 'pad': 1}
+        )
+
         ax.grid()
-        #fig.savefig("test.png")
-        #plt.show()
+        fig.tight_layout()
         handle_plot(fig, 'energy')
     
-    #%% Spacing
-    # ---------
-    
-    plot_space = True
-    if plot_space:
+    # ******************************
+    # SPACING
+    # ******************************
+
+    if plot_spacing:
     
         fig, ax = plt.subplots()
         
@@ -273,10 +289,11 @@ def plotMe(data_file_path):
         #plt.show()
         handle_plot(fig, 'spacing')
         
-    #%% Lattice violation
-    # -------------------
-    plot_space = False
-    if plot_space:
+
+    # ******************************
+    # LATTICE VIOLATION
+    # ******************************
+    if plot_constraints:
         
         _, lattice_violations = data_manager.load_data_HDF5('History', 'lattice_violations', data_file_path)
         
@@ -306,16 +323,12 @@ def plotMe(data_file_path):
         ax2.tick_params(axis='y',colors ='tab:blue')
         #ax2.invert_yaxis()
         
-        
         count_violations = np.zeros((len(t_all), 1))
         for i in range(0,len(t_all)):
             count_violations[i,:] = np.count_nonzero(lattice_violations[i,:,:])
             
-            
-            
         ax2.plot(t_all[start::], count_violations[start::], color='tab:blue',linestyle = '--', label = 'Constraint Violation')
         ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
-        
         
         ax2.legend(loc = 'upper left')
         ax.grid()
@@ -324,116 +337,101 @@ def plotMe(data_file_path):
         handle_plot(fig, 'constraints')
 
 
-        #%% Heatmap of connections
-        # -------------------------
-        heat_map = False
-        start = plot_start
-        
-        if heat_map:
-            _, lattices_connections = data_manager.load_data_HDF5('History', 'lattices', data_file_path)    # lattice parameters
-            _, connectivity = data_manager.load_data_HDF5('History', 'connectivity', data_file_path)        # Adjacency matrix
-            import matplotlib.colors as mcolors
-            import seaborn as sns
-            #import matplotlib.pyplot as plt
-            from scipy.spatial.distance import cdist
-            import utils.swarmgraph as graphical 
-        
-            # Pull out positions
-            poses = states_all[:, 0:3, :]
-        
-            diffs_all = []
-            components_all = [] # stores the graph component indices
-        
-            # Loop through time steps
-            for i in range(start, t_all.shape[0]):
-                
-                
-                # initiate component indices
-                '''
-                components = np.array(states_all.shape[2])
-                '''
-                
-                # Compute the separations for each agent
-                seps = cdist(states_all[i, 0:3, :].T, states_all[i, 0:3, :].T)
-                seps_desired = lattices_connections[i, :, :]
-                diffs = seps - seps_desired
-        
-                # Bring in connectivity info
-                A = connectivity[i, :, :]
-                
-                '''
-                components = find_connected_components(A)
-                # Given: components is a list of lists, where each sublist contains indices belonging to that component
-                index_to_component = np.full(states_all.shape[2], -1)  # Fill with -1 initially to detect missing assignments
+    # ******************************
+    # HEATMAP OF SEPARATION ERRORS
+    # ******************************
 
-                # Assign each index to its component number
-                for component_idx, sublist in enumerate(components):
-                    for index in sublist:
-                        index_to_component[index] = component_idx  # Store the component ID
-                '''
-        
-                
-                # masks
-                # -----
-                # mask out diagonal elements
-                mask = ~np.eye(seps.shape[0], dtype=bool)
-                diffs = diffs[mask]
-                
-                # mask out NaNs
-                A_mask = A[mask]
-                diffs[~A_mask.astype(bool)] = np.nan  # Ensure NaN for out-of-range pairs
-        
-                # mask out agent connections that never meet 
-                A_last = connectivity[-1, :, :][mask]
-                diffs = diffs[A_last.astype(bool)]
-        
-        
-                # Store results
-                diffs_all.append(diffs)
-                '''
-                components_all.append(index_to_component)
-                '''
-                #if len(components) > 1:
-                #    print(index_to_component)
-        
-            # Convert to numpy array and transpose for heatmap
-            diffs_all = np.array(diffs_all).T
-        
-            # Compute range limits
-            #center_value = np.nanmean(diffs_all)
-            mins_value = -1 #np.nanmin(diffs_all)
-            maxs_value = 2 #np.nanmax(diffs_all)
-        
-            # Clip extreme values for better color contrast
-            diffs_all_clipped = np.clip(diffs_all, mins_value, maxs_value)
-        
-            # Use a blue colormap 
-            #cmap = plt.cm.Blues_r
-            #cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", ["red", "green", "blue"])
-            cmap = plt.cm.plasma
-
-
-            norm = mcolors.Normalize(vmin=mins_value, vmax=maxs_value)
-        
-            # Improve x-axis tick labels for readability
-            #xtick_positions = np.linspace(0, diffs_all.shape[1] - 1, num=10, dtype=int)
-        
-            # Plot heatmap (NaNs appear as white)
-            plt.figure(figsize=(10, 6))
-            sns.heatmap(
-                diffs_all_clipped, cmap=cmap, norm=norm, xticklabels=500, 
-                mask=np.isnan(diffs_all_clipped), yticklabels=False, cbar=True
-            )
-        
-            # Labels
-            plt.xlabel("Timestep")
-            plt.ylabel("Agent-Agent Index")
-            plt.title("Separation Error Heatmap [m]")
-            #plt.show()
-            handle_plot(fig, 'heatmap')
+    start = plot_start
+    
+    if plot_heatmap:
+        _, lattices_connections = data_manager.load_data_HDF5('History', 'lattices', data_file_path)    # lattice parameters
+        _, connectivity = data_manager.load_data_HDF5('History', 'connectivity', data_file_path)        # Adjacency matrix
+        import matplotlib.colors as mcolors
+        import seaborn as sns
+        #import matplotlib.pyplot as plt
+        from scipy.spatial.distance import cdist
+        import utils.swarmgraph as graphical 
+    
+        # Pull out positions
+        poses = states_all[:, 0:3, :]
+    
+        diffs_all = []
+        components_all = [] # stores the graph component indices
+    
+        # Loop through time steps
+        for i in range(start, t_all.shape[0]):
             
-            #plt.close(fig)
+            # Compute the separations for each agent
+            seps = cdist(states_all[i, 0:3, :].T, states_all[i, 0:3, :].T)
+            seps_desired = lattices_connections[i, :, :]
+            diffs = seps - seps_desired
+    
+            # Bring in connectivity info
+            A = connectivity[i, :, :]
+            
+            # masks
+            # -----
+            # mask out diagonal elements
+            mask = ~np.eye(seps.shape[0], dtype=bool)
+            diffs = diffs[mask]
+            
+            # mask out NaNs
+            A_mask = A[mask]
+            diffs[~A_mask.astype(bool)] = np.nan  # Ensure NaN for out-of-range pairs
+    
+            # mask out agent connections that never meet 
+            A_last = connectivity[-1, :, :][mask]
+            diffs = diffs[A_last.astype(bool)]
+    
+    
+            # Store results
+            diffs_all.append(diffs)
+            '''
+            components_all.append(index_to_component)
+            '''
+            #if len(components) > 1:
+            #    print(index_to_component)
+    
+        # Convert to numpy array and transpose for heatmap
+        diffs_all = np.array(diffs_all).T
+    
+        # Compute range limits
+        #center_value = np.nanmean(diffs_all)
+        mins_value = -1 #np.nanmin(diffs_all)
+        maxs_value = 2 #np.nanmax(diffs_all)
+    
+        # Clip extreme values for better color contrast
+        diffs_all_clipped = np.clip(diffs_all, mins_value, maxs_value)
+    
+        # Use a blue colormap 
+        #cmap = plt.cm.Blues_r
+        #cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", ["red", "green", "blue"])
+        cmap = plt.cm.plasma
 
+        norm = mcolors.Normalize(vmin=mins_value, vmax=maxs_value)
+    
+        # Improve x-axis tick labels for readability
+        #xtick_positions = np.linspace(0, diffs_all.shape[1] - 1, num=10, dtype=int)
+    
+        # Plot heatmap (NaNs appear as white)
+        fig = plt.figure(figsize=(10, 6))
+        sns.heatmap(
+            diffs_all_clipped, cmap=cmap, norm=norm, xticklabels=500, 
+            mask=np.isnan(diffs_all_clipped), yticklabels=False, cbar=True
+        )
+    
+        # Labels
+        plt.xlabel("Timestep")
+        plt.ylabel("Agent-Agent Index")
+        plt.title("Separation Error Heatmap [m]")
+        #plt.show()
+        handle_plot(fig, 'heatmap')
+        
+        #plt.close(fig)
+
+    # ******************************
+    # PLOT CALA LEARNERS
+    # ******************************
 
     # learners
     config_path = os.path.join('config', 'config.json')
@@ -441,10 +439,11 @@ def plotMe(data_file_path):
             config_data = json.load(f)
     planner_config = config_data.get('planner', {})
     if planner_config.get('techniques', {}).get('lemniscates', {}).get('learning', False) == 'CALA':
-        plot_learners = True
+        plot_CALA_learners = True
     else:
-        plot_learners = False
-    if plot_learners:
+        plot_CALA_learners = False
+    
+    if plot_CALA_learners:
         try:
             data_file_path_learn = os.path.join(data_directory, "data/data_learner_lemni_CALA_xz.h5")
 

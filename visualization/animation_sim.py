@@ -25,11 +25,7 @@ from data import data_manager
 # =============================================================================
 # Configuration pulls
 # =============================================================================
-# config_path = os.path.join("config", "config_agents.json")
-# with open(config_path, 'r') as config_file:
-#     config_agents = json.load(config_file)
-    
-#config_path = os.path.join("config", "configs.json")
+
 config_path = os.path.join("config", "config.json")
 with open(config_path, 'r') as config_file:
     config = json.load(config_file)
@@ -40,15 +36,7 @@ with open(config_path, 'r') as config_file:
     r_range = config.get('planner', {}).get('techniques', {}).get('flocking_saber', {}).get('r', 0)
 
 
-
-# pull the quadcopter config (if applicable in the config)
 plot_quadcopter = 1 if config_agents.get('dynamics') == 'quadcopter' else 0
-#if plot_quadcopter:
-#    quad_params = {
-#        "dxm": config_agents['quad_params']['dxm'],
-#        "dym": config_agents['quad_params']['dym'],
-#        "dzm": config_agents['quad_params']['dzm']
-#    }
 
 if plot_quadcopter:
     # Import quad_params directly from agents module (loaded if dynamics == 'quadcopter')
@@ -62,26 +50,57 @@ if plot_quadcopter:
 # =============================================================================
 # Plotting parameters
 # =============================================================================
-numFrames           = 10            # frame rate (bigger = slower)
-tail                = 500           # trailing trajectory length 
-zoom                = 1             # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
-zoom_axis           = 10            # if zoom mode == 2, sets fixed zoom axis
-zoom_fixed          = 7             # if zoom mode == 3, sets fixed zoom amount
-pan                 = 0             # camera pan toggle (only for 3D)
-connection          = 1             # show connections between agents
-connection_thresh   = 5.1           # threshold for agent connectivity  (default val, gets updates later)
-updated_connections = 1             # use updated connectivity          (default 1)
-head                = 5 * 0.2       # size of the directional head
-pins_overide        = 1             # override colors using pin variable
-showObs             = 1             # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
-agent_shape         = 'prism'       # ['dot', 'prism']
-prism_scale         = 1.0
-color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
-color_lattice       = ['grey', 'blue']      # [in range, connected]
-color_projection    = ['black', 'black']    # xy, yz
-projection_plot     = True                  # show 2D projections
-show_plot           = True                  # show plot at end?
-show_ranges         = False                 # show sensor ranges
+# Load animation-specific parameters
+anim_config_path = os.path.join("config", "config_animation.json")
+with open(anim_config_path, 'r') as config_file:
+    anim_config = json.load(config_file)
+    plotting_params = anim_config.get('plotting', {})
+
+numFrames           = plotting_params.get('numFrames', 10)
+tail                = plotting_params.get('tail', 500)
+zoom                = plotting_params.get('zoom', 1)
+zoom_axis           = plotting_params.get('zoom_axis', 10)
+zoom_fixed          = plotting_params.get('zoom_fixed', 7)
+pan                 = plotting_params.get('pan', 0)
+connection          = plotting_params.get('connection', 1)
+connection_thresh   = plotting_params.get('connection_thresh', 5.1)
+updated_connections = plotting_params.get('updated_connections', 1)
+head                = plotting_params.get('head', 1.0)
+pins_overide        = plotting_params.get('pins_overide', 1)
+showObs             = plotting_params.get('showObs', 1)
+agent_shape         = plotting_params.get('agent_shape', 'prism')
+prism_scale         = plotting_params.get('prism_scale', 1.0)
+color_scheme        = plotting_params.get('color_scheme', ['blue', 'cyan', 'red', 'green', [1, 1, 0, 0.5], 'green'])
+color_lattice       = plotting_params.get('color_lattice', ['grey', 'blue'])
+color_projection    = plotting_params.get('color_projection', ['black', 'black'])
+projection_plot     = plotting_params.get('projection_plot', True)
+show_plot           = plotting_params.get('show_plot', True)
+show_ranges         = plotting_params.get('show_ranges', False)
+
+'''
+Suggested parameters:
+    numFrames           = 10            # frame rate (bigger = slower)
+    tail                = 500           # trailing trajectory length 
+    zoom                = 1             # zoom mode (0 = no, 1 = yes, 2 = fixed (set below), 3 = fixed_zoom (set below))
+    zoom_axis           = 10            # if zoom mode == 2, sets fixed zoom axis
+    zoom_fixed          = 7             # if zoom mode == 3, sets fixed zoom amount
+    pan                 = 0             # camera pan toggle (only for 3D)
+    connection          = 1             # show connections between agents
+    connection_thresh   = 5.1           # threshold for agent connectivity  (default val, gets updates later)
+    updated_connections = 1             # use updated connectivity          (default 1)
+    head                = 5 * 0.2       # size of the directional head
+    pins_overide        = 1             # override colors using pin variable
+    showObs             = 1             # obstacle display mode (0 = don't show, 1 = show, 2 = show + floors/walls)
+    agent_shape         = 'prism'       # ['dot', 'prism']
+    prism_scale         = 1.0
+    color_scheme        = ['blue', 'cyan', 'red', 'green', (1,1,0,0.5), 'green']  # [default, special, pins, target, obstacle, centroid]
+    color_lattice       = ['grey', 'blue']      # [in range, connected]
+    color_projection    = ['black', 'black']    # xy, yz
+    projection_plot     = True                  # show 2D projections
+    show_plot           = True                  # show plot at end?
+    show_ranges         = False                 # show sensor ranges
+'''
+
 
 # =============================================================================
 # Helper functions 

@@ -29,13 +29,7 @@ simulation_config = config_data.get('simulation', {})
 # --------------------------
 class Obstacles:
     
-    #def __init__(self, tactic_type, targets, dimens):
     def __init__(self, targets):
-        
-        
-        #np.random.seed(42)
-        
-        # note: don't let pass-in of walls yet, as it is a manual process still
         
         # initiate attributes
         # -------------------
@@ -61,17 +55,6 @@ class Obstacles:
 
 
         if self.manual:
-
-            # manual (comment out if random)
-            #self.obstacles[0,:] = 0.5 #2   # position (x)
-            #self.obstacles[1,:] = -4.1 # -2.5    # position (y)
-            #self.obstacles[2,:] = 20    # position (z)
-            #self.obstacles[3,:] = 1
-            
-            #self.obstacles[0,:] = -2.4   # position (x)
-            #self.obstacles[1,:] = 1.2 # -2.5    # position (y)
-            #self.obstacles[2,:] = 25    # position (z)
-            #self.obstacles[3,:] = 1
 
             manual_positions = obstacles_config.get('manual_positions', None)
 

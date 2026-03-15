@@ -154,7 +154,6 @@ if config.verbose == 1:
 data_manager.save_data_HDF5(Database, data_file_path)
 if hasattr(Controller, 'Learners'):
     for learner in Controller.Learners:
-    #if 'consensus_lattice' in Controller.Learners:
         data_manager.save_data_HDF5(Controller.Learners[learner], os.path.join(data_directory, f"data_learner_{learner}.h5"))
 
 if config.verbose == 1:
