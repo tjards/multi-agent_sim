@@ -22,6 +22,7 @@ Created on Mon Jan  4 12:45:55 2021
 @author: tjards
 
 
+
 """
 
 #%% Import stuff
@@ -36,6 +37,7 @@ from planner import trajectory
 from planner.techniques import pinning_lattice
 import utils.swarmgraph as graphical 
 import config.config as cfg
+from utils.spatial import SpatialIndex
 
 # these will be removed later, after I objectify and migrate off conditional imports 
 config_loaded = cfg.load_config('config/config.json')
@@ -217,46 +219,90 @@ class Controller:
         # COMMAND UPDATES #
         # *************** #
 
-        # for each vehicle/node/agent in the network
-        # ------------------------------------
-        for k_node in range(state[0:3,:].shape[1]):
+        # attempt vectorized path (returns None if planner hasn't implemented it)
+        planner = self.planners[tactic_type]
+        cmd_vectorized = None
 
-            # compute the planner command for this node
-            cmd_i[:,k_node] = self.planners[tactic_type].compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
+        # vectorized path: enabled by config, excludes strategies with per-agent learning
+        # that cannot be separated from command computation
+        use_optimized = getattr(self.config, 'use_optimized', True)
+        if use_optimized and tactic_type not in ('pinning_lattice', 'shepherding'):
+            sensor_r = float(np.max(self.r_matrix))
+            spatial_idx = SpatialIndex(state[0:3, :])
+            neighbor_lists = spatial_idx.query_ball_tree(sensor_r)
+            cmd_vectorized = planner.compute_cmd_vectorized(
+                state[0:6, :], trajectory[0:6, :], neighbor_lists, **kwargs_cmd)
 
-            # compute the obstacle avoidance command for this node (if applicable)
+        if cmd_vectorized is not None:
+            # vectorized path succeeded
+            cmd_i = cmd_vectorized
+
+            # add obstacle avoidance for strategies that use a separate obstacle planner
             if tactic_type in ['flocking_reynolds', 'encirclement', 'lemniscates']:
-                u_obs[:,k_node] = self.planners['obstacle_avoidance'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                for k_node in range(state[0:3,:].shape[1]):
+                    u_obs[:,k_node] = self.planners['obstacle_avoidance'].compute_cmd_b(
+                        state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+                cmd_i = cmd_i + u_obs
 
-            # force pins to reflect shepherding (if applicable)
-            if tactic_type == 'shepherding':
-                self.pin_matrix[k_node, k_node] = self.planners['shepherding'].index[k_node]
-
-            # ****************** #
-            #  Learning updates  #
-            # ****************** # 
-
-            # pinning lattice learning update (if applicable)
-            if tactic_type == 'pinning_lattice':
-                 learner.conductor.pinning_update_lattice(self)
-            
-            # lemniscate orientation learn
+            # run per-agent learning updates that were decoupled from command computation
             if tactic_type == 'lemniscates':
-                learner.conductor.lemniscate_update(self, state, targets, k_node, **kwargs_cmd)
-            
-            # ******* #
-            #  Mixer  #
-            # ******* # 
+                for k_node in range(state[0:3,:].shape[1]):
+                    learner.conductor.lemniscate_update(self, state, targets, k_node, **kwargs_cmd)
 
-            cmd_i[:,k_node] = cmd_i[:,k_node] + u_obs[:,k_node]
+        else:
+            # scalar fallback: per-agent loop with pre-built neighbor lists
+            # build spatial index and neighbor lists once for all agents
+            sensor_r = float(np.max(self.r_matrix))
+            spatial_idx = SpatialIndex(state[0:3, :])
+            neighbor_lists = spatial_idx.query_ball_tree(sensor_r)
+
+            # for shepherding: pre-compute seps_all once (avoids n redundant cdist calls)
+            if tactic_type == 'shepherding':
+                from scipy.spatial.distance import cdist
+                seps_all = cdist(state[0:3,:].T, state[0:3,:].T)
+                kwargs_cmd['seps_all'] = seps_all
+
+            for k_node in range(state[0:3,:].shape[1]):
+
+                # pass pre-built neighbor list for this agent
+                kwargs_cmd['neighbors'] = neighbor_lists[k_node]
+
+                # compute the planner command for this node
+                cmd_i[:,k_node] = planner.compute_cmd(state[0:6,:], trajectory[0:6,:], k_node, **kwargs_cmd)
+
+                # compute the obstacle avoidance command for this node (if applicable)
+                if tactic_type in ['flocking_reynolds', 'encirclement', 'lemniscates']:
+                    u_obs[:,k_node] = self.planners['obstacle_avoidance'].compute_cmd_b(state[0:3,:], state[3:6,:], obstacles_plus, walls, k_node)
+
+                # force pins to reflect shepherding (if applicable)
+                if tactic_type == 'shepherding':
+                    self.pin_matrix[k_node, k_node] = self.planners['shepherding'].index[k_node]
+
+                # ****************** #
+                #  Learning updates  #
+                # ****************** # 
+
+                # pinning lattice learning update (if applicable)
+                if tactic_type == 'pinning_lattice':
+                     learner.conductor.pinning_update_lattice(self)
+                
+                # lemniscate orientation learn
+                if tactic_type == 'lemniscates':
+                    learner.conductor.lemniscate_update(self, state, targets, k_node, **kwargs_cmd)
+                
+                # ******* #
+                #  Mixer  #
+                # ******* # 
+
+                cmd_i[:,k_node] = cmd_i[:,k_node] + u_obs[:,k_node]
 
             if self.dimens == 2 and self.cmd[2,:].any() != 0:
-                
-                print('warning, 3D cmds in 2D at node ', k_node)
-                print(self.cmd[2,k_node])    
+                for k_node in range(state[0:3,:].shape[1]):
+                    print('warning, 3D cmds in 2D at node ', k_node)
+                    print(self.cmd[2,k_node])    
                 
         # update the commands
-        self.cmd = copy.deepcopy(cmd_i) 
+        self.cmd = copy.deepcopy(cmd_i)
         
 
         

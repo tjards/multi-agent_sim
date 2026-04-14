@@ -103,57 +103,44 @@ def navigation(c1_g, c2_g, states_q, states_p, targets, targets_v, k_node):
 
 # obstacle avoidance command
 # --------------------------
+# Pre-allocated identity to avoid per-call np.identity heap fragmentation
+# (see OPTIMIZATION.md for details on this fix)
+_I3 = np.identity(3)
+
 def compute_cmd_b(c1_b, c2_b, states_q, states_p, obstacles, walls, k_node, d_prime, r_prime):
       
-    # initialize 
-    d_b = sigma_norm(d_prime)                   # obstacle separation (goal range)
-    u_obs = np.zeros((3,states_q.shape[1]))     # obstacles 
+    d_b = sigma_norm(d_prime)
+    u_obs = np.zeros(3)  # (3,) not (3, n) — heap fragmentation fix
     
     # Obstacle Avoidance term (phi_beta)
-    # ---------------------------------   
-    # search through each obstacle 
     for k_obstacle in range(obstacles.shape[1]):
 
-        # compute norm between this node and this obstacle
         normo = np.linalg.norm(states_q[:,k_node]-obstacles[0:3,k_obstacle])
         
-        # ignore if overlapping
         if normo < 0.2:
             continue 
         
-        # compute mu
         mu = np.divide(obstacles[3, k_obstacle],normo)
-        # compute bold_a_k (for the projection matrix)
         bold_a_k = np.divide(states_q[:,k_node]-obstacles[0:3,k_obstacle],normo)
         bold_a_k = np.array(bold_a_k, ndmin = 2)
-        # compute projection matrix
-        P = np.identity(states_p.shape[0]) - np.dot(bold_a_k,bold_a_k.transpose())
-        # compute beta-agent position and velocity
+        P = _I3 - np.dot(bold_a_k,bold_a_k.transpose())
         q_ik = mu*states_q[:,k_node]+(1-mu)*obstacles[0:3,k_obstacle]
-        # compute distance to beta-agent
         dist_b = np.linalg.norm(q_ik-states_q[:,k_node])
-        # if it is with the beta range
         if dist_b < r_prime:
-            # compute the beta command
             p_ik = mu*np.dot(P,states_p[:,k_node])    
-            u_obs[:,k_node] += c1_b*phi_b(states_q[:,k_node], q_ik, d_b)*n_ij(states_q[:,k_node], q_ik) + c2_b*b_ik(states_q[:,k_node], q_ik, d_b)*(p_ik - states_p[:,k_node])
+            u_obs += c1_b*phi_b(states_q[:,k_node], q_ik, d_b)*n_ij(states_q[:,k_node], q_ik) + c2_b*b_ik(states_q[:,k_node], q_ik, d_b)*(p_ik - states_p[:,k_node])
            
     # search through each wall (a planar obstacle)
     for k_wall in range(walls.shape[1]):
         
-        # define the wall
-        bold_a_k = np.array(np.divide(walls[0:3,k_wall],np.linalg.norm(walls[0:3,k_wall])), ndmin=2).transpose()    # normal vector
-        y_k = walls[3:6,k_wall]         # point on plane
-        # compute the projection matrix
-        P = np.identity(y_k.shape[0]) - np.dot(bold_a_k,bold_a_k.transpose())
-        # compute the beta_agent 
-        q_ik = np.dot(P,states_q[:,k_node]) + np.dot((np.identity(y_k.shape[0])-P),y_k)
-        # compute distance to beta-agent
+        bold_a_k = np.array(np.divide(walls[0:3,k_wall],np.linalg.norm(walls[0:3,k_wall])), ndmin=2).transpose()
+        y_k = walls[3:6,k_wall]
+        P = _I3 - np.dot(bold_a_k,bold_a_k.transpose())
+        q_ik = np.dot(P,states_q[:,k_node]) + np.dot((_I3-P),y_k)
         dist_b = np.linalg.norm(q_ik-states_q[:,k_node])
-        # if it is with the beta range
-        maxAlt = 10 # TRAVIS: maxAlt is for testing, only enforces walls below this altitude
+        maxAlt = 10
         if dist_b < r_prime and states_q[2,k_node] < maxAlt:
             p_ik = np.dot(P,states_p[:,k_node])
-            u_obs[:,k_node] += c1_b*phi_b(states_q[:,k_node], q_ik, d_b)*n_ij(states_q[:,k_node], q_ik) + c2_b*b_ik(states_q[:,k_node], q_ik, d_b)*(p_ik - states_p[:,k_node])
+            u_obs += c1_b*phi_b(states_q[:,k_node], q_ik, d_b)*n_ij(states_q[:,k_node], q_ik) + c2_b*b_ik(states_q[:,k_node], q_ik, d_b)*(p_ik - states_p[:,k_node])
 
-        return u_obs[:,k_node] 
+        return u_obs

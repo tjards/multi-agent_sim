@@ -4,6 +4,7 @@
 Created on Wed Nov 29 19:07:07 2023
 
 @author: tjards
+
 """
 
 # import stuff
@@ -201,24 +202,28 @@ class Agents:
     # order
     # -----
     def order(self, states_p):
-
-        order = 0
+        """Compute velocity alignment order parameter (vectorized)."""
         N = states_p.shape[1]
-        # if more than 1 agent
-        if N > 1:
-            # for each vehicle/node in the network
-            for k_node in range(states_p.shape[1]):
-                # inspect each neighbour
-                for k_neigh in range(states_p.shape[1]):
-                    # except for itself
-                    if k_node != k_neigh:
-                        # and start summing the order quantity
-                        norm_i = np.linalg.norm(states_p[:,k_node])
-                        if norm_i != 0:
-                            order += np.divide(np.dot(states_p[:,k_node],states_p[:,k_neigh]),norm_i**2)
-                # average
-                order = np.divide(order,N*(N-1))
-                
+        if N <= 1:
+            return 0
+
+        # ||v_i||^2 for each agent
+        norms_sq = np.sum(states_p * states_p, axis=0)  # (N,)
+
+        # dot product matrix: states_p.T @ states_p gives (N, N) of v_i . v_j
+        dots = states_p.T @ states_p  # (N, N)
+
+        # mask out self-interactions (diagonal)
+        np.fill_diagonal(dots, 0.0)
+
+        # for each node: sum_j (v_i . v_j) / ||v_i||^2, skipping zero-norm agents
+        safe_norms_sq = np.where(norms_sq > 0, norms_sq, 1.0)
+        contributions = np.sum(dots, axis=1) / safe_norms_sq  # (N,)
+        contributions = np.where(norms_sq > 0, contributions, 0.0)
+
+        # average over all N*(N-1) pairs
+        order = np.sum(contributions) / (N * (N - 1))
+
         return order
 
     # separation 

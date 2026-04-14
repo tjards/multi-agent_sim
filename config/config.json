@@ -16,7 +16,8 @@
         "random_seed": 42,
         "f": 0,
         "experimental_save": false,
-        "obstacle_avoidance_strategy": "flocking_saber"
+        "obstacle_avoidance_strategy": "flocking_saber",
+        "use_optimized": true
     },
     "agents": {
         "nAgents":13,

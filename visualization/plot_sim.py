@@ -4,6 +4,7 @@
 Created on Sun Apr 14 20:03:48 2024
 
 @author: tjards
+
 """
 
 # import stuff
@@ -130,11 +131,9 @@ def plotMe(data_file_path):
     # ******************************
 
     if plot_distance_from_target:
-        # radii from target
-        radii = np.zeros([states_all.shape[2],states_all.shape[0]])
-        for i in range(0,states_all.shape[0]):
-            for j in range(0,states_all.shape[2]):
-                radii[j,i] = np.linalg.norm(states_all[i,:,j] - targets_all[i,:,j])
+        # radii from target (vectorized: norm over state dimension for all timesteps and agents)
+        diffs = states_all - targets_all                              # (nSteps, 6, nAgents)
+        radii = np.linalg.norm(diffs[:, 0:3, :], axis=1).T           # (nAgents, nSteps)
                 
         fig, ax = plt.subplots()
         for j in range(0,states_all.shape[2]):
@@ -152,18 +151,13 @@ def plotMe(data_file_path):
     # radii from obstacles
     if plot_obstacles:
         if obstacles_all.shape[2] >  0:
-        
-            radii_o = np.zeros([states_all.shape[2],states_all.shape[0],obstacles_all.shape[2]])
-            radii_o_means = np.zeros([states_all.shape[2],states_all.shape[0]])
-            radii_o_means2 =  np.zeros([states_all.shape[0]])
-            
-            for i in range(0,states_all.shape[0]):              # the time samples
-                for j in range(0,states_all.shape[2]):          # the agents
-                    for k in range(0,obstacles_all.shape[2]):   # the obstacles
-                        radii_o[j,i,k] = np.linalg.norm(states_all[i,0:3,j] - obstacles_all[i,0:3,k])
-            
-                    radii_o_means[j,i] = np.mean(radii_o[j,i,:])
-                radii_o_means2[i] = np.mean(radii_o_means[:,i])
+
+            # vectorized: broadcast agent positions (nSteps,3,nAgents,1) vs obstacle positions (nSteps,3,1,nObs)
+            agent_pos = states_all[:, 0:3, :, np.newaxis]       # (nSteps, 3, nAgents, 1)
+            obs_pos = obstacles_all[:, 0:3, np.newaxis, :]      # (nSteps, 3, 1, nObs)
+            radii_o = np.linalg.norm(agent_pos - obs_pos, axis=1)  # (nSteps, nAgents, nObs)
+            radii_o_means = np.mean(radii_o, axis=2)            # (nSteps, nAgents) - mean over obstacles
+            radii_o_means2 = np.mean(radii_o_means, axis=1)     # (nSteps,) - mean over agents
             
             fig, ax = plt.subplots()
             #start = int(0/0.02)
@@ -186,17 +180,12 @@ def plotMe(data_file_path):
         _, t_all = data_manager.load_data_HDF5('History', 't_all', data_file_path)
         _, local_k_connectivity = data_manager.load_data_HDF5('History', 'local_k_connectivity', data_file_path)
         
-        # Plotting the array
+        # Plotting the array (vectorized mean/min/max over agent axis)
         fig, ax = plt.subplots()
         start = plot_start
-        #for i in range(0,len(local_k_connectivity[0,:])):
-        temp_means = 0*local_k_connectivity[:,0]   
-        temp_maxs = 0*local_k_connectivity[:,0]
-        temp_mins = 0*local_k_connectivity[:,0] 
-        for i in range(start,len(t_all)):
-            temp_means[i] = np.mean(local_k_connectivity[i,:].ravel())
-            temp_mins[i] = np.min(local_k_connectivity[i,:].ravel())
-            temp_maxs[i] = np.max(local_k_connectivity[i,:].ravel())
+        temp_means = np.mean(local_k_connectivity, axis=1)
+        temp_mins = np.min(local_k_connectivity, axis=1)
+        temp_maxs = np.max(local_k_connectivity, axis=1)
         
         ax.plot(t_all[start::],temp_means[start::],'-b')
         ax.fill_between(t_all[start::], temp_mins[start::], temp_maxs[start::], color = 'blue', alpha = 0.2)
@@ -323,9 +312,9 @@ def plotMe(data_file_path):
         ax2.tick_params(axis='y',colors ='tab:blue')
         #ax2.invert_yaxis()
         
-        count_violations = np.zeros((len(t_all), 1))
-        for i in range(0,len(t_all)):
-            count_violations[i,:] = np.count_nonzero(lattice_violations[i,:,:])
+        # vectorized: count nonzeros per timestep
+        count_violations = np.count_nonzero(
+            lattice_violations.reshape(len(t_all), -1), axis=1).reshape(-1, 1)
             
         ax2.plot(t_all[start::], count_violations[start::], color='tab:blue',linestyle = '--', label = 'Constraint Violation')
         ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
