@@ -71,12 +71,27 @@ class BasePlanner(ABC):
     @abstractmethod
     def compute_cmd(self, states, targets, index, **kwargs):
         """
-        Compute control command for an agent
+        Compute control command for a single agent.
+
+        Planners with a vectorized path (compute_cmd_vectorized) are preferred
+        by the orchestrator. This scalar path is used for planners whose
+        internal logic has inherently sequential dependencies (e.g., per-pair
+        learning updates in pinning_lattice, two-class agent branching in
+        shepherding, adaptive estimation in malicious_agent).
+
+        The orchestrator passes pre-built neighbor lists via kwargs['neighbors']
+        when available. Planners that accept this can skip their internal O(n)
+        neighbor scan. Planners that ignore it fall back to brute-force.
+
         Args:
-            states: Agents position/velocity 
-            targets: Targets positions/velocities (per agent)
-            index: Agent index to compute command for 
-            **kwargs: Strategy-specific parameters (e.g., obstacle, centroid, trajectory, walls, etc.)
+            states: Agents position/velocity (6, n)
+            targets: Targets positions/velocities (6, n)
+            index: Agent index to compute command for
+            **kwargs: Strategy-specific parameters, may include:
+                neighbors: list[int] — pre-computed neighbor indices for this
+                    agent from SpatialIndex. None if not available.
+        Returns:
+            (3,) command vector for the specified agent
         """
         pass
 
@@ -112,6 +127,20 @@ class BasePlanner(ABC):
     def update_learning(self, **kwargs):
 
         pass
+
+    # vectorized command computation over all agents at once (optional)
+    def compute_cmd_vectorized(self, states, targets, neighbor_lists, **kwargs):
+        """
+        Compute commands for ALL agents simultaneously using vectorized operations.
+        Args:
+            states: Full state array (6, n)
+            targets: Target array (6, n)
+            neighbor_lists: list[list[int]] — per-agent neighbor indices
+            **kwargs: Strategy-specific parameters
+        Returns:
+            ndarray (3, n) of commands, or None if not implemented
+        """
+        return None
 
     # return planner-specific parameters (if required)
     def get_params(self):

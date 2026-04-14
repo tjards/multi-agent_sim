@@ -80,6 +80,10 @@ eps = 0.1
 h   = 0.9
 pi  = 3.141592653589793
 
+# Pre-allocated identity to avoid per-call np.identity heap fragmentation
+# (see OPTIMIZATION.md for details on this fix)
+_I3 = np.identity(3)
+
 def sigma_1(z):    
     sigma_1 = np.divide(z,np.sqrt(1+z**2))    
     return sigma_1
@@ -202,6 +206,13 @@ class Planner(BasePlanner):
         
     # compute commands (called from outside)
     # ----------------
+    # NOTE: This planner is intentionally NOT vectorized. The command logic
+    # branches on agent type (herd vs shepherd) with fundamentally different
+    # algorithms per class. The shepherd command requires finding the globally
+    # closest herd member and closest shepherd, which is an inherently per-agent
+    # operation. The optimization here is:
+    # 1. Cache seps_all per timestep (avoid recomputing n×n cdist per agent)
+    # 2. Accept pre-computed seps_all via kwargs to eliminate cdist entirely
     def compute_cmd(self, states, targets, index, **kwargs):
         
         # store the agent being examined
@@ -209,11 +220,14 @@ class Planner(BasePlanner):
         self.i = i
         
         # store the targets
-        #self.targets = Targets.targets[0:3,:]
         self.targets = targets[0:3,:]
         
-        # compute the separations
-        self.compute_seps()
+        # compute or reuse separations
+        # use pre-computed seps_all if provided (avoids n redundant cdist calls)
+        if 'seps_all' in kwargs:
+            self.seps_all = kwargs['seps_all']
+        else:
+            self.compute_seps()
         
         # compute command, if herd member
         if self.index[self.i] == 0:
@@ -227,7 +241,7 @@ class Planner(BasePlanner):
         
         self.cmd = self.cmd_adjust*self.cmd
 
-        return self.cmd     
+        return self.cmd
 
     #%% define the herd
     # ---------------        
@@ -364,7 +378,7 @@ class Planner(BasePlanner):
                     
                         # intermediate terms
                         bold_a_k = np.array(np.divide(outer.state[0:3,outer.i]-q_cs,d_cs), ndmin = 2)
-                        P = np.identity(outer.state[3:6,:].shape[0]) - np.multiply(bold_a_k,bold_a_k.transpose())
+                        P = _I3 - np.multiply(bold_a_k,bold_a_k.transpose())
                         mu = np.divide(self.r_Or,d_cs) 
                         p_ik = mu*np.dot(P,outer.state[3:6,outer.i]) 
                         q_ik = mu*outer.state[0:3,outer.i]+(1-mu)*q_cs
@@ -377,7 +391,7 @@ class Planner(BasePlanner):
                         
                         # intermediate terms
                         bold_a_k = np.array(np.divide(outer.state[0:3,outer.i]-q_s,d_s), ndmin = 2)
-                        P = np.identity(outer.state[3:6,:].shape[0]) - np.multiply(bold_a_k,bold_a_k.transpose())
+                        P = _I3 - np.multiply(bold_a_k,bold_a_k.transpose())
                         mu = np.divide(self.r_Or,d_s) 
                         p_ik = mu*np.dot(P,outer.state[3:6,outer.i]) 
                         q_ik = mu*outer.state[0:3,outer.i]+(1-mu)*q_s

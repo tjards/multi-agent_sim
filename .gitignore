@@ -38,3 +38,6 @@ htmlcov/
 # Environment files
 .env
 .env.local
+
+# Local Warp context
+WARP.md

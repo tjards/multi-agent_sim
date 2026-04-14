@@ -152,7 +152,17 @@ class Planner(BasePlanner):
             targets[2,:] += self.circle.r_desired/2
         return targets 
 
-    #def compute_cmd(self, states_q, states_p, targets_enc, targets_v_enc, k_node):
+    def compute_cmd_vectorized(self, states, targets, neighbor_lists, **kwargs):
+        """Vectorized: no neighbor interaction, pure per-agent tracking."""
+        states_q = states[0:3, :]
+        states_p = states[3:6, :]
+        targets_q = targets[0:3, :]
+        targets_p = targets[3:6, :]
+        dq = states_q - targets_q
+        dp = states_p - targets_p
+        sigma_1_dq = dq / np.sqrt(1.0 + dq * dq)
+        return -self.c1_d * sigma_1_dq - self.c2_d * dp
+
     def compute_cmd(self, states, targets, index, **kwargs):
 
         # extract
@@ -162,10 +172,7 @@ class Planner(BasePlanner):
         targets_v_enc   = targets[3:6, :]
         k_node          = index
         
-        u_enc           = np.zeros((3,states_q.shape[1]))     
-        u_enc[:,k_node] = - self.c1_d*sigma_1(states_q[:,k_node]-targets_enc[:,k_node])-self.c2_d*(states_p[:,k_node] - targets_v_enc[:,k_node])    
-        
-        return u_enc[:,k_node]
+        return - self.c1_d*sigma_1(states_q[:,k_node]-targets_enc[:,k_node])-self.c2_d*(states_p[:,k_node] - targets_v_enc[:,k_node])
 
     def update_trajectory(self, Trajectory, targets, **kwargs):
 

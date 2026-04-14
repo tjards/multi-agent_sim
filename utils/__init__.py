@@ -5,3 +5,5 @@ Created on Fri Dec 23 10:01:57 2022
 
 @author: tjards
 """
+
+from .spatial import SpatialIndex

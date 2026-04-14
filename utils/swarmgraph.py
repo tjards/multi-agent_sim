@@ -5,24 +5,27 @@ Created on Tue Mar 21 20:21:07 2023
 
 @author: tjards
 
+
 Preliminaries:
     - Let us consider V nodes (vertices, agents)
     - Define E is a set of edges (links) as the set of ordered pairs
     from the Cartesian Product V x V, E = {(a,b) | a /in V and b /in V}
     - Then we consider Graph, G = {V,E} (nodes and edges)
-    - G is simple: (a,a) not \in E \forall a \in V 
-    - G is undirected: (a,b) \in E <=> (b,a) \in E
-    - Nodes i,j are neighbours if they share an edge, (i,j) /in E
+    - G is simple: (a,a) not in E for all a in V 
+    - G is undirected: (a,b) in E <=> (b,a) in E
+    - Nodes i,j are neighbours if they share an edge, (i,j) in E
     - d1=|N_1| is the degree of Node 1, or, the number of neighbours
 
+Refactored to use SpatialIndex (KD-tree) for O(n log n) neighbor discovery
+and scipy.sparse.csgraph for O(n) connected components.
 """
 
 # Import stuff
 # ------------
 import numpy as np
-#import random
-#from collections import defaultdict, Counter
-#import heapq 
+from scipy import sparse
+from scipy.sparse.csgraph import connected_components as scipy_connected_components
+from utils.spatial import SpatialIndex
 
 # Parameters
 # ----------
@@ -36,10 +39,12 @@ class Swarmgraph:
     # ----------
     def __init__(self, data = np.zeros((6,2)), criteria_table = {'radius': True, 'aperature': False}):
                 
-        self.nNodes  = data.shape[1]                    # number of agents (nodes)
-        self.A  = np.zeros((self.nNodes,self.nNodes))   # initialize adjacency matrix as zeros
-        self.D  = np.zeros((self.nNodes,self.nNodes))   # initialize degree matrix as zeros
-        self.local_k_connectivity = local_k_connectivity(self.A, len(self.A), -1)
+        self.nNodes  = data.shape[1]
+        self.A_sparse = sparse.csr_matrix((self.nNodes, self.nNodes))  # primary: sparse adjacency
+        self._A_dense_cache = None                                     # lazy dense cache (invalidated on update)
+        self._degrees = np.zeros(self.nNodes)                          # 1D degree vector (O(n) not O(n^2))
+        self._D_cache = None                                           # lazy dense D matrix
+        self.local_k_connectivity = {i: 0 for i in range(self.nNodes)}
         self.criteria_table = criteria_table
         if self.criteria_table['aperature']:
             self.directional_graph = True
@@ -47,124 +52,137 @@ class Swarmgraph:
             self.directional_graph = False
         self.components = []
 
+    @property
+    def A(self):
+        """Dense adjacency matrix (lazy, cached). Use A_sparse where possible."""
+        if self._A_dense_cache is None:
+            self._A_dense_cache = self.A_sparse.toarray()
+        return self._A_dense_cache
+
+    @property
+    def D(self):
+        """Dense degree matrix (lazy, cached). Use _degrees vector where possible."""
+        if self._D_cache is None:
+            self._D_cache = np.diag(self._degrees)
+        return self._D_cache
+
     # update A
     # --------
     def update_A(self, data, r_matrix, **kwargs):
         
-        # reset
-        self.A[:,:] = 0    
-    
-        # for each node
-        for i in range(0,self.nNodes):  
-            
-            # search through neighbours
-            for j in range(0,self.nNodes):
-                
-                # set defaults
-                connected = True
-                weight = 0
-                
-                # skip self
-                if i != j: 
-                    
-                    # if using radial criteria 
-                    if self.criteria_table['radius']:  
-                        # compute distance
-                        dist = np.linalg.norm(data[0:3,j]-data[0:3,i])
-                        r = r_matrix[i,j] + slack
-                        
-                        # if close enough
-                        if dist < r:
-                            connected_r = True
-                            weight      = 1     # this could be reflective of the distance later 
-                        else:
-                            connected_r = False 
-                        # interection
-                        connected = connected and connected_r
-                        
-                         # if using directional criteria 
-                        if self.criteria_table['aperature']:
-                            sensor_aperature = kwargs.get('aperature')
-                            headings    = kwargs.get('quads_headings')
-                            # get vector for heading
-                            v_a = np.array((np.cos(headings[0,i]), np.sin(headings[0,i]), 0 )) # move outside later
-                            # check sensor range 
-                            if is_point_in_aperature_range(data[0:3,i], data[0:3,j], v_a, sensor_aperature, r):
-                                connected_a = True
-                            else:
-                                connected_a = False
-                            # interection
-                            connected = connected and connected_a                            
-                        
-                    # if connected 
-                    if connected:
-    
-                        self.A[i,j] = weight*1
-                    
-                    else:
-                        
-                        self.A[i,j] = 0
-        
-        #if np.all(self.A == 1):
-        #    print("All elements are equal to 1")
-        
-        # also update D
-        self.D = convert_A_to_D(self.A)
+        n = self.nNodes
+        self._A_dense_cache = None  # invalidate dense cache
+
+        if not self.criteria_table['radius']:
+            self.A_sparse = sparse.csr_matrix((n, n))
+            self._degrees = np.zeros(n)
+            self._D_cache = None
+            return
+
+        # determine search radius (max across all pairs + slack)
+        r_max = np.max(r_matrix) + slack
+
+        # build spatial index from positions
+        spatial_idx = SpatialIndex(data[0:3, :])
+        pairs, distances = spatial_idx.query_pairs_with_distances(r_max)
+
+        # check if r_matrix is uniform (common case: all elements equal)
+        r_flat = r_matrix.ravel()
+        uniform_r = (r_flat.min() == r_flat.max())
+
+        if uniform_r and not self.criteria_table['aperature']:
+            # fast path: build sparse directly from pairs
+            if pairs.shape[0] > 0:
+                # symmetric: add both (i,j) and (j,i)
+                rows = np.concatenate([pairs[:, 0], pairs[:, 1]])
+                cols = np.concatenate([pairs[:, 1], pairs[:, 0]])
+                data_vals = np.ones(len(rows))
+                self.A_sparse = sparse.csr_matrix((data_vals, (rows, cols)), shape=(n, n))
+            else:
+                self.A_sparse = sparse.csr_matrix((n, n))
+        else:
+            # general path: per-pair radius check + optional aperture filter
+            sensor_aperature = kwargs.get('aperature') if self.criteria_table['aperature'] else None
+            headings = kwargs.get('quads_headings') if self.criteria_table['aperature'] else None
+
+            rows_list = []
+            cols_list = []
+
+            for k in range(pairs.shape[0]):
+                i, j = pairs[k, 0], pairs[k, 1]
+                dist = distances[k]
+
+                # check i->j direction
+                r_ij = r_matrix[i, j] + slack
+                connected_ij = dist < r_ij
+                if connected_ij and self.criteria_table['aperature']:
+                    v_a = np.array((np.cos(headings[0, i]), np.sin(headings[0, i]), 0))
+                    connected_ij = is_point_in_aperature_range(
+                        data[0:3, i], data[0:3, j], v_a, sensor_aperature, r_ij)
+                if connected_ij:
+                    rows_list.append(i)
+                    cols_list.append(j)
+
+                # check j->i direction (may differ for directional graphs)
+                r_ji = r_matrix[j, i] + slack
+                connected_ji = dist < r_ji
+                if connected_ji and self.criteria_table['aperature']:
+                    v_a = np.array((np.cos(headings[0, j]), np.sin(headings[0, j]), 0))
+                    connected_ji = is_point_in_aperature_range(
+                        data[0:3, j], data[0:3, i], v_a, sensor_aperature, r_ji)
+                if connected_ji:
+                    rows_list.append(j)
+                    cols_list.append(i)
+
+            if rows_list:
+                self.A_sparse = sparse.csr_matrix(
+                    (np.ones(len(rows_list)), (rows_list, cols_list)), shape=(n, n))
+            else:
+                self.A_sparse = sparse.csr_matrix((n, n))
+
+        # update degrees from sparse (row sums) — O(n) not O(n^2)
+        self._degrees = np.asarray(self.A_sparse.sum(axis=1)).ravel()
+        self._D_cache = None  # invalidate dense D cache
      
     
     # update k-connectivity
     # ---------------------
     def update_local_k_connectivity(self):
-        
-        self.local_k_connectivity = local_k_connectivity(self.A, len(self.A), -1)
+        self.local_k_connectivity = compute_local_connectivity(self.A_sparse)
     
     
     # find connected components
     # -------------------------
     def find_connected_components(self):
         
-        # if not using directionality
         if not self.directional_graph:
-        
-            all_components = []                                     # stores all connected components
-            visited = []                                            # stores all visisted nodes
-            for node in range(0,self.A.shape[1]):                        # search all nodes (breadth)
-                if node not in visited:                             # exclude nodes already visited
-                    component       = []                            # stores component nodes
-                    candidates = np.nonzero(self.A[node,:].ravel()==1)[0].tolist()    # create a set of candidates from neighbours 
-                    component.append(node)
-                    visited.append(node)
-                    candidates = list(set(candidates)-set(visited))
-                    while candidates:                               # now search depth
-                        candidate = candidates.pop(0)               # grab a candidate 
-                        visited.append(candidate)                   # it has how been visited 
-                        subcandidates = np.nonzero(self.A[:,candidate].ravel()==1)[0].tolist()
-                        component.append(candidate)
-                        #component.sort()
-                        candidates.extend(list(set(subcandidates)-set(candidates)-set(visited))) # add the unique nodes          
-                    all_components.append(component)
-            #return all_components
-            self.components = all_components 
+            # use scipy for O(n) connected components on sparse graph
+            n_components, labels = scipy_connected_components(
+                self.A_sparse, directed=False, return_labels=True)
+            
+            # convert labels to list-of-lists format matching original interface
+            all_components = [[] for _ in range(n_components)]
+            for node, label in enumerate(labels):
+                all_components[label].append(node)
+            self.components = all_components
 
         else:
-
-            # starts search at greated out degree centrality
-            # this starts the dfs from node of max deg centrality
+            # directional: DFS from highest out-degree centrality
+            # (kept as original — directional is rare and already fast enough)
             def dfs(node, component):
                 visited.add(node)
                 component.append(node)
-                for neighbor, connected in enumerate(self.A[node]):
-                    if connected == 1 and neighbor not in visited:
+                for neighbor, connected_val in enumerate(self.A[node]):
+                    if connected_val == 1 and neighbor not in visited:
                         dfs(neighbor, component)
         
             components = []
             visited = set()
         
-            # Calculate out degree centrality for each node
             out_degree_centrality = [sum(row) for row in self.A]
-        
-            # Sort nodes based on out degree centrality in descending order
-            nodes_sorted_by_centrality = sorted(range(len(out_degree_centrality)), key=lambda x: out_degree_centrality[x], reverse=True)
+            nodes_sorted_by_centrality = sorted(
+                range(len(out_degree_centrality)),
+                key=lambda x: out_degree_centrality[x], reverse=True)
         
             for node in nodes_sorted_by_centrality:
                 if node not in visited:
@@ -180,14 +198,14 @@ class Swarmgraph:
         # update graph info
         self.update_A(data, r_matrix, **kwargs)
         self.find_connected_components()
-        self.local_k_connectivity = local_k_connectivity(self.A, len(self.A), -1)
+        self.local_k_connectivity = compute_local_connectivity(self.A_sparse)
         
         # initialize the pins
         self.pin_matrix = np.zeros((data.shape[1],data.shape[1]))
         
         if method == 'degree' or method == 'degree_leafs':
         
-            D_elements = np.diag(self.D)
+            D_elements = self._degrees
             D_dict = {i: D_elements[i] for i in range(len(D_elements))}
             
             # search each component 
@@ -258,7 +276,7 @@ def is_point_in_aperature_range(a, b, v_a, theta, r):
     projection = np.dot(v_ab_unit, v_a_unit)
 
     # calculate angle between
-    angle = np.arccos(projection)
+    angle = np.arccos(np.clip(projection, -1.0, 1.0))
 
     # convert aperature to radians
     theta_rad = np.radians(theta)
@@ -300,71 +318,25 @@ def lap_matrix(A, D):
     assert (eigs >= 0).all()
     # return the matrix
     return L
-                        
 
-# find the disjoint path between source and target
-# ------------------------------------------------
-def find_k_disjoint_paths(A, source, target, k):
-    
-    n = len(A)             # number of nodes
-    visited = [False] * n  # initialize a list to store visited nodes
-    paths = []             # count paths
 
-    # we'll do a depth first search
-    def dfs(node, path):
-        visited[node] = True 
-        if node == target:
-            paths.append(path[:]) # store path, if target found
-        else:
-            for neighbor in range(n):
-                if A[node][neighbor] > 0 and not visited[neighbor]:
-                    dfs(neighbor, path + [neighbor]) # search for paths (recursively)
-        visited[node] = False
-
-    # initiate search from source node
-    dfs(source, [source])
-    
-    # filter out paths !=  k
-    #k_paths = [p for p in paths if len(p) == k + 1]
-    
-    # alternatively, filter out paths <  k
-    #k_paths = [p for p in paths if len(p) >= k + 1]
-    
-    k_paths= paths
-
-    return len(k_paths) >= k
-
-# find the local connectivity 
-# ---------------------------
-def local_k_connectivity(A, k, pick = -1):
-    
-    n = len(A)          # number of nodes 
-    
-    if pick == -1:      # -1 denoes searching all nodes
-        node_list = list(range(0,n))
+# compute local connectivity using node degree
+# ---------------------------------------------
+# For practical swarm configurations (bounded sensor range, degree << n),
+# the original exponential path-enumeration returned node degree in all
+# reachable cases. This O(n) replacement produces identical results.
+def compute_local_connectivity(A, pick=-1):
+    if sparse.issparse(A):
+        n = A.shape[0]
+        degrees = np.asarray(A.sum(axis=1)).ravel().astype(int)
     else:
-        node_list = [pick] # else, specifies a specific node
+        n = len(A)
+        degrees = np.sum(A, axis=1).astype(int)
     
-    local_k = {}
-
-    # for each node
-    for node in node_list:
-        local_k[node] = 0
-        # search through connected neighbours
-        neighbors = [i for i in range(n) if A[node][i] > 0]
-        # if number of neighbours is less than k
-        if len(neighbors) < k:
-            # just store the number of neighbours (will be filtered out)
-            local_k[node] = len(neighbors)
-        else:
-            # else, if there are at least k neighbours 
-            for neighbor in neighbors:
-                # count and store the disjointed paths 
-                if find_k_disjoint_paths(A, node, neighbor, k):
-                    local_k[node] = k
-                    break
-        
-    return local_k
+    if pick == -1:
+        return {i: int(degrees[i]) for i in range(n)}
+    else:
+        return {pick: int(degrees[pick])}
 
 
         
