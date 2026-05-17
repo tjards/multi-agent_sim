@@ -2,6 +2,7 @@ data/data/*
 visualization/animations/*
 visualization/plots/*
 experiments/*
+!experiments/experiment_manager.py
 
 # Python cache files
 __pycache__/

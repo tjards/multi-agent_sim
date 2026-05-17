@@ -279,11 +279,11 @@ class Planner(BasePlanner):
                             outer.cmd -= self.a_R * np.divide(outer.state[0:3,outer.j]-outer.state[0:3,outer.i],outer.seps_all[outer.i,outer.j])
                                
                         # orientation
-                        if outer.seps_all[outer.i,outer.j] < self.r_O:
+                        elif outer.seps_all[outer.i,outer.j] < self.r_O:
                             outer.cmd += self.a_O * np.divide(outer.state[3:6,outer.j]-outer.state[3:6,outer.i],np.linalg.norm(outer.state[3:6,outer.j]-outer.state[3:6,outer.i]))
                         
                         # attraction
-                        if outer.seps_all[outer.i,outer.j] < self.r_A:
+                        elif outer.seps_all[outer.i,outer.j] < self.r_A:
                             outer.cmd += self.a_A * np.divide(outer.state[0:3,outer.j]-outer.state[0:3,outer.i],outer.seps_all[outer.i,outer.j])
                     
                     # if it's a shepherd        

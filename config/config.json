@@ -7,7 +7,7 @@
     },
     "simulation": {
         "Ti": 0,
-        "Tf": 300,
+        "Tf": 180,
         "Ts": 0.02,
         "dimens": 2,
         "verbose": 1,
@@ -19,7 +19,7 @@
         "obstacle_avoidance_strategy": "flocking_saber"
     },
     "agents": {
-        "nAgents":13,
+        "nAgents":15,
         "dynamics": "double integrator",
         "rAgents": 0.5,
         "iSpread": 40,
@@ -32,7 +32,7 @@
         "initial_position": [0, 0, 15]
     },
     "obstacles": {
-        "nObs": 1,
+        "nObs": 0,
         "vehObs": 0,
         "oSpread": 20,
         "manual": true,
