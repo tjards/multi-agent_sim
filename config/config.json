@@ -16,11 +16,12 @@
         "random_seed": 41,
         "f": 0,
         "experimental_save": false,
-        "obstacle_avoidance_strategy": "flocking_saber"
+        "obstacle_avoidance_strategy": "flocking_saber",
+        "use_optimized": true
     },
     "agents": {
         "nAgents": 7,
-        "dynamics": "double_integrator",
+        "dynamics": "double integrator",
         "rAgents": 0.5,
         "iSpread": 40,
         "init_conditions": "random",

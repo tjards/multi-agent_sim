@@ -5,6 +5,7 @@ Created on Thu Sep  9 19:12:59 2021
 
 @author: tjards
 
+
 This program implements Reynolds Rules of Flocking ("boids")
 
 """
@@ -58,6 +59,172 @@ class Planner(BasePlanner):
                         distances[k_node,k_neigh] = np.linalg.norm(states_q[:,k_node]-states_q[:,k_neigh])
         return distances 
 
+    # ========================== #
+    # VECTORIZED BATCH COMMANDS  #
+    # ========================== #
+
+    def compute_cmd_vectorized(self, states, targets, neighbor_lists, **kwargs):
+        """
+        Compute commands for ALL agents at once using vectorized NumPy.
+
+        Config coverage (see config.json -> planner.techniques.flocking_reynolds):
+          Fully implemented:
+            - escort = 0 or 1       target tracking vs centroid tracking
+            - cd_1, cd_2, cd_3      cohesion / alignment / separation weights
+            - cd_track              navigation gain
+            - maxu, maxv            saturation limits
+            - r, r_prime            sensing and separation radii
+          Partially implemented:
+            - recovery = 1          navigates far agents toward centroid, but does
+                                    NOT override cd_4 to 0.3 per-agent (uses cd_track
+                                    uniformly). Full per-agent gain override would
+                                    require a per-agent gain array.
+          Not implemented (falls back to scalar):
+            - mode_min_coh = 1      adaptive per-agent cohesion radius based on
+                                    sorted neighbor distances. Requires per-agent
+                                    distance sorting incompatible with batch approach.
+
+        Args:
+            states: (6, n) agent positions and velocities
+            targets: (6, n) target positions and velocities
+            neighbor_lists: list[list[int]] from SpatialIndex.query_ball_tree(r)
+            **kwargs: must include 'centroid' (3,1) array
+
+        Returns:
+            (3, n) command array, or None to fall back to scalar path.
+        """
+        # fall back to scalar for adaptive cohesion mode (needs per-agent sorted distances)
+        if self.mode_min_coh == 1:
+            return None
+
+        states_q = states[0:3, :]     # (3, n)
+        states_p = states[3:6, :]     # (3, n)
+        targets_q = targets[0:3, :]   # (3, n)
+        centroid = kwargs.get('centroid')
+        n = states_q.shape[1]
+
+        r_eff = self.r  # effective range (mode_min_coh=0)
+
+        # --- build directed edge arrays from neighbor_lists ---
+        src_list = []
+        dst_list = []
+        for i, neighs in enumerate(neighbor_lists):
+            for j in neighs:
+                src_list.append(i)
+                dst_list.append(j)
+
+        # initialize per-agent accumulators
+        sum_poses = np.zeros((3, n))     # cohesion: sum of neighbor positions
+        sum_velos = np.zeros((3, n))     # alignment: sum of neighbor velocities
+        sum_obs   = np.zeros((3, n))     # separation: sum of repulsion vectors
+        count_coh = np.zeros(n)          # cohesion/alignment neighbor count
+        count_sep = np.zeros(n)          # separation neighbor count
+
+        if src_list:
+            src = np.array(src_list, dtype=np.intp)
+            dst = np.array(dst_list, dtype=np.intp)
+
+            # compute pairwise distances
+            dq = states_q[:, src] - states_q[:, dst]  # q_i - q_j
+            dists = np.linalg.norm(dq, axis=0)        # (M,)
+
+            # skip collisions (dist < 0.1)
+            valid = dists >= 0.1
+
+            # cohesion + alignment: dist < r_eff
+            coh_mask = valid & (dists < r_eff)
+            if np.any(coh_mask):
+                src_coh = src[coh_mask]
+                dst_coh = dst[coh_mask]
+                # accumulate neighbor positions and velocities
+                np.add.at(sum_poses, (np.arange(3)[:, None], src_coh[None, :]),
+                          states_q[:, dst_coh])
+                np.add.at(sum_velos, (np.arange(3)[:, None], src_coh[None, :]),
+                          states_p[:, dst_coh])
+                np.add.at(count_coh, src_coh, 1)
+
+            # separation: dist < r_prime
+            sep_mask = valid & (dists < self.r_prime)
+            if np.any(sep_mask):
+                src_sep = src[sep_mask]
+                dst_sep = dst[sep_mask]
+                dists_sep = dists[sep_mask]
+                # repulsion: -(q_i - q_j) / dist^2 = (q_j - q_i) / dist^2
+                repulsion = -dq[:, sep_mask] / (dists_sep[None, :] ** 2)
+                np.add.at(sum_obs, (np.arange(3)[:, None], src_sep[None, :]), repulsion)
+                np.add.at(count_sep, src_sep, 1)
+
+        # --- post-processing: per-agent cohesion, alignment, separation ---
+        # NOTE: the scalar code uses ||raw_sum|| as the normalization denominator
+        #       inside the velocity formula, NOT ||mean - pos||. We match that here.
+        cmd = np.zeros((3, n))
+
+        has_neighs = count_coh > 0
+
+        # Cohesion
+        if np.any(has_neighs):
+            # norm of raw sum of neighbor positions (matches scalar norm_coh)
+            norm_coh = np.linalg.norm(sum_poses, axis=0, keepdims=True)
+            norm_coh_safe = np.maximum(norm_coh, 1e-15)
+            coh_dir = sum_poses / np.maximum(count_coh[None, :], 1) - states_q
+            temp_coh = self.maxv * coh_dir / norm_coh_safe - states_p
+            # norm_sat per agent
+            temp_norms = np.linalg.norm(temp_coh, axis=0, keepdims=True)
+            temp_norms_safe = np.maximum(temp_norms, 1e-15)
+            u_coh = self.cd_1 * self.maxu * temp_coh / temp_norms_safe
+            mask_coh = has_neighs & (norm_coh.ravel() > 0)
+            cmd[:, mask_coh] += u_coh[:, mask_coh]
+
+        # Alignment
+        if np.any(has_neighs):
+            # norm of raw sum of neighbor velocities (matches scalar norm_ali)
+            norm_ali = np.linalg.norm(sum_velos, axis=0, keepdims=True)
+            norm_ali_safe = np.maximum(norm_ali, 1e-15)
+            ali_dir = sum_velos / np.maximum(count_coh[None, :], 1)
+            temp_ali = self.maxv * ali_dir / norm_ali_safe - states_p
+            temp_norms_a = np.linalg.norm(temp_ali, axis=0, keepdims=True)
+            temp_norms_a_safe = np.maximum(temp_norms_a, 1e-15)
+            u_ali = self.cd_2 * self.maxu * temp_ali / temp_norms_a_safe
+            mask_ali = has_neighs & (norm_ali.ravel() > 0)
+            cmd[:, mask_ali] += u_ali[:, mask_ali]
+
+        # Separation
+        has_sep = count_sep > 0
+        if np.any(has_sep):
+            norm_sep = np.linalg.norm(sum_obs, axis=0, keepdims=True)
+            norm_sep_safe = np.maximum(norm_sep, 1e-15)
+            sep_dir = sum_obs / np.maximum(count_sep[None, :], 1)
+            temp_sep = self.maxv * sep_dir / norm_sep_safe - states_p
+            temp_norms_s = np.linalg.norm(temp_sep, axis=0, keepdims=True)
+            temp_norms_s_safe = np.maximum(temp_norms_s, 1e-15)
+            u_sep = -self.cd_3 * self.maxu * temp_sep / temp_norms_s_safe
+            mask_sep = has_sep & (norm_sep.ravel() > 0)
+            cmd[:, mask_sep] += u_sep[:, mask_sep]
+
+        # --- navigation / tracking ---
+        cd_4 = self.cd_track
+        if self.escort == 1:
+            temp_nav = targets_q - states_q
+        else:
+            temp_nav = centroid.T - states_q  # centroid is (3,1)
+
+        # recovery override (per-agent)
+        if self.recovery == 1 and centroid is not None:
+            dist_from_centroid = np.linalg.norm(centroid.T - states_q, axis=0)
+            far_mask = dist_from_centroid > self.far_away
+            # for far agents, override gain and target
+            if np.any(far_mask):
+                temp_nav[:, far_mask] = (centroid.T - states_q)[:, far_mask]
+                # cd_4 stays at cd_track for escort, 0.3 for recovery
+                # handled below via per-agent gain
+
+        nav_norms = np.linalg.norm(temp_nav, axis=0, keepdims=True)
+        nav_norms_safe = np.maximum(nav_norms, 1e-15)
+        u_nav = cd_4 * self.maxu * temp_nav / nav_norms_safe
+        cmd += u_nav
+
+        return cmd
+
     # Compute commands
     # ----------------
 
@@ -74,13 +241,12 @@ class Planner(BasePlanner):
         # Reynolds Flocking
         # ------------------ 
         
-        #initialize commands 
-        u_coh = np.zeros((3,states_q.shape[1]))  # cohesion
-        u_ali = np.zeros((3,states_q.shape[1]))  # alignment
-        u_sep = np.zeros((3,states_q.shape[1]))  # separation
-        u_nav = np.zeros((3,states_q.shape[1]))  # navigation
-        #distances = np.zeros((states_q.shape[1],states_q.shape[1])) # to store distances between nodes
-        cmd_i = np.zeros((3,states_q.shape[1])) 
+        # (3,) not (3, n) — heap fragmentation fix (see OPTIMIZATION.md)
+        u_coh = np.zeros(3)
+        u_ali = np.zeros(3)
+        u_sep = np.zeros(3)
+        u_nav = np.zeros(3)
+        cmd_i = np.zeros(3)
         
         #initialize for this node
         temp_total = 0
@@ -160,20 +326,20 @@ class Planner(BasePlanner):
             # --------
             if norm_coh != 0:
                 temp_u_coh = (self.maxv*np.divide(((np.divide(sum_poses,temp_total_coh) - states_q[:,k_node])),norm_coh)-states_p[:,k_node])
-                u_coh[:,k_node] = self.cd_1*norm_sat(temp_u_coh,self.maxu)
+                u_coh = self.cd_1*norm_sat(temp_u_coh,self.maxu)
             
             # Alignment
             # ---------
             if norm_ali != 0:                 
                 temp_u_ali = (self.maxv*np.divide((np.divide(sum_velos,temp_total)),norm_ali)-states_p[:,k_node])
-                u_ali[:,k_node] = self.cd_2*norm_sat(temp_u_ali,self.maxu)
+                u_ali = self.cd_2*norm_sat(temp_u_ali,self.maxu)
         
         if temp_total_prime != 0 and norm_sep != 0:
                 
             # Separtion
             # ---------
             temp_u_sep = (self.maxv*np.divide(((np.divide(sum_obs,temp_total_prime))),norm_sep)-states_p[:,k_node]) 
-            u_sep[:,k_node] = -self.cd_3*norm_sat(temp_u_sep,self.maxu)
+            u_sep = -self.cd_3*norm_sat(temp_u_sep,self.maxu)
                     
         # Tracking
         # -------- 
@@ -195,10 +361,8 @@ class Planner(BasePlanner):
             temp_u_nav = (centroid.transpose()-states_q[:,k_node])
         
         # compute tracking 
-        u_nav[:,k_node] = cd_4*norm_sat(temp_u_nav,self.maxu)
+        u_nav = cd_4*norm_sat(temp_u_nav,self.maxu)
         
         # compute consolidated commands
-        cmd_i[:,k_node] = u_coh[:,k_node] + u_ali[:,k_node] + u_sep[:,k_node] + u_nav[:,k_node] 
-        
-        return cmd_i[:,k_node]
+        return u_coh + u_ali + u_sep + u_nav
     

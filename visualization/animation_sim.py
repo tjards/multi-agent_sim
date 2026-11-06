@@ -17,7 +17,10 @@ Created on Mon Sep  4 15:31:52 2023
 from matplotlib import pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from matplotlib import animation
+from matplotlib import colors as mcolors
+from matplotlib.collections import LineCollection
 import os
 import json
 from data import data_manager
@@ -355,46 +358,33 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
 # update the connections
 def update_connectivity(i, pos, lattices, nVeh, lattices_connections, connectivity):
 
-    # cycle through each pair (j, k)
-    for j in range(nVeh):
+    # lattices is a single LineCollection/Line3DCollection: one segment per
+    # nonzero adjacency entry, so work scales with edges rather than nVeh^2
+    A = np.asarray(connectivity[i*numFrames])
+    rows, cols = np.nonzero(A)
 
-        for k in range(nVeh):
+    if rows.size == 0:
+        lattices.set_segments([])
+        return
 
-            # get the line object for this pair
-            line = lattices[j][k]
+    is_3d = lattices.axes.name == '3d'
+    p = pos.T if is_3d else pos[0:2, :].T
+    segs = np.stack([p[rows], p[cols]], axis=1)
 
-            # we don't want self
-            if j == k:
-                line.set_data([], [])
-                if line.axes.name == '3d':
-                    line.set_3d_properties([])
-                continue
+    dists = np.linalg.norm(pos[:, rows] - pos[:, cols], axis=0)
+    if updated_connections == 1:
+        thresh = np.asarray(lattices_connections[i*numFrames])[rows, cols] + 0.5
+    else:
+        thresh = connection_thresh
+    connected = dists <= thresh
 
-            if connectivity[i*numFrames, j, k] > 0:
-                dist = np.linalg.norm(pos[:, j] - pos[:, k])
-                connection_thresh_updated = (lattices_connections[i*numFrames, j, k] + 0.5) if updated_connections == 1 else connection_thresh
+    # connected pairs draw solid-ish, in-range-but-unconnected pairs fainter
+    colors = np.where(connected[:, None],
+                      np.array(mcolors.to_rgba(color_lattice[1], 0.6)),
+                      np.array(mcolors.to_rgba(color_lattice[0], 0.3)))
 
-                # if close enough, draw connection
-                if dist <= connection_thresh_updated:
-                    line.set_color(color_lattice[1])
-                    line.set_alpha(0.6)
-                # else, draw in range but not connected
-                else:
-                    line.set_color(color_lattice[0])
-                    line.set_alpha(0.3)
-
-                xd = [pos[0, j], pos[0, k]]
-                yd = [pos[1, j], pos[1, k]]
-                zd = [pos[2, j], pos[2, k]]
-                line.set_data(xd, yd)
-                if line.axes.name == '3d':
-                    line.set_3d_properties(zd)
-            else:
-
-                # not in range
-                line.set_data([], [])
-                if line.axes.name == '3d':
-                    line.set_3d_properties([])
+    lattices.set_segments(segs)
+    lattices.set_color(colors)
 
 
 
@@ -545,17 +535,15 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
         lines_targets.append(target)
         node_colors.append([color_scheme[0]]) # default blue
 
-    # one line object per (j, k) pair for independent edge coloring
-    lattices = []
-    for j in range(nVeh):
-        row = []
-        for k in range(nVeh):
-            if dimens == 3:
-                line, = ax.plot([], [], [], '--', lw=1, color=color_lattice[0], alpha=0.3)
-            else:
-                line, = ax.plot([], [], '--', lw=1, color=color_lattice[0], alpha=0.3)
-            row.append(line)
-        lattices.append(row)
+    # one collection holding every lattice edge (per-segment colors), O(edges)
+    if dimens == 3:
+        lattices = Line3DCollection([], linestyles='--', linewidths=1)
+        # autolim=False: axis limits are managed by the camera logic, and
+        # autoscaling from an empty collection raises in matplotlib >= 3.9
+        ax.add_collection3d(lattices, autolim=False)
+    else:
+        lattices = LineCollection([], linestyles='--', linewidths=1)
+        ax.add_collection(lattices)
     
     # initialize obstacles (if required)
     lines_obstacles = []

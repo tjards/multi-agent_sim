@@ -13,6 +13,8 @@ An open architecture multi-agent simulator for use by academic researchers. Impl
 
 Agents make decentralized decisions asynchronously based on local information only. There is no global plan. 
 
+---
+
 Documentation:
 - Detailed project documentation is generated automatically by an LLM agent (most recently, Claude Haiku 4.5) after significant updates and pushed [here](./docs/documentation.md). 
 - I also maintain rough development notes for myself [here](./docs/devnotes.md).
@@ -33,7 +35,8 @@ Documentation:
 │   ├── trajectory.py        # placeholder for trajectory definitions
 │   └── techniques/          # technique definitions
 ├── targets/                 # target definitions
-├── utils/                   # utility scripts 
+├── tests/                   # unit tests and benchmarks
+├── utils/                   # utility scripts
 ├── venv/                    # python virtual environment
 ├── visualization/           # animations and plots
 ├── orchestrator.py          # master controller (integrates all other components)

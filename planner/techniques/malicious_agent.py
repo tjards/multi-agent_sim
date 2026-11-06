@@ -260,17 +260,23 @@ class Planner(BasePlanner):
         
     # compute commands (Eqn (12) from [1] )
     # -------------------------------------
-    #def compute_cmd(self, targets, states_q, states_p, k_node, **kwargs):
+    # NOTE: This planner is intentionally NOT vectorized. The malicious agent
+    # detection, layer assignment, adaptive gain estimation (filter_v, filter_C,
+    # k_hat), and per-layer command logic create inherently sequential per-agent
+    # dependencies that cannot be parallelized without redesigning the algorithm.
+    # The optimization here accepts pre-built neighbor lists via kwargs['neighbors']
+    # to skip the O(n) scan through all agents when checking adjacency.
     def compute_cmd(self, states, targets, index, **kwargs):
         
         # extract stuff
-        A               = self.interaction_graph #kwargs['A']
-        pin_matrix      = self.pin_assignments #kwargs['pin_matrix']
-        Ts              = self.Ts #kwargs['Ts']
+        A               = self.interaction_graph
+        pin_matrix      = self.pin_assignments
+        Ts              = self.Ts
         states_q        = states[0:3, :]
         states_p        = states[3:6, :]
         k_node          = index
         targets_q       = targets[0:3, :]
+        neighbors       = kwargs.get('neighbors')  # pre-built from SpatialIndex
 
         
         # upon first assembly, build layers
@@ -289,31 +295,20 @@ class Planner(BasePlanner):
         # compute navigation (if not assembled, draws towards goal when gain_p, gain_v set)
         cmd_i -= pin_matrix[k_node,k_node]*compute_navigation(self.gain_p, self.gain_v, states_q, states_p, targets_q, k_node)
 
-        # if no responding to malicious agent
+        # determine neighbor set: use pre-built list if available, else scan A
+        if neighbors is not None:
+            neigh_iter = neighbors
+        else:
+            neigh_iter = [j for j in range(states_q.shape[1]) if j != k_node and A[k_node, j] != 0]
+
+        # if not responding to malicious agent
         # ----------------------------------
         if self.mode_malicious == 0:
         
-            # search through each neighbour
-            for k_neigh in range(states_q.shape[1]):
-            
-                # except for itself:
-                if k_node != k_neigh:
-                    
-                    # check if the neighbour is in range
-                    if A[k_node,k_neigh] == 0:
-                        in_range = False
-                    else:
-                        in_range = True 
-                
-                    # if within range
-                    if in_range:
-                    
-                        # compute alignment 
-                        cmd_i -= gains[0]*compute_alignment(states_q, states_p, k_node, k_neigh)
-                        # compute cohesion
-                        cmd_i -= gains[1]*compute_cohesion(states_q, k_node, k_neigh, self.Q, self.r)*(states_q[:,k_node] - states_q[:,k_neigh])
-                        # compute repulsion
-                        cmd_i -= gains[2]*compute_repulsion(states_q, k_node, k_neigh, self.Q, self.r)*(states_q[:,k_node] - states_q[:,k_neigh])
+            for k_neigh in neigh_iter:
+                cmd_i -= gains[0]*compute_alignment(states_q, states_p, k_node, k_neigh)
+                cmd_i -= gains[1]*compute_cohesion(states_q, k_node, k_neigh, self.Q, self.r)*(states_q[:,k_node] - states_q[:,k_neigh])
+                cmd_i -= gains[2]*compute_repulsion(states_q, k_node, k_neigh, self.Q, self.r)*(states_q[:,k_node] - states_q[:,k_neigh])
                 
         # if we are responding to a malicious node 
         # --------------------------------------
@@ -323,20 +318,11 @@ class Planner(BasePlanner):
             # ------------
             if self.layer[k_node] == 2: 
                  
-                # search through layer 2
-                for k_neigh in [index for index, value in enumerate(self.layer) if value == 2]:
+                # search through layer 2 neighbors
+                layer2_neighs = [j for j in neigh_iter if self.layer[j] == 2]
+                for k_neigh in layer2_neighs:
                         
-                    # exclude self
                     if k_neigh != k_node:
-                        
-                        # check if the neighbour is in range
-                        if A[k_node,k_neigh] == 0:
-                            in_range = False
-                        else:
-                            in_range = True 
-                    
-                        #if within range
-                        if in_range:
                         
                             # compute velo component 
                             cmd_i -= gains[0]*compute_alignment(states_q, states_p, k_node, k_neigh)
@@ -358,20 +344,7 @@ class Planner(BasePlanner):
             # -----------
             elif self.layer[k_node] == 3: 
                 
-                # search through each neighbour
-                for k_neigh in range(states_q.shape[1]):
-            
-                    # except for itself:
-                    if k_node != k_neigh:
-                        
-                        # check if the neighbour is in range
-                        if A[k_node,k_neigh] == 0:
-                            in_range = False
-                        else:
-                            in_range = True 
-                    
-                        #if within range
-                        if in_range:
+                for k_neigh in neigh_iter:
                             
                             # update the alpha term (paper says this is a der, but I think that's an error)
                             alpha_dot = self.gamma_kp*np.sum(np.abs(states_p[:,k_node]-states_p[:,k_neigh])) # L-1 norm
@@ -389,25 +362,7 @@ class Planner(BasePlanner):
             # ----------------------------
             elif self.layer[k_node] <= 1:
                 
-                # initialize C terms (used for filtering later)
-                #C1 = np.zeros(3)
-                #C2 = np.zeros(3)
-                #C3 = np.zeros(3)
-                
-                # search through each neighbour
-                for k_neigh in range(states_q.shape[1]):
-                
-                    # except for itself:
-                    if k_node != k_neigh:
-                        
-                        # check if the neighbour is in range
-                        if A[k_node,k_neigh] == 0:
-                            in_range = False
-                        else:
-                            in_range = True 
-                    
-                        # if within range, do your thing
-                        if in_range:
+                for k_neigh in neigh_iter:
                         
                             # compute alignment 
                             C1 = compute_alignment(states_q, states_p, k_node, k_neigh)

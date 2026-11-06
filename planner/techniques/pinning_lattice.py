@@ -121,28 +121,34 @@ class Planner(BasePlanner):
         
     # form the lattice
     # -----------------
-    def compute_cmd_a(self,states_q, states_p, targets, targets_v, k_node, **kwargs):   
+    # NOTE: This method is intentionally NOT vectorized. The consensus learning
+    # update (consensus_agent.update) modifies d_weighted[k_node, k_neigh]
+    # during neighbor iteration, creating sequential dependencies between pairs
+    # for the same agent. Vectorizing the force computation separately from
+    # learning would alter the lattice evolution dynamics. The optimization here
+    # is limited to accepting pre-built neighbor lists to skip the O(n) scan.
+    def compute_cmd_a(self,states_q, states_p, targets, targets_v, k_node, **kwargs):
         
         # pull out the args 
         headings                = kwargs.get('quads_headings')
-        consensus_agent         = kwargs.get('consensus_lattice') 
+        consensus_agent         = kwargs.get('consensus_lattice')
         #learning_agent          = kwargs.get('learning_lattice') # in dev
         directional             = kwargs.get('directional_graph')
         A                       = self.interaction_graph #= kwargs.get('A')
+        neighbors               = kwargs.get('neighbors')  # pre-built from SpatialIndex
         #reward_values           = kwargs.get('reward_values') # in dev
 
         # directional mode needs headings
         if directional and consensus_agent is not None:
             consensus_agent.headings = headings
         
-        # ensure the parameters match the agents
         if consensus_agent is not None and consensus_agent.d_weighted.shape[1] != states_q.shape[1]:
             raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', consensus_agent.d_weighted.shape[1], 'lattice parameters')
         
         # execute the reinforcement learning, local case (in dev)
         '''
-        if self.learning == 1: 
-            
+        if self.learning == 1:
+
             kwargs['learning_grid_size'] = self.learning_grid_size          # consider adapting this with time
             learning_agent.update_step(reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
         '''
@@ -152,72 +158,55 @@ class Planner(BasePlanner):
         else:
             d = self.d_init
         
-        u_int = np.zeros((3,states_q.shape[1]))     # interactions
+        # (3,) not (3, n) — heap fragmentation fix (see OPTIMIZATION.md)
+        u_int = np.zeros(3)
 
-        # search through each neighbour
-        # -----------------------------
+        # determine neighbor set: use pre-built list if available, else scan
+        if neighbors is not None:
+            neigh_iter = neighbors
+        else:
+            neigh_iter = [j for j in range(states_q.shape[1]) if j != k_node and A[k_node, j] != 0]
 
-        for k_neigh in range(states_q.shape[1]):
-            
-            # except for itself:
-            if k_node != k_neigh:
+        # iterate over neighbors (sequential: learning updates depend on prior pairs)
+        for k_neigh in neigh_iter:
                             
-                # pull the lattice parameter for this node/neighbour pair
-                if self.hetero_lattice == 1:
-                    d = consensus_agent.d_weighted[k_node, k_neigh]                     
-                
-                # check if the neighbour is in range
-                # ---------------------------------
-                
-                # use adjacency matrix (based on graph)
-                if A[k_node,k_neigh] == 0:
-                    in_range = False
-                else:
-                    in_range = True 
-                
-                # if within range
-                # ---------------
-                if in_range:
-                    
-                    # compute cohesion
-                    if self.flocking_method == 'mixed':
-                        u_int[:,k_node] += self.cohesion_list[self.term_selected[k_node]](self.c1_a,states_q, k_node, k_neigh, self.r_max, d)                
-                    else:
-                        u_int[:,k_node] += self.cohesion_list[self.flocking_method](self.c1_a,states_q, k_node, k_neigh, self.r_max, d)
-
-                    # compute alignment    
-                    u_int[:,k_node] += alignment_term(self.c2_a, states_q, states_p, k_node, k_neigh, self.r_max, d)
-                    
-                    # seek consensus
-                    if self.hetero_lattice == 1:
-                        consensus_agent.update(k_node, k_neigh, states_q)   # update lattice via consensus
-                        consensus_agent.prox_i[k_node, k_neigh] = 1         # annotate as in range     
-                
-                # if not in range 
-                else:
-                    if self.hetero_lattice == 1:
-                        consensus_agent.prox_i[k_node, k_neigh] = 0         # annotate as not in range
+            # pull the lattice parameter for this node/neighbour pair
+            if self.hetero_lattice == 1:
+                d = consensus_agent.d_weighted[k_node, k_neigh]
             
-        return u_int[:,k_node] 
+            # compute interaction forces
+            if self.flocking_method == 'mixed':
+                u_int += self.cohesion_list[self.term_selected[k_node]](self.c1_a,states_q, k_node, k_neigh, self.r_max, d)
+            else:
+                u_int += self.cohesion_list[self.flocking_method](self.c1_a,states_q, k_node, k_neigh, self.r_max, d)
+
+            u_int += alignment_term(self.c2_a, states_q, states_p, k_node, k_neigh, self.r_max, d)
+            
+            # seek consensus (sequential: modifies d_weighted for subsequent pairs)
+            if self.hetero_lattice == 1:
+                consensus_agent.update(k_node, k_neigh, states_q)
+                consensus_agent.prox_i[k_node, k_neigh] = 1
+
+        # mark out-of-range neighbors (for consensus tracking)
+        if self.hetero_lattice == 1 and neighbors is not None:
+            neigh_set = set(neighbors)
+            for j in range(states_q.shape[1]):
+                if j != k_node and j not in neigh_set:
+                    consensus_agent.prox_i[k_node, j] = 0
+            
+        return u_int
 
     # avoid obstacles
     # ---------------
     def compute_cmd_b(self, states_q, states_p, obstacles, walls, k_node):
         
-        u_obs           = np.zeros((3,states_q.shape[1]))     
-        u_obs[:,k_node] = obstacle_term(self.c1_b, self.c2_b, states_q, states_p, obstacles, walls, k_node, self.d_prime, self.r_prime)
-        
-        return u_obs[:,k_node] 
+        return obstacle_term(self.c1_b, self.c2_b, states_q, states_p, obstacles, walls, k_node, self.d_prime, self.r_prime)
 
     # track the target
     # -----------------
     def compute_cmd_g(self, states_q, states_p, targets, targets_v, k_node, pin_matrix):
 
-        # initialize 
-        u_nav           = np.zeros((3,states_q.shape[1]))  
-        u_nav[:,k_node] = pin_matrix[k_node,k_node]*navigation_term(self.c1_g, self.c2_g, states_q, states_p, targets, targets_v, k_node)
-    
-        return u_nav[:,k_node]
+        return pin_matrix[k_node,k_node]*navigation_term(self.c1_g, self.c2_g, states_q, states_p, targets, targets_v, k_node)
 
     # consolidate control signals
     # ---------------------------
@@ -252,14 +241,9 @@ class Planner(BasePlanner):
         kwargs['reward_values'] = reward_values
         '''
         
-        # initialize 
-        cmd_i = np.zeros((3,states_q.shape[1]))
-        
-        u_int = self.compute_cmd_a(states_q, states_p, targets_q, targets_v, k_node, **kwargs) # 0 is a placeholder for reward signal
+        u_int = self.compute_cmd_a(states_q, states_p, targets_q, targets_v, k_node, **kwargs)
         u_obs = self.compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
         u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, self.pin_assignments)
         
-        cmd_i[:,k_node] = u_int + u_obs + u_nav
-        
-        return cmd_i[:,k_node] #, u_int, u_nav, u_obs
+        return u_int + u_obs + u_nav
 

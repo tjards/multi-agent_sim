@@ -11,7 +11,7 @@ This program implments a method for estimating potential function gradients of n
 
 '''
 # these things come from environment
-potential_function: Function \phi(x_ij) representing the potential
+potential_function: Function phi(x_ij) representing the potential
 gradient_function: Gradient function of the potential, -∇φ(x_ij)
 
 # this will be estimated through data methods
